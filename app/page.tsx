@@ -152,6 +152,14 @@ export default function HomePage() {
           </button>
         </div>
 
+        <Link
+          href="/general"
+          className="block mb-8 rounded-2xl border border-[#6c7cff]/40 bg-[#6c7cff]/10 p-5 hover:border-[#6c7cff] transition"
+        >
+          <h3 className="text-lg font-bold mb-1">Общая тренировка</h3>
+          <p className="text-sm text-[#8b90a0]">Слова из всех или выбранных папок с умным повторением</p>
+        </Link>
+
         {error && (
           <div className="mb-6 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm">
             {error}
