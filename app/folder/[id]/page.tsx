@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, Folder } from '@/types/database'
 import AddCardModal from '@/components/AddCardModal'
+import MatchRecord from '@/components/MatchRecord'
 
 export default function FolderPage() {
   const { user, loading: authLoading } = useAuth()
@@ -131,6 +132,12 @@ export default function FolderPage() {
   const isLearnedFolder = folder.type === 'learned'
   const isLevelFolder = folder.type === 'level'
 
+  const learnedCards = cards.filter(c => c.learned_at)
+  const unlearnedCards = cards.filter(c => !c.learned_at)
+
+  const modeButtonClass =
+    'rounded-lg border border-gray-700 bg-[#1a1d23] px-5 py-2.5 font-medium hover:border-[#6c7cff] transition'
+
   return (
     <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
       <div className="max-w-5xl mx-auto">
@@ -141,7 +148,10 @@ export default function FolderPage() {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 pb-6 border-b border-gray-800">
           <div>
             <h1 className="text-3xl font-bold mb-1">{folder.name}</h1>
-            <p className="text-sm text-[#8b90a0]">Всего слов: {cards.length}</p>
+            <p className="text-sm text-[#8b90a0]">
+              Всего слов: {cards.length}
+              {!isLearnedFolder && <> · Выучено: {learnedCards.length} / {cards.length}</>}
+            </p>
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
@@ -152,6 +162,20 @@ export default function FolderPage() {
               >
                 Учить
               </Link>
+            )}
+            {!isLearnedFolder && cards.length > 0 && (
+              <>
+                <Link href={`/folder/${folderId}/play/match`} className={modeButtonClass}>
+                  Подбор
+                  <MatchRecord scope={`folder:${folderId}`} />
+                </Link>
+                <Link href={`/folder/${folderId}/play/blocks`} className={modeButtonClass}>
+                  Блоки
+                </Link>
+                <Link href={`/folder/${folderId}/play/dictation`} className={modeButtonClass}>
+                  Диктант
+                </Link>
+              </>
             )}
             {!isLearnedFolder && (
               <>
@@ -173,6 +197,21 @@ export default function FolderPage() {
             )}
           </div>
         </div>
+
+        {!isLearnedFolder && unlearnedCards.length > 0 && (
+          <details className="mb-6 rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
+            <summary className="cursor-pointer text-sm font-medium">
+              Осталось выучить: {unlearnedCards.length}
+            </summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {unlearnedCards.map(c => (
+                <span key={c.id} className="rounded-lg bg-[#0f1115] px-2.5 py-1 text-xs text-[#8b90a0]">
+                  <span className="text-[#e6e8ec]">{c.word}</span> — {c.translation}
+                </span>
+              ))}
+            </div>
+          </details>
+        )}
 
         {cards.length === 0 ? (
           <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-12 text-center text-[#8b90a0]">
