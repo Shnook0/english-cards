@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, Folder } from '@/types/database'
 import TrainSession from '@/components/TrainSession'
+import { buildStudyQueue } from '@/lib/study'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -87,19 +88,17 @@ export default function TrainFolderPage() {
           ...shuffle(learnedDue),
         ]
         setCards(queue)
+      } else if (f.type === 'learned') {
+        const { data } = await supabase
+          .from('cards')
+          .select('*')
+          .not('learned_at', 'is', null)
+          .order('learned_at', { ascending: true })
+        setCards((data ?? []) as Card[])
       } else {
-        // Обычные папки — как раньше
-        let q = supabase.from('cards').select('*')
-        if (f.type === 'learned') {
-          const { data } = await q.not('learned_at', 'is', null).order('learned_at', { ascending: true })
-          setCards((data ?? []) as Card[])
-        } else {
-          const { data } = await q
-            .eq('folder_id', folderId)
-            .order('wrong_count', { ascending: false })
-            .order('srs_level', { ascending: true })
-          setCards((data ?? []) as Card[])
-        }
+        // Обычные папки: вся папка в умном порядке
+        // (ошибки → новые вперемешку со словами на повтор → остальные невыученные → выученные)
+        setCards(buildStudyQueue(list))
       }
     } catch {
       setError('Не удалось инициализировать тренировку')
@@ -143,3 +142,5 @@ export default function TrainFolderPage() {
     />
   )
 }
+
+// конец файла

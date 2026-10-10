@@ -6,13 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
-import {
-  SESSION_LIMIT,
-  buildStudyQueue,
-  patchCorrect,
-  patchWrong,
-  saveCardPatch,
-} from '@/lib/study'
+import { buildStudyQueue, patchCorrect, patchWrong, saveCardPatch } from '@/lib/study'
 import MatchGame from '@/components/MatchGame'
 import DictationGame from '@/components/DictationGame'
 import BlocksGame from '@/components/BlocksGame'
@@ -100,7 +94,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
 
       isLevelRef.current = level
       latestRef.current = new Map(list.map(c => [c.id, c]))
-      setQueue(buildStudyQueue(list, mode === 'blocks' ? undefined : SESSION_LIMIT))
+      setQueue(buildStudyQueue(list))
       setRoundKey(k => k + 1)
     } catch {
       setError('Не удалось загрузить слова')
@@ -117,6 +111,11 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
       : patchWrong(current, isLevelRef.current)
     latestRef.current.set(card.id, { ...current, ...patch } as Card)
     return saveCardPatch(card.id, patch)
+  }, [])
+
+  // Новая очередь из всей папки по актуальным данным (когда слова закончились)
+  const getMore = useCallback(() => {
+    return buildStudyQueue(Array.from(latestRef.current.values()))
   }, [])
 
   const handleExit = () => router.push(exitHref)
@@ -141,10 +140,8 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
   if (queue.length === 0) {
     return (
       <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4 text-center">
-        <p className="mb-2 text-lg font-semibold">Сейчас нет слов для этого режима</p>
-        <p className="mb-6 text-sm text-[#8b90a0]">
-          Все слова выучены или ждут своего срока повторения.
-        </p>
+        <p className="mb-2 text-lg font-semibold">В этой папке нет слов</p>
+        <p className="mb-6 text-sm text-[#8b90a0]">Добавьте карточки и возвращайтесь.</p>
         <Link href={exitHref} className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
       </div>
     )
@@ -157,6 +154,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
         cards={queue}
         recordScope={recordScope}
         recordResult={recordResult}
+        getMore={getMore}
         onNextRound={load}
         onExit={handleExit}
       />
@@ -169,6 +167,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
         key={roundKey}
         cards={queue}
         recordResult={recordResult}
+        getMore={getMore}
         onNextRound={load}
         onExit={handleExit}
       />
@@ -181,6 +180,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
         key={roundKey}
         cards={queue}
         recordResult={recordResult}
+        getMore={getMore}
         onNextRound={load}
         onExit={handleExit}
       />
@@ -194,3 +194,5 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
     </div>
   )
 }
+
+// конец файла

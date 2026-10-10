@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import ScrollRestorer from '@/components/ScrollRestorer'
 
 export const metadata: Metadata = {
   title: 'English Cards',
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body className="bg-[#0f1115] text-[#e6e8ec] min-h-screen font-sans antialiased">
+        <ScrollRestorer />
         {children}
       </body>
     </html>

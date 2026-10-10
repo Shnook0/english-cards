@@ -1,8 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
+import {
+  SRS_INTERVALS_DAYS,
+  STUDY_REINSERT_OFFSETS,
+  insertAt,
+  knowRecheckOffset,
+  shuffle,
+  speak,
+  warmUpVoices,
+} from '@/lib/study'
+import { clearSession, loadSession, restoreQueue, saveSession } from '@/lib/session'
 
 type Mode = 'folder' | 'learned' | 'favorites' | 'mistakes' | 'level'
 
@@ -14,85 +25,76 @@ type Props = {
   onExit: () => void
 }
 
-const SRS_INTERVALS_DAYS = [1, 3, 7, 14, 30, 60, 120, 240]
+export default function TrainSession({ initialCards, mode, onExit }: Props) {
+  warmUpVoices()
 
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
-export default function TrainSession({
-  initialCards,
-  mode,
-  userId,
-  learnedFolderId,
-  onExit,
-}: Props) {
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    window.speechSynthesis.getVoices()
-  }
-
+  const pathname = usePathname()
+  const sessionKey = `train:${pathname}`
   const isLevel = mode === 'level'
 
+  // Если вернулись к незаконченной тренировке (до 20 минут назад), продолжаем с того же места
+  const [restored] = useState(() => {
+    const saved = loadSession(sessionKey)
+    const q = restoreQueue(saved, initialCards)
+    return saved && q ? { saved, queue: q } : null
+  })
+
+  // Для обычных папок и уровней порядок слов приходит готовым (ошибки → новые → остальные),
+  // для «Избранного», «Частых ошибок» и «Выученных» слова перемешиваются
   const [queue, setQueue] = useState<Card[]>(() =>
-    isLevel ? initialCards : shuffleArray(initialCards)
+    restored
+      ? restored.queue
+      : isLevel || mode === 'folder'
+      ? initialCards
+      : shuffle(initialCards)
   )
-  const [finalQueue, setFinalQueue] = useState<Card[]>([])
-  const [finalIdx, setFinalIdx] = useState(0)
-  const [inFinal, setInFinal] = useState(false)
-  const [totalCards] = useState(initialCards.length)
-  const [doneCount, setDoneCount] = useState(0)
+  const [totalCards] = useState(restored ? restored.saved.total : initialCards.length)
+  const [doneCount, setDoneCount] = useState(restored ? restored.saved.done : 0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [wrongSession, setWrongSession] = useState<Record<string, number>>({})
+  const [wrongSession, setWrongSession] = useState<Record<string, number>>(
+    restored ? restored.saved.wrong : {}
+  )
   const [isFinished, setIsFinished] = useState(initialCards.length === 0)
 
-  const currentCard = inFinal ? finalQueue[finalIdx] : queue[0]
+  // Слова, которые уже получили повторную проверку после «Знаю» в этой сессии
+  const knownRef = useRef<Set<string>>(new Set(restored ? restored.saved.known : []))
 
-  const speakWord = (text: string) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
+  const currentCard = queue[0]
 
-    const u = new SpeechSynthesisUtterance(text)
-    u.lang = 'en-US'
-    u.rate = 0.9
-    u.pitch = 1
+  // Запоминаем ход тренировки (или стираем, если она закончена)
+  useEffect(() => {
+    if (isFinished) {
+      clearSession(sessionKey)
+      return
+    }
+    saveSession(sessionKey, {
+      queueIds: queue.map(c => c.id),
+      total: totalCards,
+      done: doneCount,
+      wrong: wrongSession,
+      known: Array.from(knownRef.current),
+    })
+  }, [queue, doneCount, wrongSession, isFinished, sessionKey, totalCards])
 
-    const voices = window.speechSynthesis.getVoices()
-    const best =
-      voices.find(v => v.name === 'Google US English') ||
-      voices.find(v => v.lang === 'en-US' && v.localService === false) ||
-      voices.find(v => v.lang === 'en-US') ||
-      voices.find(v => v.lang.startsWith('en'))
-    if (best) u.voice = best
-
-    window.speechSynthesis.speak(u)
+  const handleExit = () => {
+    clearSession(sessionKey)
+    onExit()
   }
 
   const handleSpeak = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (currentCard) speakWord(currentCard.word)
+    if (currentCard) speak(currentCard.word)
   }
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!currentCard || isSaving) return
+    const id = currentCard.id
     const newFav = !currentCard.is_favorite
-    await supabase.from('cards').update({ is_favorite: newFav }).eq('id', currentCard.id)
-    if (inFinal) {
-      const q = [...finalQueue]
-      q[finalIdx] = { ...q[finalIdx], is_favorite: newFav }
-      setFinalQueue(q)
-    } else {
-      const q = [...queue]
-      q[0] = { ...q[0], is_favorite: newFav }
-      setQueue(q)
-    }
+    await supabase.from('cards').update({ is_favorite: newFav }).eq('id', id)
+    setQueue(q => q.map(c => (c.id === id ? { ...c, is_favorite: newFav } : c)))
   }
 
   const saveCard = async (patch: Partial<Card>): Promise<boolean> => {
@@ -108,26 +110,12 @@ export default function TrainSession({
     return true
   }
 
-  const advance = () => {
+  // Слово пройдено окончательно: убираем из очереди и считаем
+  const completeWord = (rest: Card[]) => {
+    setDoneCount(d => d + 1)
+    setQueue(rest)
     setShowAnswer(false)
-    if (inFinal) {
-      if (finalIdx + 1 < finalQueue.length) setFinalIdx(finalIdx + 1)
-      else setIsFinished(true)
-    } else {
-      const rest = queue.slice(1)
-      if (rest.length === 0) {
-        if (finalQueue.length > 0) {
-          setQueue([])
-          setInFinal(true)
-          setFinalIdx(0)
-        } else {
-          setQueue([])
-          setIsFinished(true)
-        }
-      } else {
-        setQueue(rest)
-      }
-    }
+    if (rest.length === 0) setIsFinished(true)
   }
 
   const handleKnow = async () => {
@@ -163,8 +151,20 @@ export default function TrainSession({
     const ok = await saveCard(patch as Partial<Card>)
     if (!ok) return
 
-    setDoneCount(d => d + 1)
-    advance()
+    const updated = { ...currentCard, ...patch } as Card
+    const rest = queue.slice(1)
+    const id = currentCard.id
+
+    // Первое «Знаю» в сессии: слово вернётся ещё раз через 7–10 слов
+    if (mode !== 'learned' && !knownRef.current.has(id) && rest.length > 0) {
+      knownRef.current.add(id)
+      setQueue(insertAt(rest, updated, knowRecheckOffset()))
+      setShowAnswer(false)
+      return
+    }
+
+    knownRef.current.add(id)
+    completeWord(rest)
   }
 
   const handleDontKnow = async () => {
@@ -193,46 +193,21 @@ export default function TrainSession({
     const ok = await saveCard(patch)
     if (!ok) return
 
-    const cid = currentCard.id
-    const wrongNow = (wrongSession[cid] || 0) + 1
-    setWrongSession({ ...wrongSession, [cid]: wrongNow })
+    const id = currentCard.id
+    const wrongNow = (wrongSession[id] || 0) + 1
+    setWrongSession(prev => ({ ...prev, [id]: wrongNow }))
 
-    if (inFinal) {
-      setDoneCount(d => d + 1)
-      advance()
-      return
-    }
-
-    if (wrongNow >= 3) {
-      setDoneCount(d => d + 1)
-      advance()
-      return
-    }
-
-    const updated = { ...currentCard, ...patch }
+    const updated = { ...currentCard, ...patch } as Card
     const rest = queue.slice(1)
 
-    if (wrongNow === 1) {
-      const offset = 5 + Math.floor(Math.random() * 6)
-      const insertIdx = Math.min(offset, rest.length)
-      const newQ = [...rest]
-      newQ.splice(insertIdx, 0, updated)
-      setQueue(newQ)
+    if (wrongNow <= STUDY_REINSERT_OFFSETS.length) {
+      // Слово вернётся через 2 / 5 / 10 / 15 слов
+      setQueue(insertAt(rest, updated, STUDY_REINSERT_OFFSETS[wrongNow - 1]))
       setShowAnswer(false)
-    } else {
-      const newFinalQueue = [...finalQueue, updated]
-      setFinalQueue(newFinalQueue)
-
-      if (rest.length > 0) {
-        setQueue(rest)
-        setShowAnswer(false)
-      } else {
-        setQueue([])
-        setInFinal(true)
-        setFinalIdx(0)
-        setShowAnswer(false)
-      }
+      return
     }
+
+    completeWord(rest)
   }
 
   if (isFinished || !currentCard) {
@@ -240,9 +215,9 @@ export default function TrainSession({
       <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
         <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Сессия завершена</h2>
-          <p className="text-sm text-[#8b90a0] mb-6">Обработано карточек: {doneCount}</p>
+          <p className="text-sm text-[#8b90a0] mb-6">Пройдено слов: {doneCount}</p>
           <button
-            onClick={onExit}
+            onClick={handleExit}
             className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
           >
             Готово
@@ -252,7 +227,8 @@ export default function TrainSession({
     )
   }
 
-  const progressPercent = totalCards > 0 ? Math.min(100, Math.round((doneCount / totalCards) * 100)) : 0
+  const progressPercent =
+    totalCards > 0 ? Math.min(100, Math.round((doneCount / totalCards) * 100)) : 0
 
   return (
     <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-4 md:p-8 flex flex-col justify-between max-w-2xl mx-auto">
@@ -264,13 +240,16 @@ export default function TrainSession({
 
       <div>
         <div className="flex items-center justify-between mb-3 text-sm text-[#8b90a0]">
-          <span>{doneCount} / {totalCards}{inFinal && ' · финальное повторение'}</span>
-          <button onClick={onExit} className="hover:text-[#e6e8ec] transition font-medium">
+          <span>{doneCount} / {totalCards}</span>
+          <button onClick={handleExit} className="hover:text-[#e6e8ec] transition font-medium">
             Выйти
           </button>
         </div>
         <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
-          <div className="h-full bg-[#6c7cff] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
+          <div
+            className="h-full bg-[#6c7cff] transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
 
@@ -279,7 +258,11 @@ export default function TrainSession({
         className="my-auto cursor-pointer min-h-[360px] rounded-2xl border border-gray-800 bg-[#1a1d23] p-6 md:p-8 shadow-2xl flex flex-col justify-between transition hover:border-gray-700 select-none"
       >
         <div className="flex justify-between items-start">
-          <button onClick={handleSpeak} className="p-2 rounded-lg bg-[#0f1115] text-[#6c7cff] hover:bg-gray-800 transition" title="Озвучить">
+          <button
+            onClick={handleSpeak}
+            className="p-2 rounded-lg bg-[#0f1115] text-[#6c7cff] hover:bg-gray-800 transition"
+            title="Озвучить"
+          >
             🔊
           </button>
           <button
@@ -345,3 +328,4 @@ export default function TrainSession({
     </div>
   )
 }
+

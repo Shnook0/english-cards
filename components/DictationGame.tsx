@@ -1,36 +1,76 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { Card } from '@/types/database'
 import {
   STUDY_REINSERT_OFFSETS,
   StudyGameProps,
+  insertAt,
   isSpellingCorrect,
+  knowRecheckOffset,
   speak,
   warmUpVoices,
 } from '@/lib/study'
+import { clearSession, loadSession, restoreQueue, saveSession } from '@/lib/session'
 
 type Status = 'typing' | 'wrongOnce' | 'correct' | 'revealed'
 
 export default function DictationGame({ cards, recordResult, onNextRound, onExit }: StudyGameProps) {
   warmUpVoices()
 
-  const [queue, setQueue] = useState<Card[]>(cards)
-  const [totalCards] = useState(cards.length)
-  const [doneCount, setDoneCount] = useState(0)
+  const pathname = usePathname()
+  const sessionKey = `dictation:${pathname}`
+
+  // Если вернулись к незаконченному диктанту (до 20 минут назад), продолжаем с того же места
+  const [restored] = useState(() => {
+    const saved = loadSession(sessionKey)
+    const q = restoreQueue(saved, cards)
+    return saved && q ? { saved, queue: q } : null
+  })
+
+  const [queue, setQueue] = useState<Card[]>(restored ? restored.queue : cards)
+  const [totalCards] = useState(restored ? restored.saved.total : cards.length)
+  const [doneCount, setDoneCount] = useState(restored ? restored.saved.done : 0)
   const [input, setInput] = useState('')
   const [attempt, setAttempt] = useState(1)
   const [status, setStatus] = useState<Status>('typing')
   const [showHint, setShowHint] = useState(false)
-  const [wrongSession, setWrongSession] = useState<Record<string, number>>({})
-  const [firstTryCount, setFirstTryCount] = useState(0)
-  const [failedCount, setFailedCount] = useState(0)
+  const [wrongSession, setWrongSession] = useState<Record<string, number>>(
+    restored ? restored.saved.wrong : {}
+  )
+  const [firstTryCount, setFirstTryCount] = useState(restored?.saved.firstTry ?? 0)
+  const [failedCount, setFailedCount] = useState(restored?.saved.failed ?? 0)
   const [turn, setTurn] = useState(0)
   const [isFinished, setIsFinished] = useState(cards.length === 0)
   const [saveError, setSaveError] = useState(false)
 
+  // Слова, которые уже получили повторную проверку после верного ответа в этой сессии
+  const knownRef = useRef<Set<string>>(new Set(restored ? restored.saved.known : []))
   const inputRef = useRef<HTMLInputElement>(null)
   const current = queue[0]
+
+  // Запоминаем ход диктанта (или стираем, если он закончен)
+  useEffect(() => {
+    if (isFinished) {
+      clearSession(sessionKey)
+      return
+    }
+    saveSession(sessionKey, {
+      queueIds: queue.map(c => c.id),
+      total: totalCards,
+      done: doneCount,
+      wrong: wrongSession,
+      known: Array.from(knownRef.current),
+      firstTry: firstTryCount,
+      failed: failedCount,
+    })
+  }, [queue, doneCount, wrongSession, firstTryCount, failedCount, isFinished, sessionKey, totalCards])
+
+  const handleExit = () => {
+    clearSession(sessionKey)
+    onExit()
+  }
 
   // Озвучиваем слово при каждой новой карточке
   useEffect(() => {
@@ -55,19 +95,30 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
     setShowHint(false)
   }
 
-  const goNextCompleted = () => {
+  // После верного ответа: первый раз слово вернётся через 7–10 слов, второй раз слово пройдено
+  const advanceAfterCorrect = () => {
+    if (!current) return
     const rest = queue.slice(1)
+    let newQ = rest
+
+    if (!knownRef.current.has(current.id) && rest.length > 0) {
+      knownRef.current.add(current.id)
+      newQ = insertAt(rest, current, knowRecheckOffset())
+    } else {
+      knownRef.current.add(current.id)
+      setDoneCount(d => d + 1)
+    }
+
     resetCardState()
-    setDoneCount(d => d + 1)
-    setQueue(rest)
+    setQueue(newQ)
     setTurn(t => t + 1)
-    if (rest.length === 0) setIsFinished(true)
+    if (newQ.length === 0) setIsFinished(true)
   }
 
   // Верный ответ: показываем «Верно!» и через короткую паузу идём дальше
   useEffect(() => {
     if (status !== 'correct') return
-    const id = setTimeout(goNextCompleted, 700)
+    const id = setTimeout(advanceAfterCorrect, 700)
     return () => clearTimeout(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
@@ -79,20 +130,18 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
     setWrongSession(prev => ({ ...prev, [key]: wrongNow }))
 
     const rest = queue.slice(1)
+    let newQ = rest
     if (wrongNow <= STUDY_REINSERT_OFFSETS.length) {
-      // Слово вернётся через 2 / 10 / 15 карточек
-      const at = Math.min(STUDY_REINSERT_OFFSETS[wrongNow - 1], rest.length)
-      const newQ = [...rest]
-      newQ.splice(at, 0, current)
-      setQueue(newQ)
+      // Слово вернётся через 2 / 5 / 10 / 15 слов
+      newQ = insertAt(rest, current, STUDY_REINSERT_OFFSETS[wrongNow - 1])
     } else {
       setDoneCount(d => d + 1)
-      setQueue(rest)
-      if (rest.length === 0) setIsFinished(true)
     }
 
     resetCardState()
+    setQueue(newQ)
     setTurn(t => t + 1)
+    if (newQ.length === 0) setIsFinished(true)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -153,7 +202,7 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
               </button>
             )}
             <button
-              onClick={onExit}
+              onClick={handleExit}
               className="w-full rounded-lg border border-gray-700 py-3 font-medium hover:border-[#6c7cff] transition"
             >
               Выйти
@@ -178,7 +227,7 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3 text-sm text-[#8b90a0]">
           <span>Диктант · {doneCount} / {totalCards}</span>
-          <button onClick={onExit} className="hover:text-[#e6e8ec] transition font-medium">
+          <button onClick={handleExit} className="hover:text-[#e6e8ec] transition font-medium">
             Выйти
           </button>
         </div>
@@ -281,3 +330,5 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
     </div>
   )
 }
+
+// конец файла
