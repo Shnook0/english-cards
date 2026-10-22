@@ -137,9 +137,9 @@ export default function FolderPage() {
   const learnedPercent = cards.length > 0 ? Math.round((learnedCards.length / cards.length) * 100) : 0
 
   return (
-    <div className="min-h-screen p-5 md:p-10 lg:p-14">
+    <div className="min-h-screen p-4 md:p-7 lg:p-10">
       <div className="page-in mx-auto max-w-6xl">
-        <div className="mb-10 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
             ← Библиотека
           </Link>
@@ -148,11 +148,11 @@ export default function FolderPage() {
           </span>
         </div>
 
-        <header className="grid gap-8 border-b border-[#24221e] pb-10 md:grid-cols-[1fr_auto] md:items-end">
+        <header className="grid gap-5 border-b border-[#24221e] pb-6 md:grid-cols-[1fr_auto] md:items-end">
           <div>
-            <p className="eyebrow mb-4">{isLevelFolder ? 'CEFR collection' : 'Personal collection'}</p>
-            <h1 className="display text-5xl md:text-7xl">{folder.name}</h1>
-            <p className="mt-5 text-sm text-[#948e82]">
+            <p className="eyebrow mb-3">{isLevelFolder ? 'CEFR collection' : 'Personal collection'}</p>
+            <h1 className="display text-4xl md:text-5xl lg:text-6xl">{folder.name}</h1>
+            <p className="mt-3 text-sm text-[#948e82]">
               {cards.length} слов
               {!isLearnedFolder && <> · выучено {learnedCards.length} ({learnedPercent}%)</>}
             </p>
@@ -162,14 +162,6 @@ export default function FolderPage() {
             {cards.length > 0 && (
               <Link href={`/folder/${folderId}/train`} className="btn btn-primary">
                 Учить
-              </Link>
-            )}
-            {!isLearnedFolder && cards.length > 0 && (
-              <Link
-                href={`/folder/${folderId}/play/learn`}
-                className="btn btn-secondary"
-              >
-                Заучивание
               </Link>
             )}
             {!isLearnedFolder && (
@@ -192,77 +184,74 @@ export default function FolderPage() {
         </header>
 
         {!isLearnedFolder && cards.length > 0 && (
-          <section className="border-b border-[#24221e] py-8">
-            <div className="mb-5 flex items-end justify-between">
-              <div>
-                <p className="eyebrow">Режимы</p>
-                <h2 className="mt-2 text-2xl">Выберите формат</h2>
-              </div>
+          <section className="border-b border-[#24221e] py-5">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="eyebrow">Режимы</p>
               <span className="text-[10px] uppercase tracking-[0.18em] text-[#6f6a61]">
                 {unlearnedCards.length} к изучению
               </span>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               <Link
                 href={`/folder/${folderId}/play/learn`}
-                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+                className="panel panel-hover group flex items-center justify-between gap-3 px-4 py-3"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[#c9a96e]">01</span>
-                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[9px] text-[#c9a96e]">01</span>
+                    <h3 className="text-sm font-medium">Заучивание</h3>
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">Пропуски → написание</p>
                 </div>
-                <div>
-                  <h3 className="text-lg">Заучивание</h3>
-                  <p className="mt-1 text-[11px] text-[#948e82]">Пропуски → написание</p>
-                </div>
+                <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
               <Link
                 href={`/folder/${folderId}/play/match`}
-                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+                className="panel panel-hover group flex items-center justify-between gap-3 px-4 py-3"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[#c9a96e]">02</span>
-                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
-                </div>
-                <div>
-                  <h3 className="text-lg">Подбор</h3>
-                  <p className="mt-1 text-[11px] text-[#948e82]">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[9px] text-[#c9a96e]">02</span>
+                    <h3 className="text-sm font-medium">Подбор</h3>
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">
                     Пары на скорость <MatchRecord scope={`folder:${folderId}`} />
                   </p>
                 </div>
+                <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
               <Link
                 href={`/folder/${folderId}/play/blocks`}
-                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+                className="panel panel-hover group flex items-center justify-between gap-3 px-4 py-3"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[#c9a96e]">03</span>
-                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[9px] text-[#c9a96e]">03</span>
+                    <h3 className="text-sm font-medium">Блоки</h3>
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">Перевод и головоломка</p>
                 </div>
-                <div>
-                  <h3 className="text-lg">Блоки</h3>
-                  <p className="mt-1 text-[11px] text-[#948e82]">Перевод и головоломка</p>
-                </div>
+                <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
               <Link
                 href={`/folder/${folderId}/play/dictation`}
-                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+                className="panel panel-hover group flex items-center justify-between gap-3 px-4 py-3"
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-[#c9a96e]">04</span>
-                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[9px] text-[#c9a96e]">04</span>
+                    <h3 className="text-sm font-medium">Диктант</h3>
+                  </div>
+                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">Письмо на слух</p>
                 </div>
-                <div>
-                  <h3 className="text-lg">Диктант</h3>
-                  <p className="mt-1 text-[11px] text-[#948e82]">Письмо на слух</p>
-                </div>
+                <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
             </div>
           </section>
         )}
 
         {!isLearnedFolder && unlearnedCards.length > 0 && (
-          <details className="group border-b border-[#24221e] py-5">
+          <details className="group border-b border-[#24221e] py-4">
             <summary className="flex cursor-pointer list-none items-center justify-between text-xs uppercase tracking-[0.16em] text-[#948e82]">
               <span>Осталось выучить · {unlearnedCards.length}</span>
               <span className="text-[#c9a96e] transition group-open:rotate-45">+</span>
@@ -279,11 +268,11 @@ export default function FolderPage() {
           </details>
         )}
 
-        <section className="py-10">
-          <div className="mb-5 flex items-end justify-between">
+        <section className="py-7">
+          <div className="mb-4 flex items-end justify-between">
             <div>
               <p className="eyebrow">Словарь</p>
-              <h2 className="mt-2 text-2xl">Карточки</h2>
+              <h2 className="mt-1.5 text-xl">Карточки</h2>
             </div>
             <span className="text-[10px] uppercase tracking-[0.18em] text-[#6f6a61]">
               {cards.length} всего
@@ -309,7 +298,7 @@ export default function FolderPage() {
               {cards.map((card, index) => (
                 <article
                   key={card.id}
-                  className="panel group flex min-h-64 flex-col justify-between p-5 transition hover:border-[#c9a96e]/40"
+                  className="panel group flex flex-col justify-between p-4 transition hover:border-[#c9a96e]/40"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3">
@@ -335,14 +324,14 @@ export default function FolderPage() {
                       </div>
                     </div>
 
-                    <h3 className="mt-5 text-2xl leading-tight">{card.word}</h3>
+                    <h3 className="mt-4 text-xl leading-tight">{card.word}</h3>
                     {card.transcription && (
                       <p className="mt-1 font-mono text-[11px] text-[#948e82]">{card.transcription}</p>
                     )}
-                    <p className="mt-4 text-sm leading-6 text-[#c9a96e]">{card.translation}</p>
+                    <p className="mt-3 text-sm leading-6 text-[#c9a96e]">{card.translation}</p>
 
                     {card.sentences && card.sentences.length > 0 && (
-                      <div className="mt-4 space-y-1.5 border-t border-[#24221e] pt-4 text-[11px] leading-5 text-[#948e82]">
+                      <div className="mt-3 space-y-1.5 border-t border-[#24221e] pt-3 text-[11px] leading-5 text-[#948e82]">
                         {card.sentences.slice(0, 3).map((s, i) => (
                           <p key={i}>{s}</p>
                         ))}
@@ -350,7 +339,7 @@ export default function FolderPage() {
                     )}
                   </div>
 
-                  <div className="mt-5 flex items-center justify-between border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                  <div className="mt-3 flex items-center justify-between border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
                     <span>SRS {card.srs_level} · ошибок {card.wrong_count}</span>
                     <div className="flex items-center gap-3">
                       <button onClick={() => handleOpenEdit(card)} className="text-[#948e82] hover:text-[#c9a96e]">

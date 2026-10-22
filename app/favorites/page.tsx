@@ -66,22 +66,22 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="min-h-screen p-5 md:p-10 lg:p-14">
+    <div className="min-h-screen p-4 md:p-7 lg:p-10">
       <div className="page-in mx-auto max-w-6xl">
-        <div className="mb-10 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
             ← Библиотека
           </Link>
           <span className="eyebrow">Отобранное</span>
         </div>
 
-        <header className="flex flex-col justify-between gap-6 border-b border-[#24221e] pb-10 md:flex-row md:items-end">
+        <header className="flex flex-col justify-between gap-6 border-b border-[#24221e] pb-6 md:flex-row md:items-end">
           <div>
             <p className="eyebrow mb-4">Личная подборка</p>
-            <h1 className="display text-5xl md:text-7xl">
+            <h1 className="display text-4xl md:text-5xl lg:text-6xl">
               Избранные <span className="text-[#c9a96e]">★</span>
             </h1>
-            <p className="mt-5 text-sm text-[#948e82]">{cards.length} карточек</p>
+            <p className="mt-3 text-sm text-[#948e82]">{cards.length} карточек</p>
           </div>
           {cards.length > 0 && (
             <Link href="/favorites/train" className="btn btn-primary">
@@ -96,7 +96,7 @@ export default function FavoritesPage() {
           </div>
         )}
 
-        <section className="py-10">
+        <section className="py-7">
           {cards.length === 0 ? (
             <div className="panel flex min-h-48 flex-col items-center justify-center p-10 text-center">
               <p className="text-sm text-[#948e82]">В избранном пока нет карточек.</p>
@@ -109,7 +109,7 @@ export default function FavoritesPage() {
               {cards.map((card, index) => (
                 <article
                   key={card.id}
-                  className="panel flex min-h-60 flex-col justify-between p-5 transition hover:border-[#c9a96e]/40"
+                  className="panel flex flex-col justify-between p-4 transition hover:border-[#c9a96e]/40"
                 >
                   <div>
                     <div className="flex items-start justify-between">
@@ -124,20 +124,20 @@ export default function FavoritesPage() {
                         ★
                       </button>
                     </div>
-                    <h3 className="mt-4 text-2xl">{card.word}</h3>
+                    <h3 className="mt-3 text-xl">{card.word}</h3>
                     {card.transcription && (
                       <p className="mt-1 font-mono text-[11px] text-[#948e82]">{card.transcription}</p>
                     )}
-                    <p className="mt-4 text-sm leading-6 text-[#c9a96e]">{card.translation}</p>
+                    <p className="mt-3 text-sm leading-6 text-[#c9a96e]">{card.translation}</p>
                     {card.sentences && card.sentences.length > 0 && (
-                      <div className="mt-4 space-y-1.5 border-t border-[#24221e] pt-4 text-[11px] leading-5 text-[#948e82]">
+                      <div className="mt-3 space-y-1.5 border-t border-[#24221e] pt-3 text-[11px] leading-5 text-[#948e82]">
                         {card.sentences.slice(0, 3).map((sent, idx) => (
                           <p key={idx}>{sent}</p>
                         ))}
                       </div>
                     )}
                   </div>
-                  <div className="mt-5 border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                  <div className="mt-3 border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
                     SRS {card.srs_level} · ошибок {card.wrong_count}
                   </div>
                 </article>
