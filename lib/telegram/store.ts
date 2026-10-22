@@ -136,6 +136,23 @@ export async function listSettings(): Promise<TelegramSettings[]> {
   return (data ?? []) as TelegramSettings[]
 }
 
+type CustomFolder = {
+  id: string
+  name: string
+  created_at: string
+}
+
+export async function getCustomFolders(userId: string): Promise<CustomFolder[]> {
+  const { data, error } = await db()
+    .from('folders')
+    .select('id, name, created_at')
+    .eq('user_id', userId)
+    .eq('type', 'custom')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as CustomFolder[]
+}
+
 function isHardCard(card: BotCard): boolean {
   const wrong = card.wrong_count || 0
   const srs = card.srs_level || 0
@@ -167,6 +184,11 @@ function pickFrom(cards: BotCard[], avoidFolderId?: string): BotCard | null {
 
 export async function pickNextCard(userId: string, chatId: number): Promise<BotCard | null> {
   const admin = db()
+  const folders = await getCustomFolders(userId)
+  if (folders.length === 0) return null
+
+  const priorityFolderIds = new Set(folders.slice(0, 2).map(f => f.id))
+  const folderIds = folders.map(f => f.id)
   const since = new Date(Date.now() - 2 * DAY_MS).toISOString()
 
   const { data: recentData, error: recentError } = await admin
@@ -201,6 +223,7 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
     .from('cards')
     .select(CARD_SELECT)
     .eq('user_id', userId)
+    .in('folder_id', folderIds)
     .or('wrong_count.gt.0,srs_level.lte.1')
     .order('wrong_count', { ascending: false })
     .limit(500)
@@ -210,8 +233,18 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
     .map(normalizeCard)
     .filter(isHardCard)
 
-  const fresh = candidates.filter(c => !recentIds.has(c.id))
-  return pickFrom(fresh, avoidFolderId) ?? pickFrom(candidates, avoidFolderId)
+  const priority = candidates.filter(c => priorityFolderIds.has(c.folder_id))
+  const other = candidates.filter(c => !priorityFolderIds.has(c.folder_id))
+
+  const freshPriority = priority.filter(c => !recentIds.has(c.id))
+  const freshOther = other.filter(c => !recentIds.has(c.id))
+
+  return (
+    pickFrom(freshPriority, avoidFolderId) ??
+    pickFrom(freshOther, avoidFolderId) ??
+    pickFrom(priority, avoidFolderId) ??
+    pickFrom(other, avoidFolderId)
+  )
 }
 
 export async function recordDelivery(
@@ -305,17 +338,23 @@ export type BotStats = {
 
 export async function getStats(userId: string, chatId: number): Promise<BotStats> {
   const admin = db()
-  const { data, error } = await admin
-    .from('cards')
-    .select('id, wrong_count, srs_level, known_streak, learned_at')
-    .eq('user_id', userId)
-    .limit(5000)
-  if (error) throw error
+  const folders = await getCustomFolders(userId)
+  const folderIds = folders.map(f => f.id)
 
-  const rows = (data ?? []) as Pick<
-    Card,
-    'id' | 'wrong_count' | 'srs_level' | 'known_streak' | 'learned_at'
-  >[]
+  let rows: Pick<Card, 'id' | 'wrong_count' | 'srs_level' | 'known_streak' | 'learned_at'>[] = []
+  if (folderIds.length > 0) {
+    const { data, error } = await admin
+      .from('cards')
+      .select('id, wrong_count, srs_level, known_streak, learned_at')
+      .eq('user_id', userId)
+      .in('folder_id', folderIds)
+      .limit(5000)
+    if (error) throw error
+    rows = (data ?? []) as Pick<
+      Card,
+      'id' | 'wrong_count' | 'srs_level' | 'known_streak' | 'learned_at'
+    >[]
+  }
   const hard = rows.filter(c => {
     const wrong = c.wrong_count || 0
     const srs = c.srs_level || 0

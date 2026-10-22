@@ -1,5 +1,26 @@
 import { answerCallbackQuery, editMessageText, sendMessage, type InlineKeyboard } from './api'
-import { cardKeyboard, cardText, deleteConfirmKeyboard, escapeHtml } from './format'
+import {
+  cardKeyboard,
+  cardText,
+  deleteConfirmKeyboard,
+  escapeHtml,
+  helpKeyboard,
+  intervalKeyboard,
+  intervalText,
+  settingsKeyboard,
+  settingsText,
+  statsKeyboard,
+  statsText,
+  timeFineKeyboard,
+  timeFineText,
+  timeKeyboard,
+  timeText,
+  TIME_PRESETS,
+  timezoneKeyboard,
+  timezoneText,
+  welcomeKeyboard,
+  welcomeText,
+} from './format'
 import {
   addPendingRepeat,
   applyBotResult,
@@ -14,7 +35,14 @@ import {
   type BotCard,
   type TelegramSettings,
 } from './store'
-import { formatInterval, normalizeTime, parseInterval, parseTimeRange } from './schedule'
+import {
+  formatInterval,
+  normalizeTime,
+  parseInterval,
+  parseTimeRange,
+  shiftTime,
+  timezoneByCode,
+} from './schedule'
 
 type TelegramChat = { id: number; type?: string }
 type TelegramUser = { id: number; is_bot?: boolean; first_name?: string; username?: string }
@@ -39,24 +67,20 @@ export type TelegramUpdate = {
 
 function helpText(): string {
   return [
-    'Слова приходят автоматически по расписанию.',
+    '<b>Что я умею</b>',
     '',
-    'Команды:',
+    '• присылаю сложные слова из твоих папок',
+    '• повторяю слова, которые ты не знаешь',
+    '• показываю статистику',
+    '',
+    '<b>Команды</b>',
     '/settings — настройки',
+    '/next — прислать слово сейчас',
+    '/stats — статистика',
     '/time 09:00-21:00 — окно отправки',
     '/every 1h — интервал',
     '/pause — пауза',
     '/resume — продолжить',
-    '/next — прислать слово сейчас',
-    '/stats — статистика',
-  ].join('\n')
-}
-
-function settingsText(settings: TelegramSettings): string {
-  return [
-    `Окно: ${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)} (${settings.timezone})`,
-    `Интервал: каждые ${formatInterval(settings.interval_minutes)}`,
-    `Пауза: ${settings.paused ? 'да' : 'нет'}`,
   ].join('\n')
 }
 
@@ -94,7 +118,7 @@ export async function sendNextCard(
 ): Promise<void> {
   const card = await pickNextCard(userId, chatId)
   if (!card) {
-    await sendMessage(chatId, 'Пока нет сложных слов для повторения.')
+    await sendMessage(chatId, 'Пока нет сложных слов в твоих папках.')
     return
   }
   await sendCard(chatId, card, kind)
@@ -126,14 +150,14 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
       await sendMessage(chatId, 'Это личный бот.')
       return
     }
-    await ensureSettings(chatId)
-    await sendMessage(chatId, `Бот подключён.\n\n${helpText()}`)
+    const settings = await ensureSettings(chatId)
+    await sendMessage(chatId, welcomeText(settings), welcomeKeyboard())
     return
   }
 
   const existing = await getSettings(chatId)
   if (existing) {
-    await sendMessage(chatId, helpText())
+    await sendMessage(chatId, welcomeText(existing), welcomeKeyboard())
     return
   }
 
@@ -146,8 +170,8 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
     return
   }
 
-  await ensureSettings(chatId)
-  await sendMessage(chatId, `Бот подключён.\n\n${helpText()}`)
+  const settings = await ensureSettings(chatId)
+  await sendMessage(chatId, welcomeText(settings), welcomeKeyboard())
 }
 
 async function handleCommand(
@@ -159,16 +183,16 @@ async function handleCommand(
   switch (command) {
     case '/start':
     case '/help':
-      await sendMessage(chatId, helpText())
+      await sendMessage(chatId, helpText(), helpKeyboard())
       return
 
     case '/settings':
-      await sendMessage(chatId, settingsText(settings))
+      await sendMessage(chatId, settingsText(settings), settingsKeyboard(settings))
       return
 
     case '/time': {
       if (!args) {
-        await sendMessage(chatId, `Сейчас: ${settingsText(settings)}\n\nФормат: /time 09:00-21:00`)
+        await sendMessage(chatId, timeText(settings), timeKeyboard(settings))
         return
       }
       const range = parseTimeRange(args)
@@ -177,16 +201,14 @@ async function handleCommand(
         return
       }
       await updateSettings(chatId, { window_start: range.start, window_end: range.end })
-      await sendMessage(chatId, `Окно отправки: ${range.start}–${range.end}`)
+      const next = { ...settings, window_start: range.start, window_end: range.end }
+      await sendMessage(chatId, timeText(next), timeKeyboard(next))
       return
     }
 
     case '/every': {
       if (!args) {
-        await sendMessage(
-          chatId,
-          `Сейчас: каждые ${formatInterval(settings.interval_minutes)}\n\nФормат: /every 1h или /every 30m`
-        )
+        await sendMessage(chatId, intervalText(settings), intervalKeyboard(settings))
         return
       }
       const minutes = parseInterval(args)
@@ -195,18 +217,27 @@ async function handleCommand(
         return
       }
       await updateSettings(chatId, { interval_minutes: minutes })
-      await sendMessage(chatId, `Интервал: каждые ${formatInterval(minutes)}`)
+      const next = { ...settings, interval_minutes: minutes }
+      await sendMessage(chatId, intervalText(next), intervalKeyboard(next))
       return
     }
 
     case '/pause':
       await updateSettings(chatId, { paused: true })
-      await sendMessage(chatId, 'Пауза включена.')
+      await sendMessage(
+        chatId,
+        settingsText({ ...settings, paused: true }),
+        settingsKeyboard({ ...settings, paused: true })
+      )
       return
 
     case '/resume':
       await updateSettings(chatId, { paused: false })
-      await sendMessage(chatId, 'Пауза выключена.')
+      await sendMessage(
+        chatId,
+        settingsText({ ...settings, paused: false }),
+        settingsKeyboard({ ...settings, paused: false })
+      )
       return
 
     case '/next':
@@ -215,20 +246,12 @@ async function handleCommand(
 
     case '/stats': {
       const stats = await getStats(settings.user_id, chatId)
-      await sendMessage(
-        chatId,
-        [
-          `Сложных слов: ${stats.hard}`,
-          `Всего слов: ${stats.total}`,
-          `В очереди на повтор: ${stats.pending}`,
-          `Отправлено за 7 дней: ${stats.sentWeek}`,
-        ].join('\n')
-      )
+      await sendMessage(chatId, statsText(stats), statsKeyboard())
       return
     }
 
     default:
-      await sendMessage(chatId, `Не понял команду.\n\n${helpText()}`)
+      await sendMessage(chatId, `Не понял команду.\n\n${helpText()}`, helpKeyboard())
   }
 }
 
@@ -264,6 +287,147 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
   await handleCommand(chatId, settings, parsed.command, parsed.args)
 }
 
+async function handleSettingsCallback(
+  query: TelegramCallbackQuery,
+  settings: TelegramSettings
+): Promise<void> {
+  const message = query.message
+  if (!message) {
+    await answerCallbackQuery(query.id)
+    return
+  }
+
+  const chatId = message.chat.id
+  const messageId = message.message_id
+  const parts = (query.data ?? '').split(':')
+  const section = parts[1] ?? ''
+  const value = parts[2] ?? ''
+
+  switch (section) {
+    case 'menu':
+      await safeEdit(chatId, messageId, settingsText(settings), settingsKeyboard(settings))
+      await answerCallbackQuery(query.id)
+      return
+
+    case 'interval':
+      await safeEdit(chatId, messageId, intervalText(settings), intervalKeyboard(settings))
+      await answerCallbackQuery(query.id)
+      return
+
+    case 'iv': {
+      const minutes = Number(value)
+      if (!Number.isFinite(minutes) || minutes < 5 || minutes > 1440) {
+        await answerCallbackQuery(query.id, 'Неверный интервал')
+        return
+      }
+      await updateSettings(chatId, { interval_minutes: minutes })
+      const next = { ...settings, interval_minutes: minutes }
+      await safeEdit(chatId, messageId, intervalText(next), intervalKeyboard(next))
+      await answerCallbackQuery(query.id, `Каждые ${formatInterval(minutes)}`)
+      return
+    }
+
+    case 'time':
+      await safeEdit(chatId, messageId, timeText(settings), timeKeyboard(settings))
+      await answerCallbackQuery(query.id)
+      return
+
+    case 'tw': {
+      if (value === 'f') {
+        await safeEdit(chatId, messageId, timeFineText(settings), timeFineKeyboard())
+        await answerCallbackQuery(query.id)
+        return
+      }
+
+      const preset = TIME_PRESETS.find(item => item.code === value)
+      if (!preset) {
+        await answerCallbackQuery(query.id)
+        return
+      }
+
+      await updateSettings(chatId, { window_start: preset.start, window_end: preset.end })
+      const next = { ...settings, window_start: preset.start, window_end: preset.end }
+      await safeEdit(chatId, messageId, timeText(next), timeKeyboard(next))
+      await answerCallbackQuery(query.id, `${preset.start}–${preset.end}`)
+      return
+    }
+
+    case 'ts': {
+      const delta = Number(value)
+      if (!Number.isFinite(delta) || delta === 0) {
+        await answerCallbackQuery(query.id)
+        return
+      }
+      const start = shiftTime(settings.window_start, delta)
+      let end = normalizeTime(settings.window_end)
+      if (start === end) end = shiftTime(start, 60)
+      await updateSettings(chatId, { window_start: start, window_end: end })
+      const next = { ...settings, window_start: start, window_end: end }
+      await safeEdit(chatId, messageId, timeFineText(next), timeFineKeyboard())
+      await answerCallbackQuery(query.id, `Начало: ${start}`)
+      return
+    }
+
+    case 'te': {
+      const delta = Number(value)
+      if (!Number.isFinite(delta) || delta === 0) {
+        await answerCallbackQuery(query.id)
+        return
+      }
+      const end = shiftTime(settings.window_end, delta)
+      let start = normalizeTime(settings.window_start)
+      if (start === end) start = shiftTime(end, -60)
+      await updateSettings(chatId, { window_start: start, window_end: end })
+      const next = { ...settings, window_start: start, window_end: end }
+      await safeEdit(chatId, messageId, timeFineText(next), timeFineKeyboard())
+      await answerCallbackQuery(query.id, `Конец: ${end}`)
+      return
+    }
+
+    case 'tz': {
+      const tz = timezoneByCode(value)
+      if (!tz) {
+        await answerCallbackQuery(query.id)
+        return
+      }
+      await updateSettings(chatId, { timezone: tz })
+      const next = { ...settings, timezone: tz }
+      await safeEdit(chatId, messageId, timezoneText(next), timezoneKeyboard(next))
+      await answerCallbackQuery(query.id, tz)
+      return
+    }
+
+    case 'toggle': {
+      const paused = !settings.paused
+      await updateSettings(chatId, { paused })
+      const next = { ...settings, paused }
+      await safeEdit(chatId, messageId, settingsText(next), settingsKeyboard(next))
+      await answerCallbackQuery(query.id, paused ? 'Пауза включена' : 'Бот снова активен')
+      return
+    }
+
+    case 'stats': {
+      const stats = await getStats(settings.user_id, chatId)
+      await safeEdit(chatId, messageId, statsText(stats), statsKeyboard())
+      await answerCallbackQuery(query.id)
+      return
+    }
+
+    case 'next':
+      await sendNextCard(chatId, settings.user_id, 'manual')
+      await answerCallbackQuery(query.id, 'Отправил слово')
+      return
+
+    case 'help':
+      await safeEdit(chatId, messageId, helpText(), helpKeyboard())
+      await answerCallbackQuery(query.id)
+      return
+
+    default:
+      await answerCallbackQuery(query.id)
+  }
+}
+
 async function handleCallback(query: TelegramCallbackQuery): Promise<void> {
   try {
     await handleCallbackInner(query)
@@ -283,9 +447,9 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
   const chatId = message.chat.id
   const messageId = message.message_id
   const data = query.data ?? ''
-  const [action, cardId] = data.split(':')
+  const [action] = data.split(':')
 
-  if (!action || !cardId) {
+  if (!action) {
     await answerCallbackQuery(query.id)
     return
   }
@@ -293,6 +457,17 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
   const { ok, settings } = await isOwner(chatId)
   if (!ok || !settings) {
     await answerCallbackQuery(query.id, 'Нет доступа')
+    return
+  }
+
+  if (action === 'set') {
+    await handleSettingsCallback(query, settings)
+    return
+  }
+
+  const cardId = data.slice(action.length + 1)
+  if (!cardId) {
+    await answerCallbackQuery(query.id)
     return
   }
 

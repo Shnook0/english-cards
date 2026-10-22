@@ -4,6 +4,26 @@ export function normalizeTime(value: string): string {
   return value.slice(0, 5)
 }
 
+export function shiftTime(value: string, deltaMinutes: number): string {
+  const [hours, minutes] = normalizeTime(value).split(':').map(Number)
+  const total = (((hours * 60 + minutes + deltaMinutes) % 1440) + 1440) % 1440
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`
+}
+
+export const TIMEZONE_OPTIONS = [
+  { code: 'kgd', label: 'Калининград', tz: 'Europe/Kaliningrad' },
+  { code: 'msk', label: 'Москва', tz: 'Europe/Moscow' },
+  { code: 'ekb', label: 'Екатеринбург', tz: 'Asia/Yekaterinburg' },
+  { code: 'nsk', label: 'Новосибирск', tz: 'Asia/Novosibirsk' },
+  { code: 'krsk', label: 'Красноярск', tz: 'Asia/Krasnoyarsk' },
+  { code: 'vld', label: 'Владивосток', tz: 'Asia/Vladivostok' },
+] as const
+
+export function timezoneByCode(code: string): string | null {
+  return TIMEZONE_OPTIONS.find(option => option.code === code)?.tz ?? null
+}
+
 export function isWithinWindow(settings: TelegramSettings, now = new Date()): boolean {
   const start = normalizeTime(settings.window_start)
   const end = normalizeTime(settings.window_end)
