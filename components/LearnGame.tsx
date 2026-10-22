@@ -16,6 +16,10 @@ import {
 import { clearSession, loadSession, restoreQueue, saveSession } from '@/lib/session'
 
 const MAX_STAGE = 3
+const BATCH_SIZE = 10
+const CARRY_MISTAKES = 2
+// Прогресс по партиям помним дольше, чем обычную сессию
+const LEARN_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 const STAGE_LABELS = ['Карточки', 'Выбор', 'Написание', 'Пропуски']
 const STAGE_HINTS = [
@@ -86,15 +90,26 @@ export default function LearnGame({
   const pathname = usePathname()
   const sessionKey = `learn:${pathname}`
 
+  const cardById = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
+  const initialBatchCards = cards.slice(0, BATCH_SIZE)
+  const initialPoolIds = cards.slice(BATCH_SIZE).map(c => c.id)
+
   // Если вернулись к незаконченному заучиванию, продолжаем с того же места
   const [restored] = useState(() => {
-    const saved = loadSession(sessionKey)
+    const saved = loadSession(sessionKey, LEARN_TTL_MS)
+    if (!saved) return null
+    // Старое сохранение без партий не подходит — начинаем заново
+    if (!Array.isArray(saved.batchIds) || !Array.isArray(saved.poolIds)) return null
+    // Партия уже закончена — показываем итог и ждём выбора
+    if (saved.betweenBatches) return { saved, queue: [] as Card[] }
     const q = restoreQueue(saved, cards)
-    return saved && q ? { saved, queue: q } : null
+    return q ? { saved, queue: q } : null
   })
 
-  const [queue, setQueue] = useState<Card[]>(restored ? restored.queue : cards)
-  const [totalCards] = useState(restored ? restored.saved.total : cards.length)
+  const [queue, setQueue] = useState<Card[]>(restored ? restored.queue : initialBatchCards)
+  const [totalCards, setTotalCards] = useState(
+    restored ? restored.saved.total : initialBatchCards.length
+  )
   const [stages, setStages] = useState<Record<string, number>>(restored?.saved.stages ?? {})
   const [doneCount, setDoneCount] = useState(restored ? restored.saved.done : 0)
   const [failedCount, setFailedCount] = useState(restored?.saved.failed ?? 0)
@@ -103,7 +118,20 @@ export default function LearnGame({
   const [wrongSession, setWrongSession] = useState<Record<string, number>>(
     restored ? restored.saved.wrong : {}
   )
-  const [isFinished, setIsFinished] = useState(cards.length === 0)
+  const [cardMistakes, setCardMistakes] = useState<Record<string, number>>(
+    restored?.saved.cardMistakes ?? {}
+  )
+
+  const [batchNo, setBatchNo] = useState(restored?.saved.batchNo ?? 1)
+  const [batchIds, setBatchIds] = useState<string[]>(() => {
+    if (restored?.saved.batchIds) return restored.saved.batchIds.filter(id => cardById.has(id))
+    return initialBatchCards.map(c => c.id)
+  })
+  const [poolIds, setPoolIds] = useState<string[]>(() => {
+    if (restored?.saved.poolIds) return restored.saved.poolIds.filter(id => cardById.has(id))
+    return initialPoolIds
+  })
+  const [betweenBatches, setBetweenBatches] = useState(restored?.saved.betweenBatches ?? false)
 
   const [turn, setTurn] = useState(0)
   const [input, setInput] = useState('')
@@ -167,6 +195,7 @@ export default function LearnGame({
     if (result === 'bad') {
       report(card, false)
       setMistakeCount(n => n + 1)
+      setCardMistakes(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
 
       const wrongNow = (wrongSession[card.id] || 0) + 1
       setWrongSession(prev => ({ ...prev, [card.id]: wrongNow }))
@@ -178,7 +207,7 @@ export default function LearnGame({
         setDoneCount(d => d + 1)
         setFailedCount(f => f + 1)
         setQueue(rest)
-        if (rest.length === 0) setIsFinished(true)
+        if (rest.length === 0) setBetweenBatches(true)
       }
     } else {
       if (result === 'good') {
@@ -187,12 +216,13 @@ export default function LearnGame({
       } else {
         report(card, false)
         setMistakeCount(n => n + 1)
+        setCardMistakes(prev => ({ ...prev, [card.id]: (prev[card.id] || 0) + 1 }))
       }
 
       if (cardStage >= MAX_STAGE) {
         setDoneCount(d => d + 1)
         setQueue(rest)
-        if (rest.length === 0) setIsFinished(true)
+        if (rest.length === 0) setBetweenBatches(true)
       } else {
         setStages(prev => ({ ...prev, [card.id]: cardStage + 1 }))
         setQueue([...rest, card])
@@ -209,12 +239,8 @@ export default function LearnGame({
     finishEncounter(pending.card, pending.result)
   }
 
-  // Запоминаем ход заучивания (или стираем, если оно закончено)
+  // Запоминаем партию, чтобы можно было продолжить после перезагрузки
   useEffect(() => {
-    if (isFinished) {
-      clearSession(sessionKey)
-      return
-    }
     saveSession(sessionKey, {
       queueIds: queue.map(c => c.id),
       total: totalCards,
@@ -225,6 +251,11 @@ export default function LearnGame({
       failed: failedCount,
       stages,
       mistakes: mistakeCount,
+      poolIds,
+      batchIds,
+      batchNo,
+      betweenBatches,
+      cardMistakes,
     })
   }, [
     queue,
@@ -234,7 +265,11 @@ export default function LearnGame({
     failedCount,
     stages,
     mistakeCount,
-    isFinished,
+    poolIds,
+    batchIds,
+    batchNo,
+    betweenBatches,
+    cardMistakes,
     sessionKey,
     totalCards,
   ])
@@ -323,36 +358,98 @@ export default function LearnGame({
     setFeedback('revealed')
   }
 
-  if (isFinished || !current) {
+  // Слова с двумя и более ошибками переносятся в следующую партию
+  const carryover = batchIds
+    .filter(id => (cardMistakes[id] ?? 0) >= CARRY_MISTAKES)
+    .map(id => cardById.get(id))
+    .filter((c): c is Card => !!c)
+
+  const availableNew = poolIds
+    .map(id => cardById.get(id))
+    .filter((c): c is Card => !!c)
+
+  const startNextBatch = () => {
+    if (carryover.length === 0 && availableNew.length === 0) return
+
+    const slots = Math.max(0, BATCH_SIZE - carryover.length)
+    const newCards = availableNew.slice(0, slots)
+    const nextBatch = [...carryover, ...newCards]
+    const newIds = new Set(newCards.map(c => c.id))
+
+    setQueue(nextBatch)
+    setBatchIds(nextBatch.map(c => c.id))
+    setPoolIds(availableNew.filter(c => !newIds.has(c.id)).map(c => c.id))
+    setTotalCards(nextBatch.length)
+    setStages({})
+    setWrongSession({})
+    setCardMistakes({})
+    setDoneCount(0)
+    setFailedCount(0)
+    setFirstTryCount(0)
+    setMistakeCount(0)
+    setBatchNo(n => n + 1)
+    setBetweenBatches(false)
+    resetEncounter()
+  }
+
+  const restartFolder = () => {
+    clearSession(sessionKey)
+    onNextRound()
+  }
+
+  if (betweenBatches || !current) {
     const mastered = Math.max(doneCount - failedCount, 0)
     const attemptsTotal = firstTryCount + mistakeCount
     const accuracy = attemptsTotal > 0 ? Math.round((firstTryCount / attemptsTotal) * 100) : 0
+    const folderComplete = carryover.length === 0 && availableNew.length === 0
 
     return (
       <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
         <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">
-            {totalCards === 0 ? 'Нет слов для заучивания' : 'Заучивание завершено'}
+            {totalCards === 0
+              ? 'Нет слов для заучивания'
+              : folderComplete
+              ? 'Все слова из папки пройдены'
+              : `Партия ${batchNo} завершена`}
           </h2>
           {totalCards > 0 && (
             <div className="mb-6 space-y-1 text-sm text-[#8b90a0]">
               <p>
-                Выучено слов: <b className="text-[#e6e8ec]">{mastered}</b> из {totalCards}
+                Пройдено слов: <b className="text-[#e6e8ec]">{mastered}</b> из {totalCards}
               </p>
               <p>С первой попытки: {firstTryCount}</p>
               <p>Ошибок: {mistakeCount}</p>
               {failedCount > 0 && <p>Не осилено: {failedCount}</p>}
               <p>Точность: {accuracy}%</p>
+              {carryover.length > 0 && (
+                <p>
+                  Перенесено в следующую партию:{' '}
+                  <b className="text-[#e6e8ec]">{carryover.length}</b>
+                </p>
+              )}
+              {availableNew.length > 0 && (
+                <p>Осталось новых слов в папке: {availableNew.length}</p>
+              )}
             </div>
           )}
           {totalCards === 0 && <div className="mb-6" />}
           <div className="flex flex-col gap-3">
-            {totalCards > 0 && (
+            {folderComplete ? (
+              totalCards > 0 && (
+                <button
+                  onClick={restartFolder}
+                  className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+                >
+                  Начать заново
+                </button>
+              )
+            ) : (
               <button
-                onClick={onNextRound}
+                onClick={startNextBatch}
                 className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
               >
-                Ещё раунд
+                Следующее заучивание
               </button>
             )}
             <button
@@ -391,7 +488,7 @@ export default function LearnGame({
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3 text-sm text-[#8b90a0]">
           <span>
-            Заучивание · пройдено {doneCount} / {totalCards} · ошибок: {mistakeCount}
+            Партия {batchNo} · пройдено {doneCount} / {totalCards} · ошибок: {mistakeCount}
           </span>
           <button onClick={handleExit} className="hover:text-[#e6e8ec] transition font-medium">
             Выйти

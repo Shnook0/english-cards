@@ -16,14 +16,20 @@ export type SavedSession = {
   // Текущий этап заучивания для каждой карточки (0–3)
   stages?: Record<string, number>
   mistakes?: number
+  // Партии в режиме «Заучивание»
+  poolIds?: string[]
+  batchIds?: string[]
+  batchNo?: number
+  betweenBatches?: boolean
+  cardMistakes?: Record<string, number>
 }
 
-export function loadSession(key: string): SavedSession | null {
+export function loadSession(key: string, ttlMs = TTL_MS): SavedSession | null {
   try {
     const raw = localStorage.getItem(PREFIX + key)
     if (!raw) return null
     const saved = JSON.parse(raw) as SavedSession
-    if (Date.now() - saved.t > TTL_MS) {
+    if (Date.now() - saved.t > ttlMs) {
       localStorage.removeItem(PREFIX + key)
       return null
     }
