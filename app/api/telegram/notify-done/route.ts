@@ -5,8 +5,12 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 function authorized(request: Request): boolean {
-  const secret = process.env.TELEGRAM_TICK_SECRET
-  if (!secret) return false
+  const secrets = [
+    process.env.TELEGRAM_TICK_SECRET,
+    process.env.TELEGRAM_WEBHOOK_SECRET,
+  ].filter((value): value is string => Boolean(value))
+
+  if (secrets.length === 0) return false
 
   const url = new URL(request.url)
   const provided =
@@ -14,7 +18,7 @@ function authorized(request: Request): boolean {
     url.searchParams.get('secret') ??
     (request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '')
 
-  return provided === secret
+  return secrets.includes(provided)
 }
 
 async function run(request: Request): Promise<Response> {
