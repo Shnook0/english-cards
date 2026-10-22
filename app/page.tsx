@@ -148,8 +148,8 @@ export default function HomePage() {
           >
             <div>
               <p className="eyebrow">Быстрый доступ</p>
-              <h2 className="mt-1.5 text-lg">Избранные слова</h2>
-              <p className="mt-1 text-[11px] text-[#948e82]">
+              <h2 className="mt-1.5 text-xl">Избранные слова</h2>
+              <p className="mt-1.5 text-sm leading-5 text-[#b5aea1]">
                 Слова, отмеченные звёздочкой · {favoritesCount}
               </p>
             </div>
@@ -162,8 +162,8 @@ export default function HomePage() {
           >
             <div>
               <p className="eyebrow">Точки роста</p>
-              <h2 className="mt-1.5 text-lg">Частые ошибки</h2>
-              <p className="mt-1 text-[11px] text-[#948e82]">
+              <h2 className="mt-1.5 text-xl">Частые ошибки</h2>
+              <p className="mt-1.5 text-sm leading-5 text-[#b5aea1]">
                 Слова, которые стоит повторить · {mistakesCount}
               </p>
             </div>
@@ -177,12 +177,12 @@ export default function HomePage() {
             className="panel panel-hover group flex min-h-36 flex-col justify-between p-5"
           >
             <div className="flex items-start justify-between">
-              <span className="font-mono text-[10px] text-[#c9a96e]">01</span>
+              <span className="font-mono text-xs text-[#c9a96e]">1</span>
               <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
             </div>
             <div>
-              <h2 className="text-xl">Мои папки</h2>
-              <p className="mt-2 text-[11px] leading-5 text-[#948e82]">
+              <h2 className="text-2xl">Мои папки</h2>
+              <p className="mt-2.5 text-sm leading-6 text-[#b5aea1]">
                 Личные подборки слов по темам · {customFolders.length}
               </p>
             </div>
@@ -193,12 +193,12 @@ export default function HomePage() {
             className="panel panel-hover group flex min-h-36 flex-col justify-between p-5"
           >
             <div className="flex items-start justify-between">
-              <span className="font-mono text-[10px] text-[#c9a96e]">02</span>
+              <span className="font-mono text-xs text-[#c9a96e]">2</span>
               <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
             </div>
             <div>
-              <h2 className="text-xl">Общая тренировка</h2>
-              <p className="mt-2 text-[11px] leading-5 text-[#948e82]">
+              <h2 className="text-2xl">Общая тренировка</h2>
+              <p className="mt-2.5 text-sm leading-6 text-[#b5aea1]">
                 Умное повторение слов из всех папок.
               </p>
             </div>
@@ -209,12 +209,12 @@ export default function HomePage() {
             className="panel panel-hover group flex min-h-36 flex-col justify-between p-5"
           >
             <div className="flex items-start justify-between">
-              <span className="font-mono text-[10px] text-[#c9a96e]">03</span>
+              <span className="font-mono text-xs text-[#c9a96e]">3</span>
               <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
             </div>
             <div>
-              <h2 className="text-xl">Подборки по уровням</h2>
-              <p className="mt-2 text-[11px] leading-5 text-[#948e82]">
+              <h2 className="text-2xl">Подборки по уровням</h2>
+              <p className="mt-2.5 text-sm leading-6 text-[#b5aea1]">
                 Готовые наборы от A1 до C2 · {levelFolders.length}
               </p>
             </div>

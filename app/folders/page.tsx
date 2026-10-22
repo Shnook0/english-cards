@@ -149,10 +149,10 @@ export default function FoldersPage() {
                   className="panel panel-hover group flex items-center justify-between gap-4 px-4 py-3.5"
                 >
                   <div className="flex items-baseline gap-3">
-                    <span className="font-mono text-[9px] text-[#6f6a61]">
-                      {String(index + 1).padStart(2, '0')}
+                    <span className="font-mono text-[10px] text-[#6f6a61]">
+                      {index + 1}
                     </span>
-                    <span className="text-base text-[#f2eee5] transition group-hover:text-[#c9a96e]">
+                    <span className="text-lg text-[#f2eee5] transition group-hover:text-[#c9a96e]">
                       {folder.name}
                     </span>
                   </div>
