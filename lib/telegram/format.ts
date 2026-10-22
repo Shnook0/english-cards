@@ -65,6 +65,47 @@ function formatDateTime(iso: string, timezone: string): string {
   }).format(new Date(iso))
 }
 
+const SHORT_MONTHS = [
+  'янв.',
+  'февр.',
+  'мар.',
+  'апр.',
+  'мая',
+  'июн.',
+  'июл.',
+  'авг.',
+  'сент.',
+  'окт.',
+  'нояб.',
+  'дек.',
+] as const
+
+function formatDateWords(iso: string, timezone: string): string {
+  const date = new Date(iso)
+  let parts: Intl.DateTimeFormatPart[]
+
+  try {
+    parts = new Intl.DateTimeFormat('ru-RU', {
+      timeZone: timezone,
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+    }).formatToParts(date)
+  } catch {
+    parts = new Intl.DateTimeFormat('ru-RU', {
+      timeZone: 'UTC',
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+    }).formatToParts(date)
+  }
+
+  const day = parts.find(part => part.type === 'day')?.value ?? '?'
+  const month = Number(parts.find(part => part.type === 'month')?.value ?? 1) - 1
+  const year = parts.find(part => part.type === 'year')?.value ?? '?'
+  return `${day} ${SHORT_MONTHS[month] ?? 'мес.'} ${year}`
+}
+
 function deliveryLabel(kind: string): string {
   if (kind === 'scheduled') return 'по расписанию'
   if (kind === 'repeat') return 'повтор'
@@ -196,6 +237,58 @@ export function debugKeyboard(): InlineKeyboard {
   ]
 }
 
+type UpcomingKind = 'review' | 'pending' | 'regular'
+
+type UpcomingItem = {
+  at: string
+  label: string
+  detail: string
+  kind: UpcomingKind
+}
+
+function regularUpcomingItems(
+  settings: TelegramSettings,
+  now: Date,
+  count: number
+): UpcomingItem[] {
+  if (settings.paused || count <= 0) return []
+
+  const intervalMs = settings.interval_minutes * 60 * 1000
+  const lastSent = settings.last_sent_at
+    ? new Date(settings.last_sent_at).getTime()
+    : Number.NaN
+  const due = Number.isFinite(lastSent)
+    ? Math.max(lastSent + intervalMs, now.getTime())
+    : now.getTime()
+
+  return Array.from({ length: count }, (_, index) => ({
+    at: new Date(due + intervalMs * index).toISOString(),
+    label: 'Обычная отправка из папки',
+    detail: 'по интервалу',
+    kind: 'regular' as const,
+  }))
+}
+
+function upcomingState(
+  settings: TelegramSettings,
+  item: UpcomingItem,
+  now: Date
+): string {
+  if (settings.paused) return 'на паузе'
+
+  const at = new Date(item.at)
+  const overdue = at.getTime() <= now.getTime()
+  const allowedAt =
+    item.kind === 'review' ? isWithinWindow(settings, at) : canSendRegular(settings, at)
+  const allowedNow =
+    item.kind === 'review'
+      ? isWithinWindow(settings, now)
+      : canSendRegular(settings, now)
+
+  if (overdue) return allowedNow ? 'готова к отправке' : 'ждёт окно'
+  return allowedAt ? 'не ждёт окно' : 'ждёт окно'
+}
+
 export function upcomingText(
   settings: TelegramSettings,
   pending: PendingRow[],
@@ -203,21 +296,27 @@ export function upcomingText(
 ): string {
   const tz = settings.timezone
   const now = new Date()
-  const next = nextScheduledAt(settings, now)
-  const nextLine =
-    next === null
-      ? 'пауза'
-      : next.getTime() <= now.getTime() + 60_000
-        ? 'при ближайшей проверке'
-        : `${formatDateTime(next.toISOString(), tz)} (через ${Math.ceil(
-            (next.getTime() - now.getTime()) / 60000
-          )} мин)`
+
+  const items: UpcomingItem[] = [
+    ...reviews.map(review => ({
+      at: review.due_at,
+      label: `Повтор «Не знаю»: ${review.word}`,
+      detail: reviewLabel(review.stage),
+      kind: 'review' as const,
+    })),
+    ...pending.map(item => ({
+      at: item.due_at,
+      label: 'Обычное повторение из папки',
+      detail: 'после ответа',
+      kind: 'pending' as const,
+    })),
+    ...regularUpcomingItems(settings, now, 8),
+  ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
 
   const lines = [
     '<b>Следующие отправки</b>',
     '',
     `Сейчас: <b>${formatTime(now.toISOString(), tz)}</b> (${escapeHtml(tz)})`,
-    `Обычные слова: <b>${nextLine}</b>`,
     `Режим: <b>${
       settings.paused
         ? 'пауза'
@@ -228,33 +327,26 @@ export function upcomingText(
             : 'вне окна'
     }</b>`,
     '',
-    '<b>Повторы «Не знаю»</b>',
   ]
 
-  if (reviews.length === 0) {
-    lines.push('пока нет запланированных.')
+  if (items.length === 0) {
+    lines.push('пока нет запланированных отправок.')
   } else {
-    for (const review of reviews.slice(0, 10)) {
+    for (const [index, item] of items.slice(0, 5).entries()) {
       lines.push(
-        `${formatDateTime(review.due_at, tz)} — ${escapeHtml(
-          review.word
-        )} <i>(${reviewLabel(review.stage)})</i>`
+        `${index + 1}) <b>${formatDateWords(item.at, tz)}, ${formatTime(item.at, tz)}</b>`
       )
+      lines.push(
+        `${escapeHtml(item.label)} <i>(${escapeHtml(item.detail)})</i>`
+      )
+      lines.push(`Состояние: <b>${upcomingState(settings, item, now)}</b>`)
+      lines.push('')
     }
   }
 
-  lines.push('')
-  lines.push('<b>Обычные повторы</b>')
-  if (pending.length === 0) {
-    lines.push('очередь пуста.')
-  } else {
-    for (const item of pending.slice(0, 10)) {
-      lines.push(`${formatDateTime(item.due_at, tz)} — повтор`)
-    }
-  }
-
-  lines.push('')
-  lines.push('<i>«Не знаю» приходят только внутри окна. Обычные слова — в окне и ещё 30 мин после действия.</i>')
+  lines.push(
+    '<i>«Не знаю» ждут окно. Обычные отправки — в окне и ещё 30 мин после действия.</i>'
+  )
 
   return lines.join('\n')
 }
