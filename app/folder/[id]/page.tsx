@@ -185,11 +185,11 @@ export default function FolderPage() {
 
         {!isLearnedFolder && cards.length > 0 && (
           <section className="border-b border-[#24221e] py-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="eyebrow">Режимы</p>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-[#6f6a61]">
+            <div className="mb-4 text-center">
+              <h2 className="display text-2xl">Выберите режим для повторения</h2>
+              <p className="mt-1 text-xs text-[#948e82]">
                 {unlearnedCards.length} к изучению
-              </span>
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               <Link
@@ -198,10 +198,10 @@ export default function FolderPage() {
               >
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[9px] text-[#c9a96e]">01</span>
-                    <h3 className="text-sm font-medium">Заучивание</h3>
+                    <span className="font-mono text-[10px] text-[#c9a96e]">1</span>
+                    <h3 className="text-lg font-medium">Заучивание</h3>
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">Пропуски → написание</p>
+                  <p className="mt-1 text-sm leading-5 text-[#b5aea1]">Пропуски → написание</p>
                 </div>
                 <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
@@ -211,10 +211,10 @@ export default function FolderPage() {
               >
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[9px] text-[#c9a96e]">02</span>
-                    <h3 className="text-sm font-medium">Подбор</h3>
+                    <span className="font-mono text-[10px] text-[#c9a96e]">2</span>
+                    <h3 className="text-lg font-medium">Подбор</h3>
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">
+                  <p className="mt-1 text-sm leading-5 text-[#b5aea1]">
                     Пары на скорость <MatchRecord scope={`folder:${folderId}`} />
                   </p>
                 </div>
@@ -226,10 +226,10 @@ export default function FolderPage() {
               >
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[9px] text-[#c9a96e]">03</span>
-                    <h3 className="text-sm font-medium">Блоки</h3>
+                    <span className="font-mono text-[10px] text-[#c9a96e]">3</span>
+                    <h3 className="text-lg font-medium">Блоки</h3>
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">Перевод и головоломка</p>
+                  <p className="mt-1 text-sm leading-5 text-[#b5aea1]">Перевод и головоломка</p>
                 </div>
                 <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
@@ -239,10 +239,10 @@ export default function FolderPage() {
               >
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[9px] text-[#c9a96e]">04</span>
-                    <h3 className="text-sm font-medium">Диктант</h3>
+                    <span className="font-mono text-[10px] text-[#c9a96e]">4</span>
+                    <h3 className="text-lg font-medium">Диктант</h3>
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] text-[#948e82]">Письмо на слух</p>
+                  <p className="mt-1 text-sm leading-5 text-[#b5aea1]">Письмо на слух</p>
                 </div>
                 <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
               </Link>
