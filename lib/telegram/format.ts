@@ -222,14 +222,7 @@ export function statsKeyboard(): InlineKeyboard {
 
 export function cardText(card: BotCard): string {
   const lines: string[] = []
-  lines.push(`Папка: «${escapeHtml(card.folder_name)}»`)
-  lines.push('')
-
-  const transcription = card.transcription
-    ? ` <i>/${escapeHtml(card.transcription)}</i>`
-    : ''
-  lines.push(`<b>${escapeHtml(card.word)}</b>${transcription}`)
-  lines.push(`Перевод: ${escapeHtml(card.translation)}`)
+  lines.push(`<b>${escapeHtml(card.word.trim().toUpperCase())}</b> - ${escapeHtml(card.translation)}`)
 
   const sentences = (card.sentences ?? [])
     .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
@@ -242,6 +235,9 @@ export function cardText(card: BotCard): string {
       lines.push(`• ${escapeHtml(truncate(sentence, 350))}`)
     }
   }
+
+  lines.push('')
+  lines.push(`Папка: «${escapeHtml(card.folder_name)}»`)
 
   return lines.join('\n')
 }
