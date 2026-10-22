@@ -170,27 +170,27 @@ export default function MatchGame({
 
   if (phase === 'finished') {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">
             {cards.length === 0 ? 'Нет слов для подбора' : 'Сессия завершена'}
           </h2>
           {cards.length > 0 && (
-            <p className="text-sm text-[#8b90a0] mb-6">Раундов сыграно: {roundNo}</p>
+            <p className="text-sm text-[#948e82] mb-6">Раундов сыграно: {roundNo}</p>
           )}
           {cards.length === 0 && <div className="mb-6" />}
           <div className="flex flex-col gap-3">
             {cards.length > 0 && (
               <button
                 onClick={onNextRound}
-                className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+                className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
               >
                 Ещё раунд
               </button>
             )}
             <button
               onClick={onExit}
-              className="w-full rounded-lg border border-gray-700 py-3 font-medium hover:border-[#6c7cff] transition"
+              className="w-full rounded-lg border border-[#2d2a25] py-3 font-medium hover:border-[#c9a96e] transition"
             >
               Выйти
             </button>
@@ -202,29 +202,29 @@ export default function MatchGame({
 
   if (phase === 'roundDone') {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Раунд {roundNo} завершён</h2>
-          <p className="text-3xl font-bold text-[#6c7cff] mb-2">{formatTime(lastTime)} с</p>
+          <p className="text-3xl font-bold text-[#c9a96e] mb-2">{formatTime(lastTime)} с</p>
 
           {fullRound ? (
             isRecord ? (
-              <p className="text-green-400 font-semibold mb-2">Новый рекорд! 🏆</p>
+              <p className="text-[#9fb59f] font-semibold mb-2">Новый рекорд! 🏆</p>
             ) : (
               best !== null && (
-                <p className="text-sm text-[#8b90a0] mb-2">Рекорд: {formatTime(best)} с</p>
+                <p className="text-sm text-[#948e82] mb-2">Рекорд: {formatTime(best)} с</p>
               )
             )
           ) : (
-            <p className="text-xs text-[#8b90a0] mb-2">
+            <p className="text-xs text-[#948e82] mb-2">
               Рекорд считается только за полный раунд из 6 пар
             </p>
           )}
 
-          <p className="text-sm text-[#8b90a0] mb-6">Ошибок: {roundMisses}</p>
+          <p className="text-sm text-[#948e82] mb-6">Ошибок: {roundMisses}</p>
           <button
             onClick={startNextRound}
-            className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+            className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
           >
             {hasMore ? 'Следующий раунд' : 'Завершить'}
           </button>
@@ -234,22 +234,22 @@ export default function MatchGame({
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#090909] text-[#f2eee5] p-4 md:p-8 max-w-5xl mx-auto">
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-center">
+        <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
           Не удалось сохранить часть результатов. Проверьте интернет.
         </div>
       )}
 
-      <div className="grid grid-cols-3 items-center mb-6 text-sm text-[#8b90a0]">
-        <span className="font-medium text-[#e6e8ec]">Подбор · раунд {roundNo}</span>
+      <div className="grid grid-cols-3 items-center mb-6 text-sm text-[#948e82]">
+        <span className="font-medium text-[#f2eee5]">Подбор · раунд {roundNo}</span>
         <div className="text-center">
-          <div className="text-lg font-bold text-[#e6e8ec]">{formatTime(elapsed)}</div>
+          <div className="text-lg font-bold text-[#f2eee5]">{formatTime(elapsed)}</div>
           {best !== null && (
-            <div className="text-xs text-[#8b90a0]">🏆 {formatTime(best)}</div>
+            <div className="text-xs text-[#948e82]">🏆 {formatTime(best)}</div>
           )}
         </div>
-        <button onClick={onExit} className="text-right hover:text-[#e6e8ec] transition font-medium">
+        <button onClick={onExit} className="text-right hover:text-[#f2eee5] transition font-medium">
           Выйти
         </button>
       </div>
@@ -260,9 +260,9 @@ export default function MatchGame({
           const isWrong = wrongPair.includes(t.id)
           const isSelected = selected === t.id
 
-          let state = 'border-gray-700 bg-[#1a1d23] hover:border-gray-500'
-          if (isWrong) state = 'border-[#a04a4a] bg-[#a04a4a]/20'
-          else if (isSelected) state = 'border-[#6c7cff] bg-[#6c7cff]/20'
+          let state = 'border-[#2d2a25] bg-[#111110] hover:border-[#4a463e]'
+          if (isWrong) state = 'border-[#bb7464] bg-[#bb7464]/20'
+          else if (isSelected) state = 'border-[#c9a96e] bg-[#c9a96e]/20'
 
           return (
             <button

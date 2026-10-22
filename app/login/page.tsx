@@ -59,33 +59,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f1115] p-4 text-[#e6e8ec]">
-      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 shadow-xl">
-        <h1 className="mb-6 text-center text-2xl font-bold">
-          {isResetMode
-            ? 'Восстановление пароля'
-            : isSignUp
-            ? 'Регистрация'
-            : 'Вход в аккаунт'}
-        </h1>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="page-in w-full max-w-md">
+        <div className="mb-8 text-center">
+          <p className="eyebrow mb-4">English Cards</p>
+          <h1 className="display text-5xl">
+            {isResetMode
+              ? 'Восстановление'
+              : isSignUp
+              ? 'Регистрация'
+              : 'Вход в аккаунт'}
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-[#948e82]">
+            {isResetMode
+              ? 'Пришлём ссылку для нового пароля.'
+              : 'Личный лексикон, который остаётся с вами.'}
+          </p>
+        </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-[#e6e8ec]">
-            {error}
-          </div>
-        )}
+        <div className="panel p-7 md:p-9">
+          {error && (
+            <div className="mb-5 border border-[#bb7464]/50 bg-[#bb7464]/10 p-4 text-sm text-[#e3b4a8]">
+              {error}
+            </div>
+          )}
 
-        {message && (
-          <div className="mb-4 rounded-lg bg-green-500/20 border border-green-500 p-3 text-sm text-green-300">
-            {message}
-          </div>
-        )}
+          {message && (
+            <div className="mb-5 border border-[#9fb59f]/40 bg-[#9fb59f]/10 p-4 text-sm text-[#c2d2c1]">
+              {message}
+            </div>
+          )}
 
-        <form onSubmit={handleAuth} className="space-y-4">
+          <form onSubmit={handleAuth} className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#8b90a0]">
-              Email
-            </label>
+            <label className="eyebrow mb-2 block">Email</label>
             <input
               type="email"
               required
@@ -93,15 +100,13 @@ export default function LoginPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full rounded-lg border border-gray-700 bg-[#0f1115] p-3 text-[#e6e8ec] outline-none focus:border-[#6c7cff]"
+              className="field"
             />
           </div>
 
           {!isResetMode && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#8b90a0]">
-                Пароль
-              </label>
+              <label className="eyebrow mb-2 block">Пароль</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -110,13 +115,13 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Минимум 6 символов"
-                  className="w-full rounded-lg border border-gray-700 bg-[#0f1115] p-3 pr-10 text-[#e6e8ec] outline-none focus:border-[#6c7cff]"
+                  className="field pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b90a0] hover:text-[#e6e8ec] transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#948e82] hover:text-[#f2eee5] transition"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -133,11 +138,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading} className="btn btn-primary w-full">
             {loading
               ? 'Загрузка...'
               : isResetMode
@@ -146,39 +147,40 @@ export default function LoginPage() {
               ? 'Зарегистрироваться'
               : 'Войти'}
           </button>
-        </form>
+          </form>
 
-        <div className="mt-6 flex flex-col items-center gap-2 text-sm text-[#8b90a0]">
-          {!isResetMode && (
+          <div className="mt-7 flex flex-col items-center gap-3 border-t border-[#24221e] pt-5 text-sm text-[#948e82]">
+            {!isResetMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsResetMode(true)
+                  setError(null)
+                  setMessage(null)
+                }}
+                className="link-muted"
+              >
+                Забыли пароль?
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
-                setIsResetMode(true)
+                setIsSignUp(!isSignUp)
+                setIsResetMode(false)
                 setError(null)
                 setMessage(null)
               }}
-              className="hover:text-[#e6e8ec] transition"
+              className="text-[#c9a96e] hover:text-[#ddc08a]"
             >
-              Забыли пароль?
+              {isResetMode
+                ? 'Вернуться ко входу'
+                : isSignUp
+                ? 'Уже есть аккаунт? Войти'
+                : 'Нет аккаунта? Зарегистрироваться'}
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp)
-              setIsResetMode(false)
-              setError(null)
-              setMessage(null)
-            }}
-            className="text-[#6c7cff] hover:underline"
-          >
-            {isResetMode
-              ? 'Вернуться ко входу'
-              : isSignUp
-              ? 'Уже есть аккаунт? Войти'
-              : 'Нет аккаунта? Зарегистрироваться'}
-          </button>
+          </div>
         </div>
       </div>
     </div>

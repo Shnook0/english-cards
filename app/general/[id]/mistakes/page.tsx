@@ -80,7 +80,7 @@ export default function GeneralMistakesPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
         Загрузка...
       </div>
     )
@@ -88,34 +88,36 @@ export default function GeneralMistakesPage() {
 
   if (error || !training) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#a04a4a]">{error || 'Тренировка не найдена'}</p>
-        <Link href="/general" className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#bb7464]">{error || 'Тренировка не найдена'}</p>
+        <Link href="/general" className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
+    <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
+      <div className="page-in mx-auto max-w-6xl">
+        <div className="mb-10 flex items-center justify-between">
           <Link
             href={`/general/${trainingId}`}
-            className="text-sm text-[#8b90a0] hover:text-[#6c7cff] transition"
+            className="link-muted text-xs uppercase tracking-[0.18em]"
           >
             ← {training.name}
           </Link>
+          <span className="eyebrow">Разбор ошибок</span>
         </div>
 
-        <div className="flex items-center justify-between gap-4 mb-8 pb-6 border-b border-gray-800">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24221e] pb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-1">Общие ошибки</h1>
-            <p className="text-sm text-[#8b90a0]">Слов в ошибках: {items.length}</p>
+            <p className="eyebrow mb-3">Общая практика</p>
+            <h1 className="display text-5xl md:text-6xl">Общие ошибки</h1>
+            <p className="mt-4 text-sm text-[#948e82]">Слов в ошибках: {items.length}</p>
           </div>
           {items.length > 0 && (
             <Link
               href={`/general/${trainingId}/mistakes/train`}
-              className="rounded-lg bg-[#6c7cff] px-5 py-2.5 font-medium text-white hover:bg-[#5865e0] transition"
+              className="btn btn-primary"
             >
               Повторить
             </Link>
@@ -123,24 +125,24 @@ export default function GeneralMistakesPage() {
         </div>
 
         {items.length === 0 ? (
-          <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-12 text-center text-[#8b90a0]">
-            Сейчас в ошибках нет слов.
+          <div className="panel p-14 text-center">
+            <p className="display mb-3 text-3xl">Чисто</p>
+            <p className="text-sm text-[#948e82]">Сейчас в ошибках нет слов.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {items.map(({ card, progress }) => (
-              <div
-                key={card.id}
-                className="rounded-xl border border-gray-800 bg-[#1a1d23] p-5 flex flex-col justify-between"
-              >
+              <div key={card.id} className="panel panel-hover flex flex-col justify-between p-6">
                 <div>
-                  <span className="text-lg font-bold">{card.word}</span>
+                  <span className="font-[family-name:var(--font-display)] text-2xl">
+                    {card.word}
+                  </span>
                   {card.transcription && (
-                    <p className="text-sm text-[#8b90a0] mt-1">{card.transcription}</p>
+                    <p className="mt-1 text-sm text-[#948e82]">{card.transcription}</p>
                   )}
-                  <p className="text-md font-medium mt-2 mb-3">{card.translation}</p>
+                  <p className="mb-4 mt-3 text-base text-[#f2eee5]">{card.translation}</p>
                 </div>
-                <div className="text-xs text-[#8b90a0] pt-3 border-t border-gray-800/50">
+                <div className="border-t border-[#24221e] pt-4 text-xs leading-5 text-[#948e82]">
                   В ошибках до: {formatUntil(progress.mistake_until)}
                 </div>
               </div>

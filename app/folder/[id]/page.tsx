@@ -114,17 +114,17 @@ export default function FolderPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
-        Загрузка...
+      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#948e82]">
+        <span className="eyebrow">Загрузка коллекции</span>
       </div>
     )
   }
 
   if (error || !folder) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#a04a4a]">{error || 'Папка не найдена'}</p>
-        <Link href="/" className="text-sm text-[#6c7cff] hover:underline">← На главную</Link>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#090909] p-4 text-[#f2eee5]">
+        <p className="mb-4 text-[#bb7464]">{error || 'Папка не найдена'}</p>
+        <Link href="/" className="link-muted text-sm">← На главную</Link>
       </div>
     )
   }
@@ -134,139 +134,238 @@ export default function FolderPage() {
 
   const learnedCards = cards.filter(c => c.learned_at)
   const unlearnedCards = cards.filter(c => !c.learned_at)
-
-  const modeButtonClass =
-    'rounded-lg border border-gray-700 bg-[#1a1d23] px-5 py-2.5 font-medium hover:border-[#6c7cff] transition'
+  const learnedPercent = cards.length > 0 ? Math.round((learnedCards.length / cards.length) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <Link href="/" className="text-sm text-[#8b90a0] hover:text-[#6c7cff] transition">← На главную</Link>
+    <div className="min-h-screen p-5 md:p-10 lg:p-14">
+      <div className="page-in mx-auto max-w-6xl">
+        <div className="mb-10 flex items-center justify-between">
+          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+            ← Библиотека
+          </Link>
+          <span className="eyebrow">
+            {isLearnedFolder ? 'Архив' : isLevelFolder ? 'Уровень' : 'Коллекция'}
+          </span>
         </div>
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 pb-6 border-b border-gray-800">
+        <header className="grid gap-8 border-b border-[#24221e] pb-10 md:grid-cols-[1fr_auto] md:items-end">
           <div>
-            <h1 className="text-3xl font-bold mb-1">{folder.name}</h1>
-            <p className="text-sm text-[#8b90a0]">
-              Всего слов: {cards.length}
-              {!isLearnedFolder && <> · Выучено: {learnedCards.length} / {cards.length}</>}
+            <p className="eyebrow mb-4">{isLevelFolder ? 'CEFR collection' : 'Personal collection'}</p>
+            <h1 className="display text-5xl md:text-7xl">{folder.name}</h1>
+            <p className="mt-5 text-sm text-[#948e82]">
+              {cards.length} слов
+              {!isLearnedFolder && <> · выучено {learnedCards.length} ({learnedPercent}%)</>}
             </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             {cards.length > 0 && (
-              <Link
-                href={`/folder/${folderId}/train`}
-                className="rounded-lg bg-[#6c7cff] px-5 py-2.5 font-medium text-white hover:bg-[#5865e0] transition"
-              >
+              <Link href={`/folder/${folderId}/train`} className="btn btn-primary">
                 Учить
               </Link>
             )}
             {!isLearnedFolder && cards.length > 0 && (
-              <>
-                <Link
-                  href={`/folder/${folderId}/play/learn`}
-                  className="rounded-lg border border-[#6c7cff] px-5 py-2.5 font-medium text-[#6c7cff] hover:bg-[#6c7cff]/10 transition"
-                >
-                  Заучивание
-                </Link>
-                <Link href={`/folder/${folderId}/play/match`} className={modeButtonClass}>
-                  Подбор
-                  <MatchRecord scope={`folder:${folderId}`} />
-                </Link>
-                <Link href={`/folder/${folderId}/play/blocks`} className={modeButtonClass}>
-                  Блоки
-                </Link>
-                <Link href={`/folder/${folderId}/play/dictation`} className={modeButtonClass}>
-                  Диктант
-                </Link>
-              </>
+              <Link
+                href={`/folder/${folderId}/play/learn`}
+                className="btn btn-secondary"
+              >
+                Заучивание
+              </Link>
             )}
             {!isLearnedFolder && (
-              <>
-                <button
-                  onClick={() => { setCardToEdit(null); setIsAddModalOpen(true) }}
-                  className="rounded-lg border border-gray-700 bg-[#1a1d23] px-5 py-2.5 font-medium hover:border-[#6c7cff] transition"
-                >
-                  + Добавить карточку
-                </button>
-                {!isLevelFolder && (
-                  <button
-                    onClick={deleteFolder}
-                    className="rounded-lg border border-[#a04a4a] px-4 py-2.5 font-medium text-[#a04a4a] hover:bg-[#a04a4a]/10 transition text-sm"
-                  >
-                    Удалить папку
-                  </button>
-                )}
-              </>
+              <button
+                onClick={() => { setCardToEdit(null); setIsAddModalOpen(true) }}
+                className="btn btn-secondary"
+              >
+                + Карточка
+              </button>
+            )}
+            {!isLearnedFolder && !isLevelFolder && (
+              <button
+                onClick={deleteFolder}
+                className="btn btn-ghost text-[#bb7464] hover:text-[#d9a093]"
+              >
+                Удалить
+              </button>
             )}
           </div>
-        </div>
+        </header>
+
+        {!isLearnedFolder && cards.length > 0 && (
+          <section className="border-b border-[#24221e] py-8">
+            <div className="mb-5 flex items-end justify-between">
+              <div>
+                <p className="eyebrow">Режимы</p>
+                <h2 className="mt-2 text-2xl">Выберите формат</h2>
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-[#6f6a61]">
+                {unlearnedCards.length} к изучению
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Link
+                href={`/folder/${folderId}/play/learn`}
+                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-[#c9a96e]">01</span>
+                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                </div>
+                <div>
+                  <h3 className="text-lg">Заучивание</h3>
+                  <p className="mt-1 text-[11px] text-[#948e82]">Пропуски → написание</p>
+                </div>
+              </Link>
+              <Link
+                href={`/folder/${folderId}/play/match`}
+                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-[#c9a96e]">02</span>
+                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                </div>
+                <div>
+                  <h3 className="text-lg">Подбор</h3>
+                  <p className="mt-1 text-[11px] text-[#948e82]">
+                    Пары на скорость <MatchRecord scope={`folder:${folderId}`} />
+                  </p>
+                </div>
+              </Link>
+              <Link
+                href={`/folder/${folderId}/play/blocks`}
+                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-[#c9a96e]">03</span>
+                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                </div>
+                <div>
+                  <h3 className="text-lg">Блоки</h3>
+                  <p className="mt-1 text-[11px] text-[#948e82]">Перевод и головоломка</p>
+                </div>
+              </Link>
+              <Link
+                href={`/folder/${folderId}/play/dictation`}
+                className="panel panel-hover group flex min-h-32 flex-col justify-between p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-[#c9a96e]">04</span>
+                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                </div>
+                <div>
+                  <h3 className="text-lg">Диктант</h3>
+                  <p className="mt-1 text-[11px] text-[#948e82]">Письмо на слух</p>
+                </div>
+              </Link>
+            </div>
+          </section>
+        )}
 
         {!isLearnedFolder && unlearnedCards.length > 0 && (
-          <details className="mb-6 rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
-            <summary className="cursor-pointer text-sm font-medium">
-              Осталось выучить: {unlearnedCards.length}
+          <details className="group border-b border-[#24221e] py-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-xs uppercase tracking-[0.16em] text-[#948e82]">
+              <span>Осталось выучить · {unlearnedCards.length}</span>
+              <span className="text-[#c9a96e] transition group-open:rotate-45">+</span>
             </summary>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               {unlearnedCards.map(c => (
-                <span key={c.id} className="rounded-lg bg-[#0f1115] px-2.5 py-1 text-xs text-[#8b90a0]">
-                  <span className="text-[#e6e8ec]">{c.word}</span> — {c.translation}
+                <span key={c.id} className="border border-[#24221e] bg-[#111110] px-2.5 py-1.5 text-xs text-[#948e82]">
+                  <span className="text-[#f2eee5]">{c.word}</span>
+                  <span className="mx-1 text-[#514c44]">/</span>
+                  {c.translation}
                 </span>
               ))}
             </div>
           </details>
         )}
 
-        {cards.length === 0 ? (
-          <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-12 text-center text-[#8b90a0]">
-            {isLearnedFolder ? 'У вас пока нет выученных слов.' : 'В этой папке пока нет карточек.'}
+        <section className="py-10">
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <p className="eyebrow">Словарь</p>
+              <h2 className="mt-2 text-2xl">Карточки</h2>
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-[#6f6a61]">
+              {cards.length} всего
+            </span>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cards.map(card => (
-              <div key={card.id} className="rounded-xl border border-gray-800 bg-[#1a1d23] p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-lg font-bold">{card.word}</span>
-                      {card.learned_at && (
-                        <span className="text-[10px] text-[#8b90a0] bg-[#0f1115] px-1.5 py-0.5 rounded">выучено</span>
-                      )}
-                      {card.sync_group_id && (
-                        <span className="text-[10px] text-[#6c7cff] bg-[#6c7cff]/10 px-1.5 py-0.5 rounded" title="Связано с другими копиями">🔗</span>
-                      )}
+
+          {cards.length === 0 ? (
+            <div className="panel flex min-h-48 flex-col items-center justify-center p-10 text-center">
+              <p className="text-sm text-[#948e82]">
+                {isLearnedFolder ? 'У вас пока нет выученных слов.' : 'В этой папке пока нет карточек.'}
+              </p>
+              {!isLearnedFolder && (
+                <button
+                  onClick={() => { setCardToEdit(null); setIsAddModalOpen(true) }}
+                  className="btn btn-primary mt-5"
+                >
+                  Добавить первую
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {cards.map((card, index) => (
+                <article
+                  key={card.id}
+                  className="panel group flex min-h-64 flex-col justify-between p-5 transition hover:border-[#c9a96e]/40"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="font-mono text-[9px] text-[#6f6a61]">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {card.learned_at && (
+                          <span className="border border-[#6f8a72]/40 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-[#9fb59f]">
+                            выучено
+                          </span>
+                        )}
+                        {card.sync_group_id && (
+                          <span className="text-[10px] text-[#c9a96e]" title="Связано с другими копиями">↗</span>
+                        )}
+                        <button
+                          onClick={() => toggleFav(card)}
+                          className={`text-base transition ${card.is_favorite ? 'text-[#c9a96e]' : 'text-[#514c44] hover:text-[#948e82]'}`}
+                          title="Избранное"
+                        >
+                          ★
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => toggleFav(card)}
-                      className={`text-lg transition ${card.is_favorite ? 'text-[#6c7cff]' : 'text-gray-600 hover:text-gray-400'}`}
-                      title="Избранное"
-                    >
-                      ★
-                    </button>
+
+                    <h3 className="mt-5 text-2xl leading-tight">{card.word}</h3>
+                    {card.transcription && (
+                      <p className="mt-1 font-mono text-[11px] text-[#948e82]">{card.transcription}</p>
+                    )}
+                    <p className="mt-4 text-sm leading-6 text-[#c9a96e]">{card.translation}</p>
+
+                    {card.sentences && card.sentences.length > 0 && (
+                      <div className="mt-4 space-y-1.5 border-t border-[#24221e] pt-4 text-[11px] leading-5 text-[#948e82]">
+                        {card.sentences.slice(0, 3).map((s, i) => (
+                          <p key={i}>{s}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {card.transcription && (
-                    <p className="text-sm text-[#8b90a0] mb-2">{card.transcription}</p>
-                  )}
-                  <p className="text-md font-medium mb-3">{card.translation}</p>
-                  {card.sentences && card.sentences.length > 0 && (
-                    <div className="mb-3 space-y-1 bg-[#0f1115] p-2.5 rounded-lg text-xs text-[#8b90a0]">
-                      {card.sentences.map((s, i) => <p key={i}>• {s}</p>)}
+
+                  <div className="mt-5 flex items-center justify-between border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                    <span>SRS {card.srs_level} · ошибок {card.wrong_count}</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => handleOpenEdit(card)} className="text-[#948e82] hover:text-[#c9a96e]">
+                        Изм.
+                      </button>
+                      <button onClick={() => removeCard(card)} className="text-[#bb7464] hover:text-[#d9a093]">
+                        Удалить
+                      </button>
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-between text-xs text-[#8b90a0] pt-3 border-t border-gray-800/50">
-                  <span>SRS: {card.srs_level} | Ошибок: {card.wrong_count}</span>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => handleOpenEdit(card)} className="text-[#6c7cff] hover:underline">Изм.</button>
-                    <button onClick={() => removeCard(card)} className="text-[#a04a4a] hover:opacity-80">Удалить</button>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       <AddCardModal

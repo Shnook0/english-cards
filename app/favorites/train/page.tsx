@@ -38,7 +38,7 @@ export default function TrainFavoritesPage() {
   }
 
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">Загрузка тренировки...</div>
+    return <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">Загрузка тренировки...</div>
   }
 
   return (

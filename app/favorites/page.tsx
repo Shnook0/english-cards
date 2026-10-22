@@ -59,93 +59,92 @@ export default function FavoritesPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0f1115] text-[#e6e8ec]">
-        <p>Загрузка...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#948e82]">
+        <span className="eyebrow">Загрузка избранного</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-5xl mx-auto">
-        {/* Навигация назад */}
-        <div className="mb-6">
-          <Link href="/" className="text-sm text-[#8b90a0] hover:text-[#6c7cff] transition">
-            ← На главную
+    <div className="min-h-screen p-5 md:p-10 lg:p-14">
+      <div className="page-in mx-auto max-w-6xl">
+        <div className="mb-10 flex items-center justify-between">
+          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+            ← Библиотека
           </Link>
+          <span className="eyebrow">Отобранное</span>
         </div>
 
-        {/* Заголовок и действия */}
-        <div className="flex items-center justify-between gap-4 mb-8 pb-6 border-b border-gray-800">
+        <header className="flex flex-col justify-between gap-6 border-b border-[#24221e] pb-10 md:flex-row md:items-end">
           <div>
-            <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
-              Избранные <span className="text-[#6c7cff]">★</span>
+            <p className="eyebrow mb-4">Личная подборка</p>
+            <h1 className="display text-5xl md:text-7xl">
+              Избранные <span className="text-[#c9a96e]">★</span>
             </h1>
-            <p className="text-sm text-[#8b90a0]">Всего карточек: {cards.length}</p>
+            <p className="mt-5 text-sm text-[#948e82]">{cards.length} карточек</p>
           </div>
-
           {cards.length > 0 && (
-            <Link
-              href="/favorites/train"
-              className="rounded-lg bg-[#6c7cff] px-5 py-2.5 font-medium text-white hover:bg-[#5865e0] transition"
-            >
+            <Link href="/favorites/train" className="btn btn-primary">
               Повторить
             </Link>
           )}
-        </div>
+        </header>
 
         {error && (
-          <div className="mb-6 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-[#e6e8ec]">
+          <div className="mt-8 border border-[#bb7464]/50 bg-[#bb7464]/10 px-4 py-3 text-sm text-[#d9a093]">
             {error}
           </div>
         )}
 
-        {/* Список избранных карточек */}
-        {cards.length === 0 ? (
-          <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-12 text-center text-[#8b90a0]">
-            В избранном пока нет карточек. Добавляйте их, нажимая на звёздочку ★ у нужных слов.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cards.map((card) => (
-              <div
-                key={card.id}
-                className="rounded-xl border border-gray-800 bg-[#1a1d23] p-5 shadow-sm flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-lg font-bold text-[#e6e8ec]">{card.word}</span>
-                    <button
-                      onClick={() => handleRemoveFavorite(card.id)}
-                      className="text-lg text-[#6c7cff] hover:text-gray-500 transition"
-                      title="Убрать из избранного"
-                    >
-                      ★
-                    </button>
-                  </div>
-
-                  {card.transcription && (
-                    <p className="text-sm text-[#8b90a0] mb-2">{card.transcription}</p>
-                  )}
-
-                  <p className="text-md text-[#e6e8ec] font-medium mb-3">{card.translation}</p>
-
-                  {card.sentences && card.sentences.length > 0 && (
-                    <div className="mb-3 space-y-1 bg-[#0f1115] p-2.5 rounded-lg text-xs text-[#8b90a0]">
-                      {card.sentences.map((sent, idx) => (
-                        <p key={idx}>• {sent}</p>
-                      ))}
+        <section className="py-10">
+          {cards.length === 0 ? (
+            <div className="panel flex min-h-48 flex-col items-center justify-center p-10 text-center">
+              <p className="text-sm text-[#948e82]">В избранном пока нет карточек.</p>
+              <p className="mt-2 text-xs text-[#6f6a61]">
+                Отмечайте слова звёздочкой ★ в коллекциях.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {cards.map((card, index) => (
+                <article
+                  key={card.id}
+                  className="panel flex min-h-60 flex-col justify-between p-5 transition hover:border-[#c9a96e]/40"
+                >
+                  <div>
+                    <div className="flex items-start justify-between">
+                      <span className="font-mono text-[9px] text-[#6f6a61]">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <button
+                        onClick={() => handleRemoveFavorite(card.id)}
+                        className="text-base text-[#c9a96e] hover:text-[#948e82]"
+                        title="Убрать из избранного"
+                      >
+                        ★
+                      </button>
                     </div>
-                  )}
-                </div>
-
-                <div className="text-xs text-[#8b90a0] pt-3 border-t border-gray-800/50">
-                  SRS: {card.srs_level} | Ошибок: {card.wrong_count}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    <h3 className="mt-4 text-2xl">{card.word}</h3>
+                    {card.transcription && (
+                      <p className="mt-1 font-mono text-[11px] text-[#948e82]">{card.transcription}</p>
+                    )}
+                    <p className="mt-4 text-sm leading-6 text-[#c9a96e]">{card.translation}</p>
+                    {card.sentences && card.sentences.length > 0 && (
+                      <div className="mt-4 space-y-1.5 border-t border-[#24221e] pt-4 text-[11px] leading-5 text-[#948e82]">
+                        {card.sentences.slice(0, 3).map((sent, idx) => (
+                          <p key={idx}>{sent}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-5 border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                    SRS {card.srs_level} · ошибок {card.wrong_count}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )

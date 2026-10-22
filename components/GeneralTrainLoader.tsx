@@ -61,7 +61,7 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
         Загрузка тренировки...
       </div>
     )
@@ -69,9 +69,9 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#a04a4a]">{error}</p>
-        <Link href={exitHref} className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#bb7464]">{error}</p>
+        <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
       </div>
     )
   }

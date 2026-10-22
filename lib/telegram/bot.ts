@@ -2,6 +2,8 @@ import { answerCallbackQuery, editMessageText, sendMessage, type InlineKeyboard 
 import {
   cardKeyboard,
   cardText,
+  customIntervalKeyboard,
+  customIntervalText,
   debugKeyboard,
   debugText,
   deleteConfirmKeyboard,
@@ -21,12 +23,14 @@ import {
   TIME_PRESETS,
   timezoneKeyboard,
   timezoneText,
+  upcomingKeyboard,
+  upcomingText,
   welcomeText,
 } from './format'
 import { syncBotMenu } from './menu'
 import {
-  addPendingRepeat,
   applyBotResult,
+  clearCardQueue,
   deleteCard,
   ensureSettings,
   getCard,
@@ -34,13 +38,17 @@ import {
   getStats,
   listPendingForChat,
   listRecentDeliveries,
+  listUpcomingReviews,
   pickNextCard,
   recordDelivery,
+  replaceDontKnowReviews,
+  touchActivity,
   updateSettings,
   type BotCard,
   type TelegramSettings,
 } from './store'
 import {
+  buildDontKnowSchedule,
   formatInterval,
   normalizeTime,
   parseInterval,
@@ -83,8 +91,8 @@ function helpText(): string {
     '<b>Что я умею</b>',
     '',
     '• присылаю сложные слова из твоих папок',
-    '• повторяю слова, которые ты не знаешь',
-    '• показываю статистику',
+    '• слова «Не знаю» повторяю через 20 минут, через день и через 3 дня',
+    '• показываю статистику и следующие отправки',
     '',
     '<b>Команды</b>',
     '/settings — настройки',
@@ -141,14 +149,28 @@ export async function sendNextCard(
 async function debugView(
   settings: TelegramSettings
 ): Promise<{ text: string; keyboard: InlineKeyboard }> {
-  const [deliveries, pending, stats] = await Promise.all([
+  const [deliveries, pending, reviews, stats] = await Promise.all([
     listRecentDeliveries(settings.chat_id, 8),
     listPendingForChat(settings.chat_id),
+    listUpcomingReviews(settings.chat_id, 20),
     getStats(settings.user_id, settings.chat_id),
   ])
   return {
-    text: debugText(settings, deliveries, pending, stats),
+    text: debugText(settings, deliveries, pending, reviews, stats),
     keyboard: debugKeyboard(),
+  }
+}
+
+async function upcomingView(
+  settings: TelegramSettings
+): Promise<{ text: string; keyboard: InlineKeyboard }> {
+  const [pending, reviews] = await Promise.all([
+    listPendingForChat(settings.chat_id),
+    listUpcomingReviews(settings.chat_id, 20),
+  ])
+  return {
+    text: upcomingText(settings, pending, reviews),
+    keyboard: upcomingKeyboard(),
   }
 }
 
@@ -172,6 +194,7 @@ async function safeEdit(
 }
 
 async function sendWelcome(chatId: number, settings: TelegramSettings): Promise<void> {
+  await touchActivity(chatId)
   await syncBotMenu()
   await sendMessage(chatId, welcomeText(settings), undefined, mainReplyKeyboard())
 }
@@ -205,6 +228,34 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
 
   const settings = await ensureSettings(chatId)
   await sendWelcome(chatId, settings)
+}
+
+async function handleCustomIntervalInput(
+  chatId: number,
+  settings: TelegramSettings,
+  text: string,
+): Promise<void> {
+  const match = text.match(/\d+/)
+  const minutes = match ? Number(match[0]) : NaN
+  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 1440) {
+    await sendMessage(
+      chatId,
+      'Нужно число от 5 до 1440. Например: 5 или 45.',
+      customIntervalKeyboard(),
+    )
+    return
+  }
+
+  await updateSettings(chatId, {
+    interval_minutes: minutes,
+    awaiting_input: null,
+  })
+  const next = { ...settings, interval_minutes: minutes, awaiting_input: null }
+  await sendMessage(
+    chatId,
+    `Готово. Теперь слова приходят каждые ${formatInterval(minutes)}.\n\n${intervalText(next)}`,
+    intervalKeyboard(next),
+  )
 }
 
 async function handleCommand(
@@ -311,27 +362,30 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
   if (!text) return
 
   const parsed = parseCommand(text)
-  if (!parsed) {
-    const command = REPLY_BUTTON_COMMANDS[text]
-    if (!command) {
-      await sendMessage(chatId, `Не понял.\n\n${helpText()}`, helpKeyboard())
-      return
-    }
-
-    const { ok, settings } = await isOwner(chatId)
-    if (!ok || !settings) return
-
-    await handleCommand(chatId, settings, command, '')
-    return
-  }
-
-  if (parsed.command === '/start') {
+  if (parsed?.command === '/start') {
     await handleStart(chatId, parsed.args)
     return
   }
 
   const { ok, settings } = await isOwner(chatId)
   if (!ok || !settings) return
+
+  await touchActivity(chatId)
+
+  if (!parsed) {
+    const command = REPLY_BUTTON_COMMANDS[text]
+    if (!command) {
+      if (settings.awaiting_input === 'interval') {
+        await handleCustomIntervalInput(chatId, settings, text)
+        return
+      }
+      await sendMessage(chatId, `Не понял.\n\n${helpText()}`, helpKeyboard())
+      return
+    }
+
+    await handleCommand(chatId, settings, command, '')
+    return
+  }
 
   await handleCommand(chatId, settings, parsed.command, parsed.args)
 }
@@ -359,8 +413,15 @@ async function handleSettingsCallback(
       return
 
     case 'interval':
+      await updateSettings(chatId, { awaiting_input: null })
       await safeEdit(chatId, messageId, intervalText(settings), intervalKeyboard(settings))
       await answerCallbackQuery(query.id)
+      return
+
+    case 'ivc':
+      await updateSettings(chatId, { awaiting_input: 'interval' })
+      await safeEdit(chatId, messageId, customIntervalText(settings), customIntervalKeyboard())
+      await answerCallbackQuery(query.id, 'Напиши число минут')
       return
 
     case 'iv': {
@@ -469,6 +530,13 @@ async function handleSettingsCallback(
       return
     }
 
+    case 'upcoming': {
+      const view = await upcomingView(settings)
+      await safeEdit(chatId, messageId, view.text, view.keyboard)
+      await answerCallbackQuery(query.id)
+      return
+    }
+
     case 'next':
       await sendNextCard(chatId, settings.user_id, 'manual')
       await answerCallbackQuery(query.id, 'Отправил слово')
@@ -516,6 +584,8 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
     return
   }
 
+  await touchActivity(chatId)
+
   if (action === 'set') {
     await handleSettingsCallback(query, settings)
     return
@@ -541,6 +611,7 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
 
   switch (action) {
     case 'know':
+      await clearCardQueue(chatId, card.id)
       await applyBotResult(card, true)
       await safeEdit(chatId, messageId, `${cardText(card)}\n\nОтмечено: знаю.`, [])
       await answerCallbackQuery(query.id, 'Записал')
@@ -548,14 +619,18 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
 
     case 'dont': {
       await applyBotResult(card, false)
-      await addPendingRepeat(chatId, card.id)
+      await replaceDontKnowReviews(
+        chatId,
+        card.id,
+        buildDontKnowSchedule(settings),
+      )
       await safeEdit(
         chatId,
         messageId,
-        `${cardText(card)}\n\nОтмечено: не знаю. Повторю через 15–20 минут.`,
+        `${cardText(card)}\n\nОтмечено: не знаю. Повторю через 20 минут, завтра и через 3 дня — по два раза в день.`,
         []
       )
-      await answerCallbackQuery(query.id, 'Повторю через 15–20 минут')
+      await answerCallbackQuery(query.id, 'Запланировал повторы')
       return
     }
 

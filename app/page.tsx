@@ -133,74 +133,157 @@ export default function HomePage() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
-        Загрузка...
+      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#948e82]">
+        <span className="eyebrow">Загрузка лексикона</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-800">
-          <span className="text-sm text-[#8b90a0]">{user?.email}</span>
-          <button
-            onClick={logout}
-            className="text-sm text-[#8b90a0] hover:text-[#a04a4a] transition"
-          >
-            Выйти
-          </button>
-        </div>
+    <div className="min-h-screen p-5 md:p-10 lg:p-14">
+      <div className="page-in mx-auto max-w-6xl">
+        <header className="flex items-center justify-between border-b border-[#24221e] pb-6">
+          <Link href="/" className="group flex flex-col">
+            <span className="eyebrow">Personal lexicon</span>
+            <span className="display mt-1 text-2xl text-[#f2eee5] transition group-hover:text-[#c9a96e]">
+              English Cards
+            </span>
+          </Link>
+          <div className="flex items-center gap-5">
+            <span className="hidden text-xs text-[#948e82] sm:block">{user?.email}</span>
+            <button onClick={logout} className="btn btn-ghost !px-0 !py-0 text-[11px]">
+              Выйти
+            </button>
+          </div>
+        </header>
 
-        <Link
-          href="/general"
-          className="block mb-8 rounded-2xl border border-[#6c7cff]/40 bg-[#6c7cff]/10 p-5 hover:border-[#6c7cff] transition"
-        >
-          <h3 className="text-lg font-bold mb-1">Общая тренировка</h3>
-          <p className="text-sm text-[#8b90a0]">Слова из всех или выбранных папок с умным повторением</p>
-        </Link>
+        <section className="grid gap-10 py-12 md:grid-cols-[1.35fr_0.65fr] md:items-end md:py-16">
+          <div>
+            <p className="eyebrow mb-5">Ваш личный словарь</p>
+            <h1 className="display max-w-3xl text-5xl md:text-7xl">
+              Слова,
+              <br />
+              которые остаются.
+            </h1>
+            <p className="mt-7 max-w-xl text-sm leading-7 text-[#948e82]">
+              Тихая работа с языком: карточки, повторения и короткие тренировки.
+              Без лишнего шума — только то, что помогает запоминать.
+            </p>
+          </div>
+
+          <div className="panel p-6 md:p-8">
+            <div className="flex items-start justify-between">
+              <p className="eyebrow">Прогресс</p>
+              <span className="font-mono text-[10px] text-[#c9a96e]">01</span>
+            </div>
+            <div className="mt-9 grid grid-cols-2 gap-6">
+              <div>
+                <div className="stat-number">{learnedCount}</div>
+                <div className="mt-2 text-[11px] leading-4 text-[#948e82]">Выучено слов</div>
+              </div>
+              <div>
+                <div className="stat-number">{folders.length}</div>
+                <div className="mt-2 text-[11px] leading-4 text-[#948e82]">Личных папок</div>
+              </div>
+            </div>
+            <div className="mt-8 h-px bg-[#24221e]" />
+            <p className="mt-4 text-[11px] leading-5 text-[#948e82]">
+              Уровни A1–C2 и общая тренировка работают автоматически.
+            </p>
+          </div>
+        </section>
 
         {error && (
-          <div className="mb-6 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm">
+          <div className="mb-8 border border-[#bb7464]/50 bg-[#bb7464]/10 px-4 py-3 text-sm text-[#d9a093]">
             {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {learnedFolder && (
-            <Link
-              href={`/folder/${learnedFolder.id}`}
-              className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-5 hover:border-[#6c7cff] transition flex flex-col justify-between"
-            >
-              <h3 className="text-lg font-bold mb-1">Выученные</h3>
-              <p className="text-sm text-[#8b90a0]">Выучено слов: {learnedCount}</p>
-            </Link>
-          )}
-
-          <Link
-            href="/favorites"
-            className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-5 hover:border-[#6c7cff] transition flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-lg font-bold">Избранные</h3>
-              <span className="text-[#6c7cff]">★</span>
+        <section className="mb-14">
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <p className="eyebrow">01 / Практика</p>
+              <h2 className="mt-2 text-2xl md:text-3xl">Начните с главного</h2>
             </div>
-            <p className="text-sm text-[#8b90a0]">Повторить избранные</p>
-          </Link>
-
+          </div>
           <Link
-            href="/mistakes"
-            className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-5 hover:border-[#6c7cff] transition flex flex-col justify-between"
+            href="/general"
+            className="panel panel-hover group flex flex-col justify-between gap-8 p-6 md:flex-row md:items-center md:p-8"
           >
-            <h3 className="text-lg font-bold mb-1">Частые ошибки</h3>
-            <p className="text-sm text-[#8b90a0]">Слова для проработки</p>
+            <div>
+              <p className="eyebrow mb-3">Умное повторение</p>
+              <h3 className="text-2xl md:text-3xl">Общая тренировка</h3>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[#948e82]">
+                Слова из всех или выбранных папок. Система сама решает, что показать
+                сегодня.
+              </p>
+            </div>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#c9a96e]/50 text-lg text-[#c9a96e] transition group-hover:bg-[#c9a96e] group-hover:text-[#0b0b0a]">
+              →
+            </span>
           </Link>
-        </div>
+        </section>
 
-        {/* Подборки по уровням */}
-        <div className="mb-8">
-          <h3 className="text-xl font-bold mb-4">Подборки по уровням</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <section className="mb-14">
+          <div className="mb-5">
+            <p className="eyebrow">02 / Коллекции</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            {learnedFolder && (
+              <Link
+                href={`/folder/${learnedFolder.id}`}
+                className="panel panel-hover flex min-h-36 flex-col justify-between p-6"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="eyebrow">Архив</span>
+                  <span className="text-xs text-[#c9a96e]">→</span>
+                </div>
+                <div>
+                  <h3 className="text-xl">Выученные</h3>
+                  <p className="mt-2 text-xs text-[#948e82]">{learnedCount} слов</p>
+                </div>
+              </Link>
+            )}
+
+            <Link
+              href="/favorites"
+              className="panel panel-hover flex min-h-36 flex-col justify-between p-6"
+            >
+              <div className="flex items-center justify-between">
+                <span className="eyebrow">Отобранное</span>
+                <span className="text-xs text-[#c9a96e]">★</span>
+              </div>
+              <div>
+                <h3 className="text-xl">Избранные</h3>
+                <p className="mt-2 text-xs text-[#948e82]">Повторить избранные</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/mistakes"
+              className="panel panel-hover flex min-h-36 flex-col justify-between p-6"
+            >
+              <div className="flex items-center justify-between">
+                <span className="eyebrow">Точки роста</span>
+                <span className="text-xs text-[#bb7464]">→</span>
+              </div>
+              <div>
+                <h3 className="text-xl">Частые ошибки</h3>
+                <p className="mt-2 text-xs text-[#948e82]">Слова для проработки</p>
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        <section className="mb-14">
+          <div className="mb-5 flex items-end justify-between">
+            <div>
+              <p className="eyebrow">03 / Уровни</p>
+              <h2 className="mt-2 text-2xl md:text-3xl">Подборки по уровням</h2>
+            </div>
+            <p className="hidden text-xs text-[#948e82] md:block">A1 — C2</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {CEFR_LEVELS.map(level => {
               const exists = !!levelFolders[level]
               const busy = creatingLevel === level
@@ -209,63 +292,80 @@ export default function HomePage() {
                   key={level}
                   onClick={() => openLevel(level)}
                   disabled={busy}
-                  className={`rounded-2xl border p-5 text-left transition disabled:opacity-50 ${
+                  className={`group border p-5 text-left transition disabled:opacity-50 ${
                     exists
-                      ? 'border-[#6c7cff]/40 bg-[#6c7cff]/10 hover:border-[#6c7cff]'
-                      : 'border-gray-800 bg-[#1a1d23] hover:border-[#6c7cff]'
+                      ? 'border-[#c9a96e]/45 bg-[#c9a96e]/[0.06] hover:border-[#c9a96e]'
+                      : 'border-[#24221e] bg-[#111110] hover:border-[#c9a96e]/60'
                   }`}
                 >
-                  <div className="text-lg font-bold">{level}</div>
-                  <div className="text-xs text-[#8b90a0] mt-1">
-                    {busy ? 'Создаём...' : exists ? 'Открыть' : 'Создать'}
+                  <div className="display text-3xl">{level}</div>
+                  <div className="mt-4 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-[#948e82]">
+                    <span>{busy ? 'Создаём' : exists ? 'Открыть' : 'Создать'}</span>
+                    <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
                   </div>
                 </button>
               )
             })}
           </div>
-        </div>
+        </section>
 
-        <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-6 mb-8">
-          <h3 className="text-lg font-bold mb-4">Создать папку</h3>
-          <form onSubmit={createFolder} className="flex gap-3">
-            <input
-              type="text"
-              placeholder="Название папки..."
-              value={newFolderName}
-              onChange={e => setNewFolderName(e.target.value)}
-              className="flex-1 rounded-lg border border-gray-700 bg-[#0f1115] px-4 py-2.5 text-[#e6e8ec] placeholder-[#8b90a0] focus:border-[#6c7cff] focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!newFolderName.trim()}
-              className="rounded-lg bg-[#6c7cff] px-6 py-2.5 font-medium text-white hover:bg-[#5865e0] transition disabled:opacity-50"
-            >
-              Создать
-            </button>
-          </form>
-        </div>
+        <section className="grid gap-10 border-t border-[#24221e] pt-10 md:grid-cols-[0.8fr_1.2fr]">
+          <div>
+            <p className="eyebrow">04 / Библиотека</p>
+            <h2 className="mt-2 text-2xl md:text-3xl">Мои папки</h2>
+            <p className="mt-3 max-w-xs text-xs leading-6 text-[#948e82]">
+              Создавайте тематические коллекции и добавляйте слова вручную или
+              текстовым импортом.
+            </p>
+            <form onSubmit={createFolder} className="mt-6 flex gap-2">
+              <input
+                type="text"
+                placeholder="Название папки"
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                className="field flex-1"
+              />
+              <button type="submit" disabled={!newFolderName.trim()} className="btn btn-primary">
+                +
+              </button>
+            </form>
+          </div>
 
-        <div>
-          <h3 className="text-xl font-bold mb-4">Мои папки</h3>
-          {folders.length === 0 ? (
-            <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center text-[#8b90a0]">
-              У вас пока нет папок. Создайте первую выше.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {folders.map(folder => (
-                <Link
-                  key={folder.id}
-                  href={`/folder/${folder.id}`}
-                  className="rounded-xl border border-gray-800 bg-[#1a1d23] p-5 hover:border-[#6c7cff] transition flex items-center justify-between"
-                >
-                  <span className="font-semibold">{folder.name}</span>
-                  <span className="text-xs text-[#8b90a0]">Открыть →</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+          <div>
+            {folders.length === 0 ? (
+              <div className="panel flex min-h-40 items-center justify-center p-8 text-center text-sm text-[#948e82]">
+                У вас пока нет папок. Создайте первую слева.
+              </div>
+            ) : (
+              <div className="border-t border-[#24221e]">
+                {folders.map((folder, index) => (
+                  <Link
+                    key={folder.id}
+                    href={`/folder/${folder.id}`}
+                    className="group flex items-center justify-between border-b border-[#24221e] py-5 transition hover:border-[#c9a96e]/40"
+                  >
+                    <div className="flex items-baseline gap-4">
+                      <span className="font-mono text-[10px] text-[#6f6a61]">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <span className="text-lg text-[#f2eee5] transition group-hover:text-[#c9a96e]">
+                        {folder.name}
+                      </span>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-[#948e82] transition group-hover:text-[#c9a96e]">
+                      Открыть →
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <footer className="mt-16 flex items-center justify-between border-t border-[#24221e] py-6 text-[10px] uppercase tracking-[0.18em] text-[#6f6a61]">
+          <span>English Cards</span>
+          <span>Личный лексикон</span>
+        </footer>
       </div>
     </div>
   )

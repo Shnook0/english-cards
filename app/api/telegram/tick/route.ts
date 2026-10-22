@@ -1,12 +1,15 @@
 import { sendCard } from '@/lib/telegram/bot'
-import { isWithinWindow } from '@/lib/telegram/schedule'
+import { canSendRegular, isWithinWindow } from '@/lib/telegram/schedule'
 import {
   getCard,
   listDuePending,
+  listDueReviews,
   listSettings,
   markPendingSent,
+  markReviewSent,
   pickNextCard,
   updateSettings,
+  type TelegramSettings,
 } from '@/lib/telegram/store'
 
 export const runtime = 'nodejs'
@@ -33,12 +36,66 @@ async function runTick(request: Request): Promise<Response> {
   const sent: string[] = []
   const failed: string[] = []
   const sentChats = new Set<number>()
+  const now = new Date()
+
+  let settings: TelegramSettings[] = []
+  try {
+    settings = await listSettings()
+  } catch (error) {
+    console.error('telegram tick settings:', error)
+    return Response.json({ ok: false, error: 'settings' }, { status: 500 })
+  }
+
+  const settingsByChat = new Map(settings.map(setting => [setting.chat_id, setting]))
+
+  try {
+    const due = await listDueReviews()
+    const seen = new Set<string>()
+
+    for (const review of due) {
+      const setting = settingsByChat.get(review.chat_id)
+      if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
+
+      if (seen.has(review.card_id)) {
+        await markReviewSent(review.id)
+        continue
+      }
+      seen.add(review.card_id)
+
+      const card = await getCard(review.card_id)
+      if (!card) {
+        await markReviewSent(review.id)
+        continue
+      }
+
+      try {
+        await sendCard(review.chat_id, card, 'review')
+        await markReviewSent(review.id)
+        sent.push(`review:${card.id}`)
+      } catch (error) {
+        failed.push(`review:${card.id}`)
+        console.error('telegram tick review:', error)
+      }
+    }
+  } catch (error) {
+    console.error('telegram tick reviews:', error)
+  }
 
   try {
     const due = await listDuePending()
     const seen = new Set<string>()
 
     for (const pending of due) {
+      const setting = settingsByChat.get(pending.chat_id)
+      if (
+        !setting ||
+        setting.paused ||
+        !canSendRegular(setting, now) ||
+        sentChats.has(pending.chat_id)
+      ) {
+        continue
+      }
+
       if (seen.has(pending.card_id)) {
         await markPendingSent(pending.id)
         continue
@@ -66,16 +123,13 @@ async function runTick(request: Request): Promise<Response> {
   }
 
   try {
-    const settings = await listSettings()
-    const now = Date.now()
-
     for (const setting of settings) {
       if (setting.paused) continue
       if (sentChats.has(setting.chat_id)) continue
-      if (!isWithinWindow(setting)) continue
+      if (!canSendRegular(setting, now)) continue
 
       const last = setting.last_sent_at ? new Date(setting.last_sent_at).getTime() : 0
-      if (last > 0 && now - last < setting.interval_minutes * 60 * 1000) continue
+      if (last > 0 && now.getTime() - last < setting.interval_minutes * 60 * 1000) continue
 
       const card = await pickNextCard(setting.user_id, setting.chat_id)
       if (!card) continue

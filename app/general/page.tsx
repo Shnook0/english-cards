@@ -120,66 +120,69 @@ export default function GeneralPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
         Загрузка...
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Link href="/" className="text-sm text-[#8b90a0] hover:text-[#6c7cff] transition">← На главную</Link>
+    <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
+      <div className="page-in mx-auto max-w-5xl">
+        <div className="mb-10 flex items-center justify-between">
+          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+            ← На главную
+          </Link>
+          <span className="eyebrow">Общая практика</span>
         </div>
 
-        <div className="flex items-center justify-between gap-4 mb-8 pb-6 border-b border-gray-800">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24221e] pb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-1">Общая тренировка</h1>
-            <p className="text-sm text-[#8b90a0]">Слова из папок с умным повторением</p>
+            <p className="eyebrow mb-3">Единый словарь</p>
+            <h1 className="display text-5xl md:text-6xl">Общая тренировка</h1>
+            <p className="mt-4 text-sm text-[#948e82]">
+              Слова из папок с умным повторением
+            </p>
           </div>
           {!showForm && (
-            <button
-              onClick={() => setShowForm(true)}
-              className="rounded-lg bg-[#6c7cff] px-5 py-2.5 font-medium text-white hover:bg-[#5865e0] transition"
-            >
+            <button onClick={() => setShowForm(true)} className="btn btn-primary">
               + Создать
             </button>
           )}
         </div>
 
         {error && (
-          <div className="mb-6 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm">
+          <div className="mb-6 border border-[#bb7464]/50 bg-[#bb7464]/10 p-4 text-sm text-[#e3b4a8]">
             {error}
           </div>
         )}
 
         {showForm && (
-          <form
-            onSubmit={createTraining}
-            className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-6 mb-8 space-y-4"
-          >
-            <h3 className="text-lg font-bold">Новая общая тренировка</h3>
+          <form onSubmit={createTraining} className="panel mb-8 space-y-5 p-6 md:p-8">
+            <div>
+              <p className="eyebrow mb-2">Новый набор</p>
+              <h3 className="text-2xl">Новая общая тренировка</h3>
+            </div>
 
             <input
               type="text"
               placeholder="Название (необязательно)"
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-[#0f1115] px-4 py-2.5 text-[#e6e8ec] placeholder-[#8b90a0] focus:border-[#6c7cff] focus:outline-none"
+              className="field"
             />
 
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="space-y-3 text-sm">
+              <label className="flex cursor-pointer items-center gap-3">
                 <input
                   type="radio"
                   name="scope"
                   checked={scope === 'all'}
                   onChange={() => setScope('all')}
                 />
-                <span>По всем папкам (новые папки и слова добавятся сами)</span>
+                <span>По всем папкам — новые папки и слова добавятся сами</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-3">
                 <input
                   type="radio"
                   name="scope"
@@ -191,12 +194,12 @@ export default function GeneralPage() {
             </div>
 
             {scope === 'custom' && (
-              <div className="rounded-lg bg-[#0f1115] p-3 space-y-2">
+              <div className="space-y-3 border border-[#24221e] bg-black/20 p-4">
                 {folders.length === 0 ? (
-                  <p className="text-sm text-[#8b90a0]">У вас пока нет своих папок.</p>
+                  <p className="text-sm text-[#948e82]">У вас пока нет своих папок.</p>
                 ) : (
                   folders.map(f => (
-                    <label key={f.id} className="flex items-center gap-2 cursor-pointer">
+                    <label key={f.id} className="flex cursor-pointer items-center gap-3 text-sm">
                       <input
                         type="checkbox"
                         checked={selected.includes(f.id)}
@@ -209,18 +212,18 @@ export default function GeneralPage() {
               </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
                 disabled={creating || (scope === 'custom' && selected.length === 0)}
-                className="rounded-lg bg-[#6c7cff] px-6 py-2.5 font-medium text-white hover:bg-[#5865e0] transition disabled:opacity-50"
+                className="btn btn-primary"
               >
                 {creating ? 'Создаём...' : 'Создать'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-lg border border-gray-700 px-6 py-2.5 font-medium hover:border-[#6c7cff] transition"
+                className="btn btn-secondary"
               >
                 Отмена
               </button>
@@ -229,11 +232,14 @@ export default function GeneralPage() {
         )}
 
         {trainings.length === 0 ? (
-          <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-12 text-center text-[#8b90a0]">
-            Общих тренировок пока нет. Создайте первую.
+          <div className="panel p-14 text-center">
+            <p className="display mb-3 text-3xl">Пока пусто</p>
+            <p className="text-sm text-[#948e82]">
+              Общих тренировок нет. Создайте первую.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {trainings.map(t => {
               const folderNames = (trainingFolders[t.id] ?? [])
                 .map(id => folders.find(f => f.id === id)?.name)
@@ -242,24 +248,22 @@ export default function GeneralPage() {
               return (
                 <div
                   key={t.id}
-                  className="rounded-xl border border-gray-800 bg-[#1a1d23] p-5 flex flex-col justify-between gap-4"
+                  className="panel panel-hover flex flex-col justify-between gap-6 p-6"
                 >
                   <div>
-                    <h3 className="text-lg font-bold mb-1">{t.name}</h3>
-                    <p className="text-xs text-[#8b90a0]">
+                    <p className="eyebrow mb-3">Набор</p>
+                    <h3 className="text-2xl">{t.name}</h3>
+                    <p className="mt-2 text-xs leading-5 text-[#948e82]">
                       {t.scope === 'all' ? 'Все папки' : `Папки: ${folderNames || '—'}`}
                     </p>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Link
-                      href={`/general/${t.id}`}
-                      className="rounded-lg bg-[#6c7cff] px-4 py-2 text-sm font-medium text-white hover:bg-[#5865e0] transition"
-                    >
+                    <Link href={`/general/${t.id}`} className="btn btn-primary">
                       Открыть
                     </Link>
                     <button
                       onClick={() => deleteTraining(t)}
-                      className="text-xs text-[#a04a4a] hover:opacity-80 transition"
+                      className="text-xs text-[#bb7464] transition hover:opacity-75"
                     >
                       Удалить
                     </button>

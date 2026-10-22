@@ -1,7 +1,12 @@
 import type { InlineKeyboard, ReplyKeyboard } from './api'
 import {
+  ACTIVITY_BONUS_MINUTES,
+  canSendRegular,
+  DONT_KNOW_STAGE_LABELS,
   formatInterval,
+  hasActivityBonus,
   isWithinWindow,
+  nextScheduledAt,
   normalizeTime,
   TIMEZONE_OPTIONS,
 } from './schedule'
@@ -11,6 +16,7 @@ import type {
   DeliveryRow,
   PendingRow,
   TelegramSettings,
+  UpcomingReview,
 } from './store'
 
 export function escapeHtml(value: string): string {
@@ -62,24 +68,41 @@ function formatDateTime(iso: string, timezone: string): string {
 function deliveryLabel(kind: string): string {
   if (kind === 'scheduled') return 'по расписанию'
   if (kind === 'repeat') return 'повтор'
+  if (kind === 'review') return 'повтор «Не знаю»'
   if (kind === 'manual') return 'вручную'
   return kind
+}
+
+function reviewLabel(stage: number): string {
+  return DONT_KNOW_STAGE_LABELS[stage] ?? 'повтор'
 }
 
 function debugReason(
   settings: TelegramSettings,
   pending: PendingRow[],
+  reviews: UpcomingReview[],
   stats: BotStats,
   now: number
 ): string {
   if (settings.paused) return 'бот на паузе.'
-  if (!isWithinWindow(settings, new Date(now))) {
-    return 'сейчас вне окна отправки — бот специально молчит.'
+
+  const nowDate = new Date(now)
+  if (!canSendRegular(settings, nowDate)) {
+    return 'сейчас вне окна отправки — обычные слова ждут открытия окна.'
+  }
+
+  if (!isWithinWindow(settings, nowDate) && hasActivityBonus(settings, nowDate)) {
+    return `действует бонус после действия: обычные слова ещё приходят вне окна ${ACTIVITY_BONUS_MINUTES} мин.`
   }
 
   const duePending = pending.some(item => new Date(item.due_at).getTime() <= now)
   if (duePending) {
-    return 'есть повтор, который уже должен был прийти. Если его нет — cron-job.org не запускается.'
+    return 'есть обычный повтор, который уже должен был прийти. Если его нет — cron-job.org не запускается.'
+  }
+
+  const dueReview = reviews.some(item => new Date(item.due_at).getTime() <= now)
+  if (dueReview && isWithinWindow(settings, nowDate)) {
+    return 'есть повтор «Не знаю», который уже должен был прийти. Если его нет — cron-job.org не запускается.'
   }
 
   if (stats.hard === 0) return 'нет сложных слов в твоих папках.'
@@ -100,19 +123,25 @@ export function debugText(
   settings: TelegramSettings,
   deliveries: DeliveryRow[],
   pending: PendingRow[],
+  reviews: UpcomingReview[],
   stats: BotStats
 ): string {
   const tz = settings.timezone
   const now = Date.now()
-  const last = settings.last_sent_at ? new Date(settings.last_sent_at).getTime() : null
-  const intervalMs = settings.interval_minutes * 60 * 1000
-  const next = last !== null ? last + intervalMs : null
+  const next = nextScheduledAt(settings, new Date(now))
   const nextText =
     next === null
-      ? 'при следующей проверке'
-      : next <= now
+      ? 'пауза'
+      : next.getTime() <= now + 60_000
         ? 'уже пора'
-        : `через ${Math.ceil((next - now) / 60000)} мин (${formatTime(new Date(next).toISOString(), tz)})`
+        : `через ${Math.ceil((next.getTime() - now) / 60000)} мин (${formatTime(
+            next.toISOString(),
+            tz
+          )})`
+
+  const bonus = hasActivityBonus(settings, new Date(now))
+    ? `да, ещё ${ACTIVITY_BONUS_MINUTES} мин после действия`
+    : 'нет'
 
   const lines = [
     '<b>Диагностика</b>',
@@ -125,7 +154,11 @@ export function debugText(
       settings.last_sent_at ? formatDateTime(settings.last_sent_at, tz) : 'ещё не было'
     }</b>`,
     `Следующая плановая: <b>${nextText}</b>`,
-    `Повторов в очереди: <b>${pending.length}</b>${
+    `Бонус после действия: <b>${bonus}</b>`,
+    `Повторов «Не знаю»: <b>${reviews.length}</b>${
+      reviews[0] ? ` (ближайший ${formatDateTime(reviews[0].due_at, tz)})` : ''
+    }`,
+    `Обычных повторов: <b>${pending.length}</b>${
       pending[0] ? ` (ближайший в ${formatTime(pending[0].due_at, tz)})` : ''
     }`,
   ]
@@ -143,7 +176,9 @@ export function debugText(
   }
 
   lines.push('')
-  lines.push(`<b>Причина:</b> ${debugReason(settings, pending, stats, now)}`)
+  lines.push(
+    `<b>Причина:</b> ${debugReason(settings, pending, reviews, stats, now)}`
+  )
 
   return lines.join('\n')
 }
@@ -151,7 +186,87 @@ export function debugText(
 export function debugKeyboard(): InlineKeyboard {
   return [
     [
+      { text: 'Последние', callback_data: 'set:debug' },
+      { text: 'Следующие', callback_data: 'set:upcoming' },
+    ],
+    [
       { text: 'Обновить', callback_data: 'set:debug' },
+      { text: 'Настройки', callback_data: 'set:menu' },
+    ],
+  ]
+}
+
+export function upcomingText(
+  settings: TelegramSettings,
+  pending: PendingRow[],
+  reviews: UpcomingReview[]
+): string {
+  const tz = settings.timezone
+  const now = new Date()
+  const next = nextScheduledAt(settings, now)
+  const nextLine =
+    next === null
+      ? 'пауза'
+      : next.getTime() <= now.getTime() + 60_000
+        ? 'при ближайшей проверке'
+        : `${formatDateTime(next.toISOString(), tz)} (через ${Math.ceil(
+            (next.getTime() - now.getTime()) / 60000
+          )} мин)`
+
+  const lines = [
+    '<b>Следующие отправки</b>',
+    '',
+    `Сейчас: <b>${formatTime(now.toISOString(), tz)}</b> (${escapeHtml(tz)})`,
+    `Обычные слова: <b>${nextLine}</b>`,
+    `Режим: <b>${
+      settings.paused
+        ? 'пауза'
+        : isWithinWindow(settings, now)
+          ? 'окно открыто'
+          : hasActivityBonus(settings, now)
+            ? `бонус ${ACTIVITY_BONUS_MINUTES} мин`
+            : 'вне окна'
+    }</b>`,
+    '',
+    '<b>Повторы «Не знаю»</b>',
+  ]
+
+  if (reviews.length === 0) {
+    lines.push('пока нет запланированных.')
+  } else {
+    for (const review of reviews.slice(0, 10)) {
+      lines.push(
+        `${formatDateTime(review.due_at, tz)} — ${escapeHtml(
+          review.word
+        )} <i>(${reviewLabel(review.stage)})</i>`
+      )
+    }
+  }
+
+  lines.push('')
+  lines.push('<b>Обычные повторы</b>')
+  if (pending.length === 0) {
+    lines.push('очередь пуста.')
+  } else {
+    for (const item of pending.slice(0, 10)) {
+      lines.push(`${formatDateTime(item.due_at, tz)} — повтор`)
+    }
+  }
+
+  lines.push('')
+  lines.push('<i>«Не знаю» приходят только внутри окна. Обычные слова — в окне и ещё 30 мин после действия.</i>')
+
+  return lines.join('\n')
+}
+
+export function upcomingKeyboard(): InlineKeyboard {
+  return [
+    [
+      { text: 'Последние', callback_data: 'set:debug' },
+      { text: 'Обновить', callback_data: 'set:upcoming' },
+    ],
+    [
+      { text: 'Прислать слово', callback_data: 'set:next' },
       { text: 'Настройки', callback_data: 'set:menu' },
     ],
   ]
@@ -166,7 +281,8 @@ export function settingsText(settings: TelegramSettings): string {
     `Статус: <b>${statusLabel(settings)}</b>`,
     `Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
-    '<i>Слова приходят только внутри выбранного окна.</i>',
+    '<i>Обычные слова приходят в окне и ещё 30 мин после любого действия в боте.</i>',
+    '<i>Слова «Не знаю» повторяются через 20 мин, через день и через 3 дня — только внутри окна.</i>',
   ].join('\n')
 }
 
@@ -231,7 +347,7 @@ export function intervalText(settings: TelegramSettings): string {
     '',
     `Сейчас: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
     '',
-    '<i>Выбери, как часто присылать слова.</i>',
+    '<i>Выбери готовый вариант или задай своё количество минут.</i>',
   ].join('\n')
 }
 
@@ -244,8 +360,24 @@ export function intervalKeyboard(settings: TelegramSettings): InlineKeyboard {
   return [
     buttons.slice(0, 3),
     buttons.slice(3),
+    [{ text: 'Самому выбрать время', callback_data: 'set:ivc' }],
     [{ text: 'Назад', callback_data: 'set:menu' }],
   ]
+}
+
+export function customIntervalText(settings: TelegramSettings): string {
+  return [
+    '<b>Свой интервал</b>',
+    '',
+    `Сейчас: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
+    '',
+    'Напиши количество минут числом, например <b>5</b> или <b>45</b>.',
+    'Допустимо от 5 до 1440 минут.',
+  ].join('\n')
+}
+
+export function customIntervalKeyboard(): InlineKeyboard {
+  return [[{ text: 'Отмена', callback_data: 'set:interval' }]]
 }
 
 export function timeText(settings: TelegramSettings): string {

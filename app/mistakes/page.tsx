@@ -46,67 +46,88 @@ export default function MistakesPage() {
   }
 
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">Загрузка...</div>
+    return <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">Загрузка...</div>
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <Link href="/" className="text-sm text-[#8b90a0] hover:text-[#6c7cff]">← На главную</Link>
+    <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
+      <div className="page-in mx-auto max-w-6xl">
+        <div className="mb-10 flex items-center justify-between">
+          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+            ← На главную
+          </Link>
+          <span className="eyebrow">Личный лексикон</span>
         </div>
 
-        <div className="flex items-center justify-between gap-4 mb-8 pb-6 border-b border-gray-800">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24221e] pb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-1">Частые ошибки</h1>
-            <p className="text-sm text-[#8b90a0]">Слова с 2 и более ошибками: {cards.length}</p>
+            <p className="eyebrow mb-3">Разбор ошибок</p>
+            <h1 className="display text-5xl md:text-6xl">Частые ошибки</h1>
+            <p className="mt-4 text-sm text-[#948e82]">
+              Слова с двумя и более ошибками: {cards.length}
+            </p>
           </div>
           {cards.length > 0 && (
-            <Link
-              href="/mistakes/train"
-              className="rounded-lg bg-[#6c7cff] px-5 py-2.5 font-medium text-white hover:bg-[#5865e0] transition"
-            >
+            <Link href="/mistakes/train" className="btn btn-primary">
               Повторить
             </Link>
           )}
         </div>
 
         {cards.length === 0 ? (
-          <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-12 text-center text-[#8b90a0]">
-            Отличная работа! У вас нет слов с частыми ошибками.
+          <div className="panel p-14 text-center">
+            <p className="display text-3xl mb-3">Чисто</p>
+            <p className="text-sm text-[#948e82]">
+              Отличная работа! У вас нет слов с частыми ошибками.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {cards.map(card => (
-              <div key={card.id} className="rounded-xl border border-gray-800 bg-[#1a1d23] p-5 flex flex-col justify-between">
+              <div key={card.id} className="panel panel-hover flex flex-col justify-between p-6">
                 <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-lg font-bold">{card.word}</span>
+                  <div className="mb-3 flex items-start justify-between gap-4">
+                    <span className="font-[family-name:var(--font-display)] text-2xl">
+                      {card.word}
+                    </span>
                     <button
                       onClick={() => toggleFav(card.id, card.is_favorite)}
-                      className={`text-lg transition ${card.is_favorite ? 'text-[#6c7cff]' : 'text-gray-600 hover:text-gray-400'}`}
+                      className={`text-lg transition ${
+                        card.is_favorite
+                          ? 'text-[#c9a96e]'
+                          : 'text-[#514c44] hover:text-[#948e82]'
+                      }`}
                       title="Избранное"
                     >
                       ★
                     </button>
                   </div>
-                  {card.transcription && <p className="text-sm text-[#8b90a0] mb-2">{card.transcription}</p>}
-                  <p className="text-md font-medium mb-3">{card.translation}</p>
+                  {card.transcription && (
+                    <p className="mb-2 text-sm text-[#948e82]">{card.transcription}</p>
+                  )}
+                  <p className="mb-4 text-base text-[#f2eee5]">{card.translation}</p>
                   {card.sentences && card.sentences.length > 0 && (
-                    <div className="mb-3 space-y-1 bg-[#0f1115] p-2.5 rounded-lg text-xs text-[#8b90a0]">
-                      {card.sentences.map((s, i) => <p key={i}>• {s}</p>)}
+                    <div className="mb-4 space-y-2 border-l border-[#c9a96e]/30 pl-4 text-xs leading-6 text-[#948e82]">
+                      {card.sentences.map((s, i) => (
+                        <p key={i}>{s}</p>
+                      ))}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between text-xs text-[#8b90a0] pt-3 border-t border-gray-800/50">
-                  <span className="truncate max-w-[140px]">
-                    Папка: <strong className="text-[#e6e8ec]">{card.folders?.name || '—'}</strong>
+                <div className="flex items-center justify-between gap-3 border-t border-[#24221e] pt-4 text-xs text-[#948e82]">
+                  <span className="max-w-[140px] truncate">
+                    Папка:{' '}
+                    <strong className="font-medium text-[#f2eee5]">
+                      {card.folders?.name || '—'}
+                    </strong>
                   </span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[#a04a4a] font-medium">Ошибок: {card.wrong_count}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="font-medium text-[#bb7464]">
+                      Ошибок: {card.wrong_count}
+                    </span>
                     <button
                       onClick={() => removeFromMistakes(card.id)}
-                      className="text-[#a04a4a] hover:opacity-80 transition"
+                      className="text-[#bb7464] transition hover:opacity-75"
                       title="Убрать из частых ошибок"
                     >
                       Убрать

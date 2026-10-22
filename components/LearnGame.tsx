@@ -21,12 +21,12 @@ const CARRY_MISTAKES = 2
 // Прогресс по партиям помним дольше, чем обычную сессию
 const LEARN_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
-const STAGE_LABELS = ['Карточки', 'Выбор', 'Написание', 'Пропуски']
+const STAGE_LABELS = ['Карточки', 'Выбор', 'Пропуски', 'Написание']
 const STAGE_HINTS = [
   'Вспомните перевод слова',
   'Выберите правильный перевод',
-  'Напишите слово по-английски',
   'Вставьте пропущенные буквы',
+  'Напишите слово по-английски',
 ]
 
 type Result = 'good' | 'soft' | 'bad'
@@ -88,7 +88,8 @@ export default function LearnGame({
   warmUpVoices()
 
   const pathname = usePathname()
-  const sessionKey = `learn:${pathname}`
+  // v2: сначала пропуски, затем полное написание
+  const sessionKey = `learn:v2:${pathname}`
 
   const cardById = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards])
   const initialBatchCards = cards.slice(0, BATCH_SIZE)
@@ -143,6 +144,7 @@ export default function LearnGame({
   const [saveError, setSaveError] = useState(false)
 
   const pendingRef = useRef<Pending>(null)
+  const autoAdvanceRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const current = queue[0]
@@ -166,7 +168,7 @@ export default function LearnGame({
 
   // Пропущенные буквы для этапа «Пропуски»
   const gaps = useMemo(() => {
-    if (!current || stage !== 3) return []
+    if (!current || stage !== 2) return []
     return gapIndices(current.word, hashSeed(`${current.word}:${turn}`))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, stage, turn])
@@ -179,6 +181,7 @@ export default function LearnGame({
 
   const resetEncounter = () => {
     pendingRef.current = null
+    autoAdvanceRef.current = false
     setInput('')
     setAttempt(1)
     setFeedback('idle')
@@ -279,6 +282,11 @@ export default function LearnGame({
       const id = setTimeout(() => finishPending(), 700)
       return () => clearTimeout(id)
     }
+    if (feedback === 'revealed' && autoAdvanceRef.current) {
+      autoAdvanceRef.current = false
+      const id = setTimeout(() => finishPending(), 900)
+      return () => clearTimeout(id)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedback])
 
@@ -304,15 +312,15 @@ export default function LearnGame({
     if (feedback === 'correct') return
     if (stage !== 2 && stage !== 3) return
 
-    if (stage === 3 && input.length !== gaps.length) return
+    if (stage === 2 && input.length !== gaps.length) return
 
     const value = input.trim()
     if (!value) return
 
     const correct =
       stage === 2
-        ? isSpellingCorrect(value, current.word)
-        : isSpellingCorrect(fillGaps(current.word, gaps, input), current.word)
+        ? isSpellingCorrect(fillGaps(current.word, gaps, input), current.word)
+        : isSpellingCorrect(value, current.word)
 
     if (correct) {
       pendingRef.current = { card: current, result: attempt === 1 ? 'good' : 'soft' }
@@ -354,6 +362,7 @@ export default function LearnGame({
   const handleFlashcardDontKnow = () => {
     if (!current || feedback !== 'idle') return
     pendingRef.current = { card: current, result: 'bad' }
+    autoAdvanceRef.current = true
     setShowTranslation(true)
     setFeedback('revealed')
   }
@@ -404,8 +413,8 @@ export default function LearnGame({
     const folderComplete = carryover.length === 0 && availableNew.length === 0
 
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">
             {totalCards === 0
               ? 'Нет слов для заучивания'
@@ -414,9 +423,9 @@ export default function LearnGame({
               : `Партия ${batchNo} завершена`}
           </h2>
           {totalCards > 0 && (
-            <div className="mb-6 space-y-1 text-sm text-[#8b90a0]">
+            <div className="mb-6 space-y-1 text-sm text-[#948e82]">
               <p>
-                Пройдено слов: <b className="text-[#e6e8ec]">{mastered}</b> из {totalCards}
+                Пройдено слов: <b className="text-[#f2eee5]">{mastered}</b> из {totalCards}
               </p>
               <p>С первой попытки: {firstTryCount}</p>
               <p>Ошибок: {mistakeCount}</p>
@@ -425,7 +434,7 @@ export default function LearnGame({
               {carryover.length > 0 && (
                 <p>
                   Перенесено в следующую партию:{' '}
-                  <b className="text-[#e6e8ec]">{carryover.length}</b>
+                  <b className="text-[#f2eee5]">{carryover.length}</b>
                 </p>
               )}
               {availableNew.length > 0 && (
@@ -439,7 +448,7 @@ export default function LearnGame({
               totalCards > 0 && (
                 <button
                   onClick={restartFolder}
-                  className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+                  className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
                 >
                   Начать заново
                 </button>
@@ -447,14 +456,14 @@ export default function LearnGame({
             ) : (
               <button
                 onClick={startNextBatch}
-                className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+                className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
               >
                 Следующее заучивание
               </button>
             )}
             <button
               onClick={handleExit}
-              className="w-full rounded-lg border border-gray-700 py-3 font-medium hover:border-[#6c7cff] transition"
+              className="w-full rounded-lg border border-[#2d2a25] py-3 font-medium hover:border-[#c9a96e] transition"
             >
               Выйти
             </button>
@@ -478,25 +487,25 @@ export default function LearnGame({
   const wrongBorder = feedback === 'wrongOnce' || feedback === 'revealed'
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-4 md:p-8 max-w-2xl mx-auto flex flex-col">
+    <div className="min-h-screen bg-[#090909] text-[#f2eee5] p-4 md:p-8 max-w-2xl mx-auto flex flex-col">
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-center">
+        <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
           Не удалось сохранить часть результатов. Проверьте интернет.
         </div>
       )}
 
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-3 text-sm text-[#8b90a0]">
+        <div className="flex items-center justify-between mb-3 text-sm text-[#948e82]">
           <span>
             Партия {batchNo} · пройдено {doneCount} / {totalCards} · ошибок: {mistakeCount}
           </span>
-          <button onClick={handleExit} className="hover:text-[#e6e8ec] transition font-medium">
+          <button onClick={handleExit} className="hover:text-[#f2eee5] transition font-medium">
             Выйти
           </button>
         </div>
-        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-[#1b1a17] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#6c7cff] transition-all duration-300"
+            className="h-full bg-[#c9a96e] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -510,10 +519,10 @@ export default function LearnGame({
                 key={label}
                 className={`rounded-full border px-3 py-1 transition ${
                   active
-                    ? 'border-[#6c7cff] bg-[#6c7cff]/15 text-[#e6e8ec]'
+                    ? 'border-[#c9a96e] bg-[#c9a96e]/15 text-[#f2eee5]'
                     : passed
-                    ? 'border-green-500/40 text-green-400'
-                    : 'border-gray-800 text-[#8b90a0]'
+                    ? 'border-[#6f8a72]/40 text-[#9fb59f]'
+                    : 'border-[#24221e] text-[#948e82]'
                 }`}
               >
                 {i + 1}. {label}
@@ -521,17 +530,17 @@ export default function LearnGame({
             )
           })}
         </div>
-        <p className="mt-2 text-center text-xs text-[#8b90a0]">{STAGE_HINTS[stage]}</p>
+        <p className="mt-2 text-center text-xs text-[#948e82]">{STAGE_HINTS[stage]}</p>
       </div>
 
-      <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-6 md:p-8 shadow-2xl">
+      <div className="rounded-2xl border border-[#24221e] bg-[#111110] p-6 md:p-8 shadow-2xl">
         {stage === 0 && (
           <div>
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => speak(current.word)}
-                className="rounded-lg bg-[#0f1115] px-2.5 py-1.5 text-[#6c7cff] hover:bg-gray-800 transition"
+                className="rounded-lg bg-[#090909] px-2.5 py-1.5 text-[#c9a96e] hover:bg-[#1b1a17] transition"
                 title="Озвучить"
               >
                 🔊
@@ -545,43 +554,37 @@ export default function LearnGame({
             >
               <h2 className="text-3xl md:text-4xl font-bold mb-2">{current.word}</h2>
               {current.transcription && (
-                <p className="text-sm text-[#8b90a0]">{current.transcription}</p>
+                <p className="text-sm text-[#948e82]">{current.transcription}</p>
+              )}
+              {current.sentences && current.sentences.length > 0 && (
+                <div className="mx-auto mt-6 max-w-xl space-y-1.5 rounded-xl border border-[#24221e] bg-[#090909] p-3 text-left text-xs leading-relaxed text-[#948e82]">
+                  {current.sentences.map((s, i) => (
+                    <p key={i}>• {s}</p>
+                  ))}
+                </div>
               )}
               <div className="my-8 flex min-h-[72px] items-center justify-center">
                 {showTranslation ? (
-                  <p className="text-2xl font-bold text-[#6c7cff]">{current.translation}</p>
+                  <p className="text-2xl font-bold text-[#c9a96e]">{current.translation}</p>
                 ) : (
-                  <span className="text-xs uppercase tracking-wider text-[#8b90a0]">
+                  <span className="text-xs uppercase tracking-wider text-[#948e82]">
                     Нажмите, чтобы показать перевод
                   </span>
                 )}
               </div>
             </button>
 
-            {showTranslation && current.sentences && current.sentences.length > 0 && (
-              <div className="mb-4 space-y-1.5 rounded-xl bg-[#0f1115] p-3 text-xs text-[#8b90a0]">
-                {current.sentences.map((s, i) => (
-                  <p key={i}>• {s}</p>
-                ))}
-              </div>
-            )}
-
             {feedback === 'revealed' ? (
-              <button
-                type="button"
-                onClick={finishPending}
-                autoFocus
-                className="w-full rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition"
-              >
-                Дальше
-              </button>
+              <div className="rounded-xl border border-[#bb7464]/40 bg-[#bb7464]/10 py-3 text-center text-xs font-medium uppercase tracking-[0.18em] text-[#948e82]">
+                Следующая карточка…
+              </div>
             ) : showTranslation ? (
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={handleFlashcardDontKnow}
                   disabled={feedback !== 'idle'}
-                  className="rounded-xl border border-[#a04a4a] bg-[#a04a4a]/10 py-3 font-semibold text-[#a04a4a] hover:bg-[#a04a4a]/20 transition disabled:opacity-50"
+                  className="rounded-xl border border-[#bb7464] bg-[#bb7464]/10 py-3 font-semibold text-[#bb7464] hover:bg-[#bb7464]/20 transition disabled:opacity-50"
                 >
                   Не знаю
                 </button>
@@ -589,7 +592,7 @@ export default function LearnGame({
                   type="button"
                   onClick={handleFlashcardKnow}
                   disabled={feedback !== 'idle'}
-                  className="rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition disabled:opacity-50"
+                  className="rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition disabled:opacity-50"
                 >
                   Знаю
                 </button>
@@ -598,7 +601,7 @@ export default function LearnGame({
               <button
                 type="button"
                 onClick={() => setShowTranslation(true)}
-                className="w-full rounded-xl border border-gray-700 py-3 font-semibold hover:border-[#6c7cff] transition"
+                className="w-full rounded-xl border border-[#2d2a25] py-3 font-semibold hover:border-[#c9a96e] transition"
               >
                 Показать перевод
               </button>
@@ -611,16 +614,23 @@ export default function LearnGame({
             <div className="mb-6 text-center">
               <p className="text-2xl md:text-3xl font-bold">{current.word}</p>
               {current.transcription && (
-                <p className="mt-1 text-sm text-[#8b90a0]">{current.transcription}</p>
+                <p className="mt-1 text-sm text-[#948e82]">{current.transcription}</p>
               )}
               <button
                 type="button"
                 onClick={() => speak(current.word)}
-                className="mt-2 rounded-lg bg-[#0f1115] px-2.5 py-1.5 text-[#6c7cff] hover:bg-gray-800 transition"
+                className="mt-2 rounded-lg bg-[#090909] px-2.5 py-1.5 text-[#c9a96e] hover:bg-[#1b1a17] transition"
                 title="Озвучить"
               >
                 🔊
               </button>
+              {current.sentences && current.sentences.length > 0 && (
+                <div className="mx-auto mt-5 max-w-xl space-y-1.5 rounded-xl border border-[#24221e] bg-[#090909] p-3 text-left text-xs leading-relaxed text-[#948e82]">
+                  {current.sentences.map((s, i) => (
+                    <p key={i}>• {s}</p>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -628,11 +638,11 @@ export default function LearnGame({
                 const isCorrect = normalizeRu(option) === normalizeRu(current.translation)
                 const isChosen = selected === option
 
-                let state = 'border-gray-700 bg-[#0f1115] hover:border-[#6c7cff]'
-                if (feedback === 'correct' && isCorrect) state = 'border-green-500 bg-green-500/10'
+                let state = 'border-[#2d2a25] bg-[#090909] hover:border-[#c9a96e]'
+                if (feedback === 'correct' && isCorrect) state = 'border-[#6f8a72] bg-[#6f8a72]/10'
                 else if (feedback === 'revealed') {
-                  if (isCorrect) state = 'border-green-500 bg-green-500/10'
-                  else if (isChosen) state = 'border-[#a04a4a] bg-[#a04a4a]/15'
+                  if (isCorrect) state = 'border-[#6f8a72] bg-[#6f8a72]/10'
+                  else if (isChosen) state = 'border-[#bb7464] bg-[#bb7464]/15'
                 }
 
                 return (
@@ -650,18 +660,18 @@ export default function LearnGame({
             </div>
 
             {feedback === 'correct' && (
-              <p className="mt-4 text-center text-sm text-green-400">Верно!</p>
+              <p className="mt-4 text-center text-sm text-[#9fb59f]">Верно!</p>
             )}
             {feedback === 'revealed' && (
               <div className="mt-4 text-center">
-                <p className="mb-3 text-sm text-[#a04a4a]">
-                  Неверно. Правильный перевод: <b className="text-[#e6e8ec]">{current.translation}</b>
+                <p className="mb-3 text-sm text-[#bb7464]">
+                  Неверно. Правильный перевод: <b className="text-[#f2eee5]">{current.translation}</b>
                 </p>
                 <button
                   type="button"
                   onClick={finishPending}
                   autoFocus
-                  className="w-full rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition"
+                  className="w-full rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition"
                 >
                   Дальше
                 </button>
@@ -673,13 +683,13 @@ export default function LearnGame({
         {(stage === 2 || stage === 3) && (
           <form onSubmit={handleSubmit}>
             <div className="mb-6 text-center">
-              <p className="mb-2 text-sm text-[#8b90a0]">
-                {stage === 2 ? 'Напишите слово по-английски' : 'Вставьте пропущенные буквы'}
+              <p className="mb-2 text-sm text-[#948e82]">
+                {stage === 2 ? 'Вставьте пропущенные буквы' : 'Напишите слово по-английски'}
               </p>
               <p className="text-xl font-semibold">{current.translation}</p>
 
-              {stage === 3 && (
-                <p className="mt-6 whitespace-pre-wrap break-all font-mono text-3xl tracking-[0.25em] text-[#e6e8ec]">
+              {stage === 2 && (
+                <p className="mt-6 whitespace-pre-wrap break-all font-mono text-3xl tracking-[0.25em] text-[#f2eee5]">
                   {maskedWord}
                 </p>
               )}
@@ -691,7 +701,7 @@ export default function LearnGame({
               value={input}
               onChange={e =>
                 setInput(
-                  stage === 3
+                  stage === 2
                     ? e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, gaps.length)
                     : e.target.value
                 )
@@ -703,55 +713,55 @@ export default function LearnGame({
               spellCheck={false}
               autoComplete="off"
               placeholder={
-                stage === 2 ? 'Введите слово по-английски' : 'Введите пропущенные буквы'
+                stage === 2 ? 'Введите пропущенные буквы' : 'Введите слово по-английски'
               }
-              className={`w-full rounded-lg border bg-[#0f1115] p-3 text-center text-lg text-[#e6e8ec] outline-none disabled:opacity-70 ${
+              className={`w-full rounded-lg border bg-[#090909] p-3 text-center text-lg text-[#f2eee5] outline-none disabled:opacity-70 ${
                 feedback === 'correct'
-                  ? 'border-green-500'
+                  ? 'border-[#6f8a72]'
                   : wrongBorder
-                  ? 'border-[#a04a4a]'
-                  : 'border-gray-700 focus:border-[#6c7cff]'
+                  ? 'border-[#bb7464]'
+                  : 'border-[#2d2a25] focus:border-[#c9a96e]'
               }`}
             />
 
-            {stage === 3 && (
-              <p className="mt-2 text-center text-xs text-[#8b90a0]">
+            {stage === 2 && (
+              <p className="mt-2 text-center text-xs text-[#948e82]">
                 {input.length} / {gaps.length}
               </p>
             )}
 
             {feedback === 'wrongOnce' && (
-              <p className="mt-3 text-center text-sm text-[#a04a4a]">
+              <p className="mt-3 text-center text-sm text-[#bb7464]">
                 Неверно. Попробуйте ещё раз.
               </p>
             )}
             {feedback === 'correct' && (
-              <p className="mt-3 text-center text-sm text-green-400">
+              <p className="mt-3 text-center text-sm text-[#9fb59f]">
                 {attempt === 1 ? 'Верно!' : 'Верно, но со второй попытки'}
               </p>
             )}
             {feedback === 'revealed' && (
-              <div className="mt-3 rounded-xl bg-[#0f1115] p-4 text-center">
-                <p className="mb-1 text-sm text-[#8b90a0]">Правильно:</p>
-                <p className="text-2xl font-bold text-[#6c7cff]">{current.word}</p>
+              <div className="mt-3 rounded-xl bg-[#090909] p-4 text-center">
+                <p className="mb-1 text-sm text-[#948e82]">Правильно:</p>
+                <p className="text-2xl font-bold text-[#c9a96e]">{current.word}</p>
                 {current.transcription && (
-                  <p className="mt-1 text-sm text-[#8b90a0]">{current.transcription}</p>
+                  <p className="mt-1 text-sm text-[#948e82]">{current.transcription}</p>
                 )}
               </div>
             )}
 
-            {showHint && stage === 2 && feedback !== 'revealed' && (
-              <p className="mt-3 text-center text-sm text-[#8b90a0]">
+            {showHint && stage === 3 && feedback !== 'revealed' && (
+              <p className="mt-3 text-center text-sm text-[#948e82]">
                 Начинается на «{current.word[0]}», букв: {current.word.replace(/[^a-zA-Z]/g, '').length}
               </p>
             )}
 
             <div className="mt-5 flex gap-3">
-              {feedback !== 'revealed' && feedback !== 'correct' && stage === 2 && (
+              {feedback !== 'revealed' && feedback !== 'correct' && stage === 3 && (
                 <button
                   type="button"
                   onClick={() => setShowHint(true)}
-                  className="rounded-xl border border-gray-700 px-4 py-3 text-sm font-medium hover:border-[#6c7cff] transition"
+                  className="rounded-xl border border-[#2d2a25] px-4 py-3 text-sm font-medium hover:border-[#c9a96e] transition"
                 >
                   Подсказка
                 </button>
@@ -760,7 +770,7 @@ export default function LearnGame({
                 <button
                   type="submit"
                   autoFocus
-                  className="flex-1 rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition"
+                  className="flex-1 rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition"
                 >
                   Дальше
                 </button>
@@ -770,9 +780,9 @@ export default function LearnGame({
                   disabled={
                     feedback === 'correct' ||
                     !input.trim() ||
-                    (stage === 3 && input.length !== gaps.length)
+                    (stage === 2 && input.length !== gaps.length)
                   }
-                  className="flex-1 rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition disabled:opacity-50"
                 >
                   Проверить
                 </button>

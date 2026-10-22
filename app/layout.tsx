@@ -3,8 +3,8 @@ import './globals.css'
 import ScrollRestorer from '@/components/ScrollRestorer'
 
 export const metadata: Metadata = {
-  title: 'English Cards',
-  description: 'Тренажёр английских слов',
+  title: 'English Cards — личный лексикон',
+  description: 'Тихий, продуманный тренажёр английских слов',
 }
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="bg-[#0f1115] text-[#e6e8ec] min-h-screen font-sans antialiased">
+      <body className="bg-[#090909] text-[#f2eee5] min-h-screen font-sans antialiased">
         <ScrollRestorer />
         {children}
       </body>

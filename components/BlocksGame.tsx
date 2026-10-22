@@ -280,19 +280,19 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
 
   if (phase === 'finished') {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">
             {cards.length === 0 ? 'Нет слов для игры' : 'Слова закончились'}
           </h2>
           {cards.length > 0 && (
             <>
-              <p className="text-sm text-[#8b90a0] mb-1">
+              <p className="text-sm text-[#948e82] mb-1">
                 Слов пройдено: {doneCount} · Очки: {score}
               </p>
-              <p className="text-sm text-[#8b90a0] mb-2">🏆 Рекорд: {shownBest}</p>
+              <p className="text-sm text-[#948e82] mb-2">🏆 Рекорд: {shownBest}</p>
               {newRecord && (
-                <p className="text-green-400 font-semibold mb-2">Новый рекорд!</p>
+                <p className="text-[#9fb59f] font-semibold mb-2">Новый рекорд!</p>
               )}
             </>
           )}
@@ -301,14 +301,14 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
             {cards.length > 0 && (
               <button
                 onClick={onNextRound}
-                className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+                className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
               >
                 Ещё раунд
               </button>
             )}
             <button
               onClick={handleExit}
-              className="w-full rounded-lg border border-gray-700 py-3 font-medium hover:border-[#6c7cff] transition"
+              className="w-full rounded-lg border border-[#2d2a25] py-3 font-medium hover:border-[#c9a96e] transition"
             >
               Выйти
             </button>
@@ -320,23 +320,23 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
 
   if (phase === 'over') {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Игра окончена</h2>
-          <p className="text-4xl font-bold text-[#6c7cff] mb-2">{score}</p>
-          {newRecord && <p className="text-green-400 font-semibold mb-2">Новый рекорд! 🏆</p>}
-          <p className="text-sm text-[#8b90a0] mb-1">🏆 Рекорд: {shownBest}</p>
-          <p className="text-sm text-[#8b90a0] mb-6">Слов пройдено: {doneCount}</p>
+          <p className="text-4xl font-bold text-[#c9a96e] mb-2">{score}</p>
+          {newRecord && <p className="text-[#9fb59f] font-semibold mb-2">Новый рекорд! 🏆</p>}
+          <p className="text-sm text-[#948e82] mb-1">🏆 Рекорд: {shownBest}</p>
+          <p className="text-sm text-[#948e82] mb-6">Слов пройдено: {doneCount}</p>
           <div className="flex flex-col gap-3">
             <button
               onClick={restartGame}
-              className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+              className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
             >
               Играть снова
             </button>
             <button
               onClick={handleExit}
-              className="w-full rounded-lg border border-gray-700 py-3 font-medium hover:border-[#6c7cff] transition"
+              className="w-full rounded-lg border border-[#2d2a25] py-3 font-medium hover:border-[#c9a96e] transition"
             >
               Выйти
             </button>
@@ -356,38 +356,38 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-4 md:p-8 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#090909] text-[#f2eee5] p-4 md:p-8 max-w-4xl mx-auto">
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-center">
+        <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
           Не удалось сохранить часть результатов. Проверьте интернет.
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-4 text-sm text-[#8b90a0]">
-        <span className="font-medium text-[#e6e8ec]">Блоки</span>
+      <div className="flex items-center justify-between mb-4 text-sm text-[#948e82]">
+        <span className="font-medium text-[#f2eee5]">Блоки</span>
         <span>
-          Слов: <b className="text-[#e6e8ec]">{doneCount}</b>
+          Слов: <b className="text-[#f2eee5]">{doneCount}</b>
         </span>
-        <button onClick={handleExit} className="hover:text-[#e6e8ec] transition font-medium">
+        <button onClick={handleExit} className="hover:text-[#f2eee5] transition font-medium">
           Выйти
         </button>
       </div>
 
-      <div className="mb-6 flex items-end justify-between rounded-xl border border-gray-800 bg-[#1a1d23] px-4 py-3">
+      <div className="mb-6 flex items-end justify-between rounded-xl border border-[#24221e] bg-[#111110] px-4 py-3">
         <div>
-          <p className="text-xs text-[#8b90a0]">Очки</p>
+          <p className="text-xs text-[#948e82]">Очки</p>
           <p className="text-3xl font-bold">
             {score}
             {gain && (
-              <span key={gain.key} className="ml-2 text-base font-semibold text-green-400">
+              <span key={gain.key} className="ml-2 text-base font-semibold text-[#9fb59f]">
                 +{gain.value}
               </span>
             )}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-[#8b90a0]">🏆 Рекорд</p>
-          <p className={`text-xl font-bold ${newRecord ? 'text-green-400' : ''}`}>{shownBest}</p>
+          <p className="text-xs text-[#948e82]">🏆 Рекорд</p>
+          <p className={`text-xl font-bold ${newRecord ? 'text-[#9fb59f]' : ''}`}>{shownBest}</p>
         </div>
       </div>
 
@@ -395,18 +395,18 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
         <div className="md:w-72 space-y-4">
           {phase === 'question' && current && (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
+              <div className="rounded-xl border border-[#24221e] bg-[#111110] p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-2xl font-bold">{current.word}</p>
                     {current.transcription && (
-                      <p className="text-sm text-[#8b90a0]">{current.transcription}</p>
+                      <p className="text-sm text-[#948e82]">{current.transcription}</p>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => speak(current.word)}
-                    className="rounded-lg bg-[#0f1115] px-2.5 py-1.5 text-[#6c7cff] hover:bg-gray-800 transition"
+                    className="rounded-lg bg-[#090909] px-2.5 py-1.5 text-[#c9a96e] hover:bg-[#1b1a17] transition"
                     title="Озвучить"
                   >
                     🔊
@@ -424,27 +424,27 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="Введите перевод"
-                className={`w-full rounded-lg border bg-[#1a1d23] p-3 text-[#e6e8ec] outline-none ${
-                  attempt === 2 ? 'border-[#a04a4a]' : 'border-gray-700 focus:border-[#6c7cff]'
+                className={`w-full rounded-lg border bg-[#111110] p-3 text-[#f2eee5] outline-none ${
+                  attempt === 2 ? 'border-[#bb7464]' : 'border-[#2d2a25] focus:border-[#c9a96e]'
                 }`}
               />
 
               {attempt === 2 && (
-                <p className="text-sm text-[#a04a4a]">Неверно. Попробуйте ещё раз.</p>
+                <p className="text-sm text-[#bb7464]">Неверно. Попробуйте ещё раз.</p>
               )}
 
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={failWord}
-                  className="rounded-xl border border-gray-700 px-4 py-3 text-sm font-medium hover:border-[#a04a4a] hover:text-[#a04a4a] transition"
+                  className="rounded-xl border border-[#2d2a25] px-4 py-3 text-sm font-medium hover:border-[#bb7464] hover:text-[#bb7464] transition"
                 >
                   Не знаю
                 </button>
                 <button
                   type="submit"
                   disabled={!input.trim()}
-                  className="flex-1 rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition disabled:opacity-50"
                 >
                   Отправить
                 </button>
@@ -454,15 +454,15 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
 
           {phase === 'revealed' && current && (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
-                <p className="text-sm text-[#8b90a0] mb-1">{current.word}</p>
-                <p className="text-sm text-[#8b90a0] mb-1">Правильный ответ:</p>
-                <p className="text-2xl font-bold text-[#6c7cff]">{current.translation}</p>
+              <div className="rounded-xl border border-[#24221e] bg-[#111110] p-4">
+                <p className="text-sm text-[#948e82] mb-1">{current.word}</p>
+                <p className="text-sm text-[#948e82] mb-1">Правильный ответ:</p>
+                <p className="text-2xl font-bold text-[#c9a96e]">{current.translation}</p>
               </div>
               <button
                 type="submit"
                 autoFocus
-                className="w-full rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition"
+                className="w-full rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition"
               >
                 Дальше
               </button>
@@ -472,14 +472,14 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
           {phase === 'placing' && (
             <>
               {lastAnswer && (
-                <div className="rounded-xl border border-green-500/60 bg-green-500/10 p-4">
-                  <p className="font-semibold text-green-400">Ты правильно ответил! ✓</p>
-                  <p className="mt-2 text-sm text-[#8b90a0]">{lastAnswer.word}</p>
-                  <p className="text-sm text-[#8b90a0]">Правильный ответ:</p>
-                  <p className="text-xl font-bold text-[#e6e8ec]">{lastAnswer.translation}</p>
+                <div className="rounded-xl border border-[#6f8a72]/60 bg-[#6f8a72]/10 p-4">
+                  <p className="font-semibold text-[#9fb59f]">Ты правильно ответил! ✓</p>
+                  <p className="mt-2 text-sm text-[#948e82]">{lastAnswer.word}</p>
+                  <p className="text-sm text-[#948e82]">Правильный ответ:</p>
+                  <p className="text-xl font-bold text-[#f2eee5]">{lastAnswer.translation}</p>
                 </div>
               )}
-              <p className="text-sm text-[#8b90a0]">
+              <p className="text-sm text-[#948e82]">
                 Перетащите фигуры на поле. Осталось: {pieces.length}
               </p>
             </>
@@ -490,8 +490,8 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
           <div ref={boardRef} className="grid grid-cols-8 select-none">
             {board.map((row, r) =>
               row.map((value, c) => {
-                let cls = value !== 0 ? COLORS[value] : 'bg-[#1a1d23]'
-                if (previewCells.has(`${r},${c}`)) cls = 'bg-[#6c7cff]/50'
+                let cls = value !== 0 ? COLORS[value] : 'bg-[#111110]'
+                if (previewCells.has(`${r},${c}`)) cls = 'bg-[#c9a96e]/50'
                 return (
                   <div key={`${r}-${c}`} className="aspect-square p-[2px]">
                     <div className={`h-full w-full rounded-md transition-colors ${cls}`} />
@@ -509,8 +509,8 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
                   type="button"
                   onPointerDown={e => startDrag(e, p)}
                   onContextMenu={e => e.preventDefault()}
-                  className={`touch-none select-none rounded-xl border border-gray-700 bg-[#1a1d23] p-2 transition ${
-                    drag?.pieceId === p.id ? 'opacity-30' : 'hover:border-[#6c7cff]'
+                  className={`touch-none select-none rounded-xl border border-[#2d2a25] bg-[#111110] p-2 transition ${
+                    drag?.pieceId === p.id ? 'opacity-30' : 'hover:border-[#c9a96e]'
                   }`}
                 >
                   <div

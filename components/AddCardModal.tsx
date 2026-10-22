@@ -402,28 +402,28 @@ export default function AddCardModal({
   const countOld = duplicateItemsOnly.filter(d => d.choice === 'old').length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-[#1a1d23] border border-gray-800 p-6 shadow-2xl text-[#e6e8ec]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
+      <div className="w-full max-w-lg rounded-2xl bg-[#111110] border border-[#24221e] p-6 shadow-2xl text-[#f2eee5]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold">
             {cardToEdit ? 'Редактировать карточку' : 'Добавить карточки'}
           </h3>
           <button
             onClick={onClose}
-            className="text-[#8b90a0] hover:text-[#e6e8ec] text-lg font-bold"
+            className="text-[#948e82] hover:text-[#f2eee5] text-lg font-bold"
           >
             ✕
           </button>
         </div>
 
         {!cardToEdit && (
-          <div className="flex border-b border-gray-800 mb-4">
+          <div className="flex border-b border-[#24221e] mb-4">
             <button
               onClick={() => setActiveTab('manual')}
               className={`pb-2 px-4 text-sm font-medium transition border-b-2 ${
                 activeTab === 'manual'
-                  ? 'border-[#6c7cff] text-[#6c7cff]'
-                  : 'border-transparent text-[#8b90a0] hover:text-[#e6e8ec]'
+                  ? 'border-[#c9a96e] text-[#c9a96e]'
+                  : 'border-transparent text-[#948e82] hover:text-[#f2eee5]'
               }`}
             >
               Вручную
@@ -432,8 +432,8 @@ export default function AddCardModal({
               onClick={() => setActiveTab('import')}
               className={`pb-2 px-4 text-sm font-medium transition border-b-2 ${
                 activeTab === 'import'
-                  ? 'border-[#6c7cff] text-[#6c7cff]'
-                  : 'border-transparent text-[#8b90a0] hover:text-[#e6e8ec]'
+                  ? 'border-[#c9a96e] text-[#c9a96e]'
+                  : 'border-transparent text-[#948e82] hover:text-[#f2eee5]'
               }`}
             >
               Текстовый импорт
@@ -442,7 +442,7 @@ export default function AddCardModal({
         )}
 
         {error && (
-          <div className="mb-4 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm">
+          <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm">
             {error}
           </div>
         )}
@@ -450,7 +450,7 @@ export default function AddCardModal({
         {activeTab === 'manual' || cardToEdit ? (
           <form onSubmit={handleManualSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#8b90a0] mb-1">
+              <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Слово (англ) *
               </label>
               <input
@@ -458,25 +458,25 @@ export default function AddCardModal({
                 required
                 value={word}
                 onChange={e => handleWordChange(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-[#0f1115] px-3 py-2 text-[#e6e8ec] focus:border-[#6c7cff] focus:outline-none"
+                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
                 placeholder="apple"
               />
               {matchNotice && !cardToEdit && (
-                <div className="mt-2 rounded-xl border border-[#6c7cff]/30 bg-[#0f1115] p-3 text-sm">
-                  <p className="mb-2 text-[#e6e8ec]">{matchNotice}</p>
+                <div className="mt-2 rounded-xl border border-[#c9a96e]/30 bg-[#090909] p-3 text-sm">
+                  <p className="mb-2 text-[#f2eee5]">{matchNotice}</p>
                   {existingMatches.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => handleUseExistingData(existingMatches[0])}
-                        className="rounded-lg bg-gray-800 px-3 py-1 text-xs hover:bg-gray-700 transition"
+                        className="rounded-lg bg-[#1b1a17] px-3 py-1 text-xs hover:bg-[#2d2a25] transition"
                       >
                         Использовать данные
                       </button>
                       <button
                         type="button"
                         onClick={handleLinkToAll}
-                        className="rounded-lg bg-[#6c7cff]/20 text-[#6c7cff] px-3 py-1 text-xs hover:bg-[#6c7cff]/30 transition"
+                        className="rounded-lg bg-[#c9a96e]/20 text-[#c9a96e] px-3 py-1 text-xs hover:bg-[#c9a96e]/30 transition"
                       >
                         Связать со всеми копиями
                       </button>
@@ -485,25 +485,25 @@ export default function AddCardModal({
                 </div>
               )}
               {linkToGroup && (
-                <p className="mt-1 text-xs text-[#6c7cff]">🔗 Связано с другими копиями</p>
+                <p className="mt-1 text-xs text-[#c9a96e]">🔗 Связано с другими копиями</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8b90a0] mb-1">
+              <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Транскрипция
               </label>
               <input
                 type="text"
                 value={transcription}
                 onChange={e => setTranscription(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-[#0f1115] px-3 py-2 text-[#e6e8ec] focus:border-[#6c7cff] focus:outline-none"
+                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
                 placeholder="[ˈæp.əl]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8b90a0] mb-1">
+              <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Перевод *
               </label>
               <input
@@ -511,20 +511,20 @@ export default function AddCardModal({
                 required
                 value={translation}
                 onChange={e => setTranslation(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-[#0f1115] px-3 py-2 text-[#e6e8ec] focus:border-[#6c7cff] focus:outline-none"
+                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
                 placeholder="яблоко"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8b90a0] mb-1">
+              <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Примеры (каждый с новой строки)
               </label>
               <textarea
                 rows={3}
                 value={sentencesText}
                 onChange={e => setSentencesText(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-[#0f1115] px-3 py-2 text-[#e6e8ec] focus:border-[#6c7cff] focus:outline-none resize-none"
+                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none resize-none"
                 placeholder="I like to eat a red apple."
               />
             </div>
@@ -533,7 +533,7 @@ export default function AddCardModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 rounded-lg bg-[#6c7cff] py-2.5 text-white font-medium hover:bg-[#5865e0] transition disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
               >
                 {loading
                   ? 'Сохранение...'
@@ -544,7 +544,7 @@ export default function AddCardModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 rounded-lg border border-gray-700 bg-transparent text-[#8b90a0] hover:text-[#e6e8ec] hover:border-gray-500 transition"
+                className="px-4 rounded-lg border border-[#2d2a25] bg-transparent text-[#948e82] hover:text-[#f2eee5] hover:border-[#4a463e] transition"
               >
                 Отмена
               </button>
@@ -552,8 +552,8 @@ export default function AddCardModal({
           </form>
         ) : showConflictScreen ? (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#232733] pb-3">
-              <h4 className="text-sm font-semibold text-[#e6e8ec]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#24221e] pb-3">
+              <h4 className="text-sm font-semibold text-[#f2eee5]">
                 Найдены дубликаты: {duplicateItemsOnly.length}. Что использовать?
               </h4>
               <div className="flex gap-2">
@@ -566,8 +566,8 @@ export default function AddCardModal({
                   }
                   className={`rounded px-2 py-1 text-xs border transition ${
                     allNew
-                      ? 'bg-[#6c7cff]/20 border-[#6c7cff] text-[#6c7cff]'
-                      : 'bg-[#1a1d23] border-[#232733] text-[#6c7cff] hover:bg-[#232733]'
+                      ? 'bg-[#c9a96e]/20 border-[#c9a96e] text-[#c9a96e]'
+                      : 'bg-[#111110] border-[#24221e] text-[#c9a96e] hover:bg-[#24221e]'
                   }`}
                 >
                   Для всех: Новое ({countNew})
@@ -581,8 +581,8 @@ export default function AddCardModal({
                   }
                   className={`rounded px-2 py-1 text-xs border transition ${
                     allOld
-                      ? 'bg-[#6c7cff]/20 border-[#6c7cff] text-[#e6e8ec]'
-                      : 'bg-[#1a1d23] border-[#232733] text-[#8b90a0] hover:bg-[#232733]'
+                      ? 'bg-[#c9a96e]/20 border-[#c9a96e] text-[#f2eee5]'
+                      : 'bg-[#111110] border-[#24221e] text-[#948e82] hover:bg-[#24221e]'
                   }`}
                 >
                   Для всех: Старое ({countOld})
@@ -596,9 +596,9 @@ export default function AddCardModal({
                 return (
                   <div
                     key={item.parsed.word}
-                    className="rounded-xl border border-[#232733] bg-[#0f1115] p-3.5 space-y-2"
+                    className="rounded-xl border border-[#24221e] bg-[#090909] p-3.5 space-y-2"
                   >
-                    <div className="text-base font-bold text-[#e6e8ec]">
+                    <div className="text-base font-bold text-[#f2eee5]">
                       {item.parsed.word}
                     </div>
 
@@ -617,22 +617,22 @@ export default function AddCardModal({
                               )
                             )
                           }
-                          className="mt-1 accent-[#6c7cff]"
+                          className="mt-1 accent-[#c9a96e]"
                         />
                         <div>
-                          <span className="text-[#8b90a0] text-xs uppercase tracking-wider block">
+                          <span className="text-[#948e82] text-xs uppercase tracking-wider block">
                             Новое:
                           </span>
                           <span>{item.parsed.translation}</span>
                           {item.parsed.transcription && (
-                            <span className="text-[#8b90a0] ml-2">
+                            <span className="text-[#948e82] ml-2">
                               ({item.parsed.transcription})
                             </span>
                           )}
                         </div>
                       </label>
 
-                      <label className="flex items-start gap-2 cursor-pointer pt-1 border-t border-[#232733]/50">
+                      <label className="flex items-start gap-2 cursor-pointer pt-1 border-t border-[#24221e]/50">
                         <input
                           type="radio"
                           name={`conflict-${item.parsed.word}`}
@@ -646,17 +646,17 @@ export default function AddCardModal({
                               )
                             )
                           }
-                          className="mt-1 accent-[#6c7cff]"
+                          className="mt-1 accent-[#c9a96e]"
                         />
-                        <div className="text-[#8b90a0]">
+                        <div className="text-[#948e82]">
                           <span className="text-xs uppercase tracking-wider block">
                             Старое:
                           </span>
-                          <span className="text-[#e6e8ec]">{ext.translation}</span>
+                          <span className="text-[#f2eee5]">{ext.translation}</span>
                           {ext.transcription && (
                             <span className="ml-2">({ext.transcription})</span>
                           )}
-                          <span className="block text-xs text-[#6c7cff] mt-0.5">
+                          <span className="block text-xs text-[#c9a96e] mt-0.5">
                             (в папке "{ext.folderName}")
                           </span>
                         </div>
@@ -667,19 +667,19 @@ export default function AddCardModal({
               })}
             </div>
 
-            <div className="flex space-x-3 pt-2 border-t border-[#232733]">
+            <div className="flex space-x-3 pt-2 border-t border-[#24221e]">
               <button
                 type="button"
                 disabled={loading}
                 onClick={() => executeFinalImport(duplicates)}
-                className="flex-1 rounded-lg bg-[#6c7cff] py-2.5 text-white font-medium hover:bg-[#5865e0] transition disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
               >
                 {loading ? 'Импорт...' : `Импортировать ${duplicates.length} слов`}
               </button>
               <button
                 type="button"
                 onClick={() => setShowConflictScreen(false)}
-                className="px-4 rounded-lg border border-[#232733] bg-transparent text-[#8b90a0] hover:text-[#e6e8ec] hover:border-gray-500 transition"
+                className="px-4 rounded-lg border border-[#24221e] bg-transparent text-[#948e82] hover:text-[#f2eee5] hover:border-[#4a463e] transition"
               >
                 Отмена
               </button>
@@ -688,7 +688,7 @@ export default function AddCardModal({
         ) : (
           <form onSubmit={handleStartImportCheck} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#8b90a0] mb-1">
+              <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Импорт через разделитель «|» (слово | транскрипция | перевод | пример 1 | пример 2)
               </label>
               <textarea
@@ -696,16 +696,16 @@ export default function AddCardModal({
                 required
                 value={importText}
                 onChange={e => setImportText(e.target.value)}
-                className="w-full rounded-lg border border-gray-700 bg-[#0f1115] px-3 py-2 text-[#e6e8ec] font-mono text-sm focus:border-[#6c7cff] focus:outline-none resize-none"
+                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] font-mono text-sm focus:border-[#c9a96e] focus:outline-none resize-none"
                 placeholder={`apple | /ˈæp.əl/ | яблоко | I eat an apple every day. | She bought two apples.\nbook | /bʊk/ | книга | This book is interesting. |`}
               />
             </div>
 
             {importText.trim() && (
-              <div className="rounded-lg bg-[#0f1115] p-3 text-xs space-y-1 border border-gray-800">
-                <p className="text-[#e6e8ec]">Будет создано карточек: {validCount}</p>
+              <div className="rounded-lg bg-[#090909] p-3 text-xs space-y-1 border border-[#24221e]">
+                <p className="text-[#f2eee5]">Будет создано карточек: {validCount}</p>
                 {skippedCount > 0 && (
-                  <p className="text-[#a04a4a]">Пропущено строк: {skippedCount}</p>
+                  <p className="text-[#bb7464]">Пропущено строк: {skippedCount}</p>
                 )}
               </div>
             )}
@@ -714,7 +714,7 @@ export default function AddCardModal({
               <button
                 type="submit"
                 disabled={loading || checkingDuplicates || validCount === 0}
-                className="flex-1 rounded-lg bg-[#6c7cff] py-2.5 text-white font-medium hover:bg-[#5865e0] transition disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
               >
                 {checkingDuplicates
                   ? 'Проверяю дубликаты...'
@@ -725,7 +725,7 @@ export default function AddCardModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 rounded-lg border border-gray-700 bg-transparent text-[#8b90a0] hover:text-[#e6e8ec] hover:border-gray-500 transition"
+                className="px-4 rounded-lg border border-[#2d2a25] bg-transparent text-[#948e82] hover:text-[#f2eee5] hover:border-[#4a463e] transition"
               >
                 Отмена
               </button>

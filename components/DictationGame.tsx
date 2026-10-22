@@ -181,13 +181,13 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
 
   if (isFinished || !current) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">
             {totalCards === 0 ? 'Нет слов для диктанта' : 'Сессия завершена'}
           </h2>
           {totalCards > 0 && (
-            <p className="text-sm text-[#8b90a0] mb-6">
+            <p className="text-sm text-[#948e82] mb-6">
               С первой попытки: {firstTryCount} · Ошибок: {failedCount}
             </p>
           )}
@@ -196,14 +196,14 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
             {totalCards > 0 && (
               <button
                 onClick={onNextRound}
-                className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition"
+                className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
               >
                 Ещё раунд
               </button>
             )}
             <button
               onClick={handleExit}
-              className="w-full rounded-lg border border-gray-700 py-3 font-medium hover:border-[#6c7cff] transition"
+              className="w-full rounded-lg border border-[#2d2a25] py-3 font-medium hover:border-[#c9a96e] transition"
             >
               Выйти
             </button>
@@ -217,34 +217,34 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
     totalCards > 0 ? Math.min(100, Math.round((doneCount / totalCards) * 100)) : 0
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-4 md:p-8 max-w-2xl mx-auto flex flex-col">
+    <div className="min-h-screen bg-[#090909] text-[#f2eee5] p-4 md:p-8 max-w-2xl mx-auto flex flex-col">
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-center">
+        <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
           Не удалось сохранить часть результатов. Проверьте интернет.
         </div>
       )}
 
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-3 text-sm text-[#8b90a0]">
+        <div className="flex items-center justify-between mb-3 text-sm text-[#948e82]">
           <span>Диктант · {doneCount} / {totalCards}</span>
-          <button onClick={handleExit} className="hover:text-[#e6e8ec] transition font-medium">
+          <button onClick={handleExit} className="hover:text-[#f2eee5] transition font-medium">
             Выйти
           </button>
         </div>
-        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-[#1b1a17] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#6c7cff] transition-all duration-300"
+            className="h-full bg-[#c9a96e] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      <div className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-6 md:p-8 shadow-2xl">
+      <div className="rounded-2xl border border-[#24221e] bg-[#111110] p-6 md:p-8 shadow-2xl">
         <div className="flex justify-center mb-6">
           <button
             type="button"
             onClick={() => speak(current.word)}
-            className="rounded-xl bg-[#0f1115] px-6 py-4 text-3xl text-[#6c7cff] hover:bg-gray-800 transition"
+            className="rounded-xl bg-[#090909] px-6 py-4 text-3xl text-[#c9a96e] hover:bg-[#1b1a17] transition"
             title="Прослушать ещё раз"
           >
             🔊
@@ -264,35 +264,35 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
             spellCheck={false}
             autoComplete="off"
             placeholder="Введите слово по-английски"
-            className={`w-full rounded-lg border bg-[#0f1115] p-3 text-center text-lg text-[#e6e8ec] outline-none disabled:opacity-70 ${
+            className={`w-full rounded-lg border bg-[#090909] p-3 text-center text-lg text-[#f2eee5] outline-none disabled:opacity-70 ${
               status === 'correct'
-                ? 'border-green-500'
+                ? 'border-[#6f8a72]'
                 : status === 'wrongOnce' || status === 'revealed'
-                ? 'border-[#a04a4a]'
-                : 'border-gray-700 focus:border-[#6c7cff]'
+                ? 'border-[#bb7464]'
+                : 'border-[#2d2a25] focus:border-[#c9a96e]'
             }`}
           />
 
           {status === 'wrongOnce' && (
-            <p className="text-center text-sm text-[#a04a4a]">Неверно. Попробуйте ещё раз.</p>
+            <p className="text-center text-sm text-[#bb7464]">Неверно. Попробуйте ещё раз.</p>
           )}
           {status === 'correct' && (
-            <p className="text-center text-sm text-green-400">Верно!</p>
+            <p className="text-center text-sm text-[#9fb59f]">Верно!</p>
           )}
 
           {status === 'revealed' && (
-            <div className="rounded-xl bg-[#0f1115] p-4 text-center">
-              <p className="text-sm text-[#8b90a0] mb-1">Правильно:</p>
-              <p className="text-2xl font-bold text-[#6c7cff]">{current.word}</p>
+            <div className="rounded-xl bg-[#090909] p-4 text-center">
+              <p className="text-sm text-[#948e82] mb-1">Правильно:</p>
+              <p className="text-2xl font-bold text-[#c9a96e]">{current.word}</p>
               {current.transcription && (
-                <p className="text-sm text-[#8b90a0] mt-1">{current.transcription}</p>
+                <p className="text-sm text-[#948e82] mt-1">{current.transcription}</p>
               )}
               <p className="text-md mt-2">{current.translation}</p>
             </div>
           )}
 
           {showHint && status !== 'revealed' && (
-            <p className="text-center text-sm text-[#8b90a0]">Перевод: {current.translation}</p>
+            <p className="text-center text-sm text-[#948e82]">Перевод: {current.translation}</p>
           )}
 
           <div className="flex gap-3">
@@ -300,7 +300,7 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
               <button
                 type="button"
                 onClick={() => setShowHint(true)}
-                className="rounded-xl border border-gray-700 px-4 py-3 text-sm font-medium hover:border-[#6c7cff] transition"
+                className="rounded-xl border border-[#2d2a25] px-4 py-3 text-sm font-medium hover:border-[#c9a96e] transition"
               >
                 Подсказка
               </button>
@@ -310,7 +310,7 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
                 key="next"
                 type="submit"
                 autoFocus
-                className="flex-1 rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition"
+                className="flex-1 rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition"
               >
                 Дальше
               </button>
@@ -319,7 +319,7 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
                 key="check"
                 type="submit"
                 disabled={status === 'correct' || !input.trim()}
-                className="flex-1 rounded-xl bg-[#6c7cff] py-3 font-semibold text-white hover:bg-[#5865e0] transition disabled:opacity-50"
+                className="flex-1 rounded-xl bg-[#c9a96e] py-3 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition disabled:opacity-50"
               >
                 Проверить
               </button>

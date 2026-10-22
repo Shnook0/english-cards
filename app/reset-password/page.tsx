@@ -76,47 +76,46 @@ export default function ResetPasswordPage() {
 
   if (isChecking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0f1115] text-[#e6e8ec]">
+      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#f2eee5]">
         <p>Проверка ссылки...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f1115] p-4 text-[#e6e8ec]">
-      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-[#1a1d23] p-8 shadow-xl">
-        <h1 className="mb-6 text-center text-2xl font-bold">Сброс пароля</h1>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="page-in w-full max-w-md">
+        <div className="mb-8 text-center">
+          <p className="eyebrow mb-4">English Cards</p>
+          <h1 className="display text-5xl">Сброс пароля</h1>
+        </div>
 
+        <div className="panel p-7 md:p-9">
         {!isRecoveryValid ? (
           <div className="text-center">
-            <p className="mb-6 text-sm text-[#a04a4a]">
+            <p className="mb-6 text-sm leading-6 text-[#bb7464]">
               Ссылка недействительна или устарела. Запросите письмо заново.
             </p>
-            <Link
-              href="/login"
-              className="inline-block rounded-lg bg-[#6c7cff] px-4 py-2 text-sm font-medium text-white hover:bg-[#5865e0] transition"
-            >
+            <Link href="/login" className="btn btn-primary">
               Перейти к входу
             </Link>
           </div>
         ) : (
-          <form onSubmit={handlePasswordReset} className="space-y-4">
+          <form onSubmit={handlePasswordReset} className="space-y-5">
             {error && (
-              <div className="rounded-lg bg-[#a04a4a]/20 border border-[#a04a4a] p-3 text-sm text-[#e6e8ec]">
+              <div className="border border-[#bb7464]/50 bg-[#bb7464]/10 p-4 text-sm text-[#e3b4a8]">
                 {error}
               </div>
             )}
 
             {message && (
-              <div className="rounded-lg bg-green-500/20 border border-green-500 p-3 text-sm text-green-300">
+              <div className="border border-[#9fb59f]/40 bg-[#9fb59f]/10 p-4 text-sm text-[#c2d2c1]">
                 {message}
               </div>
             )}
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#8b90a0]">
-                Новый пароль
-              </label>
+              <label className="eyebrow mb-2 block">Новый пароль</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -125,13 +124,13 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Минимум 6 символов"
-                  className="w-full rounded-lg border border-gray-700 bg-[#0f1115] p-3 pr-10 text-[#e6e8ec] outline-none focus:border-[#6c7cff]"
+                  className="field pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b90a0] hover:text-[#e6e8ec] transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#948e82] hover:text-[#f2eee5] transition"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -148,9 +147,7 @@ export default function ResetPasswordPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#8b90a0]">
-                Повторите пароль
-              </label>
+              <label className="eyebrow mb-2 block">Повторите пароль</label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -159,13 +156,13 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Повторите новый пароль"
-                  className="w-full rounded-lg border border-gray-700 bg-[#0f1115] p-3 pr-10 text-[#e6e8ec] outline-none focus:border-[#6c7cff]"
+                  className="field pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   aria-label={showConfirmPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b90a0] hover:text-[#e6e8ec] transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#948e82] hover:text-[#f2eee5] transition"
                 >
                   {showConfirmPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -181,15 +178,12 @@ export default function ResetPasswordPage() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-[#6c7cff] py-3 font-medium text-white hover:bg-[#5865e0] transition disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading} className="btn btn-primary w-full">
               {loading ? 'Сохранение...' : 'Обновить пароль'}
             </button>
           </form>
         )}
+        </div>
       </div>
     </div>
   )

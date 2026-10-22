@@ -55,7 +55,7 @@ export default function GeneralTrainingPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
         Загрузка...
       </div>
     )
@@ -63,49 +63,52 @@ export default function GeneralTrainingPage() {
 
   if (error || !training) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#a04a4a]">{error || 'Тренировка не найдена'}</p>
-        <Link href="/general" className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#bb7464]">{error || 'Тренировка не найдена'}</p>
+        <Link href="/general" className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] p-6 md:p-12">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6">
-          <Link href="/general" className="text-sm text-[#8b90a0] hover:text-[#6c7cff] transition">
+    <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
+      <div className="page-in mx-auto max-w-4xl">
+        <div className="mb-10 flex items-center justify-between">
+          <Link href="/general" className="link-muted text-xs uppercase tracking-[0.18em]">
             ← К общим тренировкам
           </Link>
+          <span className="eyebrow">Набор</span>
         </div>
 
-        <div className="mb-8 pb-6 border-b border-gray-800">
-          <h1 className="text-3xl font-bold mb-1">{training.name}</h1>
-          <p className="text-sm text-[#8b90a0]">Всего слов: {stats.total}</p>
+        <div className="mb-10 border-b border-[#24221e] pb-8">
+          <p className="eyebrow mb-3">Общая практика</p>
+          <h1 className="display text-5xl md:text-6xl">{training.name}</h1>
+          <p className="mt-4 text-sm text-[#948e82]">Всего слов: {stats.total}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-8 text-center">
-          <div className="rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
-            <div className="text-2xl font-bold">{stats.fresh}</div>
-            <div className="text-xs text-[#8b90a0] mt-1">Новых</div>
-          </div>
-          <div className="rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
-            <div className="text-2xl font-bold">{stats.due}</div>
-            <div className="text-xs text-[#8b90a0] mt-1">К повторению</div>
-          </div>
-          <div className="rounded-xl border border-gray-800 bg-[#1a1d23] p-4">
-            <div className="text-2xl font-bold text-[#a04a4a]">{stats.mistakes}</div>
-            <div className="text-xs text-[#8b90a0] mt-1">В ошибках</div>
-          </div>
+        <div className="mb-8 grid grid-cols-3 gap-3">
+          {[
+            { value: stats.fresh, label: 'Новых', accent: false },
+            { value: stats.due, label: 'К повторению', accent: false },
+            { value: stats.mistakes, label: 'В ошибках', accent: true },
+          ].map(item => (
+            <div key={item.label} className="panel p-5 text-center">
+              <div className={`stat-number ${item.accent ? 'text-[#bb7464]' : 'text-[#f2eee5]'}`}>
+                {item.value}
+              </div>
+              <div className="eyebrow mt-3">{item.label}</div>
+            </div>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <Link
             href={`/general/${trainingId}/train`}
-            className="rounded-2xl border border-[#6c7cff]/40 bg-[#6c7cff]/10 p-6 hover:border-[#6c7cff] transition"
+            className="panel panel-hover border-[#c9a96e]/30 bg-[#c9a96e]/[0.06] p-7"
           >
-            <h3 className="text-lg font-bold mb-1">Начать тренировку</h3>
-            <p className="text-sm text-[#8b90a0]">
+            <p className="eyebrow mb-3 text-[#c9a96e]">Сессия</p>
+            <h3 className="text-2xl">Начать тренировку</h3>
+            <p className="mt-3 text-sm leading-6 text-[#948e82]">
               {stats.session > 0
                 ? `В этой сессии: ${stats.session} слов`
                 : 'Сейчас нет слов для тренировки'}
@@ -114,10 +117,13 @@ export default function GeneralTrainingPage() {
 
           <Link
             href={`/general/${trainingId}/mistakes`}
-            className="rounded-2xl border border-gray-800 bg-[#1a1d23] p-6 hover:border-[#6c7cff] transition"
+            className="panel panel-hover p-7"
           >
-            <h3 className="text-lg font-bold mb-1">Общие ошибки</h3>
-            <p className="text-sm text-[#8b90a0]">Слов в ошибках: {stats.mistakes}</p>
+            <p className="eyebrow mb-3">Работа над ошибками</p>
+            <h3 className="text-2xl">Общие ошибки</h3>
+            <p className="mt-3 text-sm leading-6 text-[#948e82]">
+              Слов в ошибках: {stats.mistakes}
+            </p>
           </Link>
         </div>
       </div>

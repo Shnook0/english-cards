@@ -123,7 +123,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex items-center justify-center">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
         Загрузка...
       </div>
     )
@@ -131,19 +131,19 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#a04a4a]">{error}</p>
-        <Link href={exitHref} className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#bb7464]">{error}</p>
+        <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
       </div>
     )
   }
 
   if (queue.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4 text-center">
+      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4 text-center">
         <p className="mb-2 text-lg font-semibold">В этой папке нет слов</p>
-        <p className="mb-6 text-sm text-[#8b90a0]">Добавьте карточки и возвращайтесь.</p>
-        <Link href={exitHref} className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
+        <p className="mb-6 text-sm text-[#948e82]">Добавьте карточки и возвращайтесь.</p>
+        <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
       </div>
     )
   }
@@ -202,9 +202,9 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1115] text-[#e6e8ec] flex flex-col items-center justify-center p-4">
-      <p className="mb-4 text-[#a04a4a]">Неизвестный режим</p>
-      <Link href={exitHref} className="text-sm text-[#6c7cff] hover:underline">← Назад</Link>
+    <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
+      <p className="mb-4 text-[#bb7464]">Неизвестный режим</p>
+      <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
     </div>
   )
 }
