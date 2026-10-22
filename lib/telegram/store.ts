@@ -136,6 +136,43 @@ export async function listSettings(): Promise<TelegramSettings[]> {
   return (data ?? []) as TelegramSettings[]
 }
 
+export type DeliveryRow = {
+  sent_at: string
+  kind: string
+}
+
+export type PendingRow = {
+  id: number
+  due_at: string
+  sent_at: string | null
+}
+
+export async function listRecentDeliveries(
+  chatId: number,
+  limit = 8
+): Promise<DeliveryRow[]> {
+  const { data, error } = await db()
+    .from('telegram_deliveries')
+    .select('sent_at, kind')
+    .eq('chat_id', chatId)
+    .order('sent_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []) as DeliveryRow[]
+}
+
+export async function listPendingForChat(chatId: number): Promise<PendingRow[]> {
+  const { data, error } = await db()
+    .from('telegram_pending')
+    .select('id, due_at, sent_at')
+    .eq('chat_id', chatId)
+    .is('sent_at', null)
+    .order('due_at', { ascending: true })
+    .limit(20)
+  if (error) throw error
+  return (data ?? []) as PendingRow[]
+}
+
 type CustomFolder = {
   id: string
   name: string

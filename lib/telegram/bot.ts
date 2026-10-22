@@ -2,11 +2,14 @@ import { answerCallbackQuery, editMessageText, sendMessage, type InlineKeyboard 
 import {
   cardKeyboard,
   cardText,
+  debugKeyboard,
+  debugText,
   deleteConfirmKeyboard,
   escapeHtml,
   helpKeyboard,
   intervalKeyboard,
   intervalText,
+  mainReplyKeyboard,
   settingsKeyboard,
   settingsText,
   statsKeyboard,
@@ -18,9 +21,9 @@ import {
   TIME_PRESETS,
   timezoneKeyboard,
   timezoneText,
-  welcomeKeyboard,
   welcomeText,
 } from './format'
+import { syncBotMenu } from './menu'
 import {
   addPendingRepeat,
   applyBotResult,
@@ -29,6 +32,8 @@ import {
   getCard,
   getSettings,
   getStats,
+  listPendingForChat,
+  listRecentDeliveries,
   pickNextCard,
   recordDelivery,
   updateSettings,
@@ -65,6 +70,14 @@ export type TelegramUpdate = {
   callback_query?: TelegramCallbackQuery
 }
 
+const REPLY_BUTTON_COMMANDS: Record<string, string> = {
+  'Настройки': '/settings',
+  'Слово': '/next',
+  'Статистика': '/stats',
+  'Диагностика': '/debug',
+  'Помощь': '/help',
+}
+
 function helpText(): string {
   return [
     '<b>Что я умею</b>',
@@ -81,6 +94,7 @@ function helpText(): string {
     '/every 1h — интервал',
     '/pause — пауза',
     '/resume — продолжить',
+    '/debug — диагностика',
   ].join('\n')
 }
 
@@ -124,6 +138,20 @@ export async function sendNextCard(
   await sendCard(chatId, card, kind)
 }
 
+async function debugView(
+  settings: TelegramSettings
+): Promise<{ text: string; keyboard: InlineKeyboard }> {
+  const [deliveries, pending, stats] = await Promise.all([
+    listRecentDeliveries(settings.chat_id, 8),
+    listPendingForChat(settings.chat_id),
+    getStats(settings.user_id, settings.chat_id),
+  ])
+  return {
+    text: debugText(settings, deliveries, pending, stats),
+    keyboard: debugKeyboard(),
+  }
+}
+
 async function safeEdit(
   chatId: number,
   messageId: number,
@@ -143,6 +171,11 @@ async function safeEdit(
   }
 }
 
+async function sendWelcome(chatId: number, settings: TelegramSettings): Promise<void> {
+  await syncBotMenu()
+  await sendMessage(chatId, welcomeText(settings), undefined, mainReplyKeyboard())
+}
+
 async function handleStart(chatId: number, arg: string): Promise<void> {
   const forced = process.env.TELEGRAM_OWNER_CHAT_ID
   if (forced) {
@@ -151,13 +184,13 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
       return
     }
     const settings = await ensureSettings(chatId)
-    await sendMessage(chatId, welcomeText(settings), welcomeKeyboard())
+    await sendWelcome(chatId, settings)
     return
   }
 
   const existing = await getSettings(chatId)
   if (existing) {
-    await sendMessage(chatId, welcomeText(existing), welcomeKeyboard())
+    await sendWelcome(chatId, existing)
     return
   }
 
@@ -171,7 +204,7 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
   }
 
   const settings = await ensureSettings(chatId)
-  await sendMessage(chatId, welcomeText(settings), welcomeKeyboard())
+  await sendWelcome(chatId, settings)
 }
 
 async function handleCommand(
@@ -183,7 +216,8 @@ async function handleCommand(
   switch (command) {
     case '/start':
     case '/help':
-      await sendMessage(chatId, helpText(), helpKeyboard())
+      await syncBotMenu()
+      await sendMessage(chatId, helpText(), undefined, mainReplyKeyboard())
       return
 
     case '/settings':
@@ -250,6 +284,12 @@ async function handleCommand(
       return
     }
 
+    case '/debug': {
+      const view = await debugView(settings)
+      await sendMessage(chatId, view.text, view.keyboard)
+      return
+    }
+
     default:
       await sendMessage(chatId, `Не понял команду.\n\n${helpText()}`, helpKeyboard())
   }
@@ -272,7 +312,16 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
 
   const parsed = parseCommand(text)
   if (!parsed) {
-    await sendMessage(chatId, `Я понимаю только команды.\n\n${helpText()}`)
+    const command = REPLY_BUTTON_COMMANDS[text]
+    if (!command) {
+      await sendMessage(chatId, `Не понял.\n\n${helpText()}`, helpKeyboard())
+      return
+    }
+
+    const { ok, settings } = await isOwner(chatId)
+    if (!ok || !settings) return
+
+    await handleCommand(chatId, settings, command, '')
     return
   }
 
@@ -409,6 +458,13 @@ async function handleSettingsCallback(
     case 'stats': {
       const stats = await getStats(settings.user_id, chatId)
       await safeEdit(chatId, messageId, statsText(stats), statsKeyboard())
+      await answerCallbackQuery(query.id)
+      return
+    }
+
+    case 'debug': {
+      const view = await debugView(settings)
+      await safeEdit(chatId, messageId, view.text, view.keyboard)
       await answerCallbackQuery(query.id)
       return
     }

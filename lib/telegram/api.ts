@@ -6,6 +6,22 @@ export type InlineButton = {
 
 export type InlineKeyboard = InlineButton[][]
 
+export type ReplyKeyboardButton = {
+  text: string
+}
+
+export type ReplyKeyboard = {
+  keyboard: ReplyKeyboardButton[][]
+  resize_keyboard?: boolean
+  is_persistent?: boolean
+  input_field_placeholder?: string
+}
+
+export type BotCommand = {
+  command: string
+  description: string
+}
+
 type TelegramResponse<T> = {
   ok: boolean
   result?: T
@@ -38,14 +54,19 @@ export async function telegram<T = unknown>(
 export function sendMessage(
   chatId: number | string,
   text: string,
-  keyboard?: InlineKeyboard
+  keyboard?: InlineKeyboard,
+  replyKeyboard?: ReplyKeyboard
 ): Promise<unknown> {
+  const replyMarkup = keyboard
+    ? { inline_keyboard: keyboard }
+    : replyKeyboard
+
   return telegram('sendMessage', {
     chat_id: chatId,
     text,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
-    ...(keyboard ? { reply_markup: { inline_keyboard: keyboard } } : {}),
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
   })
 }
 
@@ -85,5 +106,23 @@ export function setWebhook(url: string, secret: string): Promise<unknown> {
     url,
     secret_token: secret,
     allowed_updates: ['message', 'callback_query'],
+  })
+}
+
+export function setMyCommands(commands: BotCommand[]): Promise<unknown> {
+  return telegram('setMyCommands', { commands })
+}
+
+export function setMyDescription(description: string): Promise<unknown> {
+  return telegram('setMyDescription', { description })
+}
+
+export function setMyShortDescription(short_description: string): Promise<unknown> {
+  return telegram('setMyShortDescription', { short_description })
+}
+
+export function setChatMenuButton(): Promise<unknown> {
+  return telegram('setChatMenuButton', {
+    menu_button: { type: 'commands' },
   })
 }

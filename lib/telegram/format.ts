@@ -1,6 +1,17 @@
-import type { InlineKeyboard } from './api'
-import { formatInterval, normalizeTime, TIMEZONE_OPTIONS } from './schedule'
-import type { BotCard, BotStats, TelegramSettings } from './store'
+import type { InlineKeyboard, ReplyKeyboard } from './api'
+import {
+  formatInterval,
+  isWithinWindow,
+  normalizeTime,
+  TIMEZONE_OPTIONS,
+} from './schedule'
+import type {
+  BotCard,
+  BotStats,
+  DeliveryRow,
+  PendingRow,
+  TelegramSettings,
+} from './store'
 
 export function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -26,6 +37,124 @@ export const TIME_PRESETS = [
 
 function statusLabel(settings: TelegramSettings): string {
   return settings.paused ? 'на паузе' : 'активен'
+}
+
+function formatTime(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso))
+}
+
+function formatDateTime(iso: string, timezone: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone: timezone,
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso))
+}
+
+function deliveryLabel(kind: string): string {
+  if (kind === 'scheduled') return 'по расписанию'
+  if (kind === 'repeat') return 'повтор'
+  if (kind === 'manual') return 'вручную'
+  return kind
+}
+
+function debugReason(
+  settings: TelegramSettings,
+  pending: PendingRow[],
+  stats: BotStats,
+  now: number
+): string {
+  if (settings.paused) return 'бот на паузе.'
+  if (!isWithinWindow(settings, new Date(now))) {
+    return 'сейчас вне окна отправки — бот специально молчит.'
+  }
+
+  const duePending = pending.some(item => new Date(item.due_at).getTime() <= now)
+  if (duePending) {
+    return 'есть повтор, который уже должен был прийти. Если его нет — cron-job.org не запускается.'
+  }
+
+  if (stats.hard === 0) return 'нет сложных слов в твоих папках.'
+
+  if (settings.last_sent_at) {
+    const last = new Date(settings.last_sent_at).getTime()
+    const intervalMs = settings.interval_minutes * 60 * 1000
+    if (now - last < intervalMs) {
+      const left = Math.ceil((intervalMs - (now - last)) / 60000)
+      return `интервал ещё не прошёл: ждать ${left} мин.`
+    }
+  }
+
+  return 'всё готово к отправке. Если сообщения нет — cron-job.org не запускается.'
+}
+
+export function debugText(
+  settings: TelegramSettings,
+  deliveries: DeliveryRow[],
+  pending: PendingRow[],
+  stats: BotStats
+): string {
+  const tz = settings.timezone
+  const now = Date.now()
+  const last = settings.last_sent_at ? new Date(settings.last_sent_at).getTime() : null
+  const intervalMs = settings.interval_minutes * 60 * 1000
+  const next = last !== null ? last + intervalMs : null
+  const nextText =
+    next === null
+      ? 'при следующей проверке'
+      : next <= now
+        ? 'уже пора'
+        : `через ${Math.ceil((next - now) / 60000)} мин (${formatTime(new Date(next).toISOString(), tz)})`
+
+  const lines = [
+    '<b>Диагностика</b>',
+    '',
+    `Сейчас: <b>${formatTime(new Date().toISOString(), tz)}</b> (${escapeHtml(tz)})`,
+    `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
+    `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
+    `Статус: <b>${statusLabel(settings)}</b>`,
+    `Последняя плановая: <b>${
+      settings.last_sent_at ? formatDateTime(settings.last_sent_at, tz) : 'ещё не было'
+    }</b>`,
+    `Следующая плановая: <b>${nextText}</b>`,
+    `Повторов в очереди: <b>${pending.length}</b>${
+      pending[0] ? ` (ближайший в ${formatTime(pending[0].due_at, tz)})` : ''
+    }`,
+  ]
+
+  if (deliveries.length > 0) {
+    lines.push('')
+    lines.push('<b>Последние отправки</b>')
+    for (const delivery of deliveries) {
+      lines.push(
+        `${formatDateTime(delivery.sent_at, tz)} — ${escapeHtml(
+          deliveryLabel(delivery.kind)
+        )}`
+      )
+    }
+  }
+
+  lines.push('')
+  lines.push(`<b>Причина:</b> ${debugReason(settings, pending, stats, now)}`)
+
+  return lines.join('\n')
+}
+
+export function debugKeyboard(): InlineKeyboard {
+  return [
+    [
+      { text: 'Обновить', callback_data: 'set:debug' },
+      { text: 'Настройки', callback_data: 'set:menu' },
+    ],
+  ]
 }
 
 export function settingsText(settings: TelegramSettings): string {
@@ -76,11 +205,17 @@ export function welcomeText(settings: TelegramSettings): string {
   ].join('\n')
 }
 
-export function welcomeKeyboard(): InlineKeyboard {
-  return [
-    [{ text: 'Настроить', callback_data: 'set:menu' }],
-    [{ text: 'Прислать слово сейчас', callback_data: 'set:next' }],
-  ]
+export function mainReplyKeyboard(): ReplyKeyboard {
+  return {
+    keyboard: [
+      [{ text: 'Слово' }],
+      [{ text: 'Настройки' }, { text: 'Статистика' }],
+      [{ text: 'Диагностика' }, { text: 'Помощь' }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+    input_field_placeholder: 'Выбери действие или напиши команду',
+  }
 }
 
 export function helpKeyboard(): InlineKeyboard {
