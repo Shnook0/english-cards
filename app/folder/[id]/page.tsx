@@ -165,6 +165,12 @@ export default function FolderPage() {
             )}
             {!isLearnedFolder && cards.length > 0 && (
               <>
+                <Link
+                  href={`/folder/${folderId}/play/learn`}
+                  className="rounded-lg border border-[#6c7cff] px-5 py-2.5 font-medium text-[#6c7cff] hover:bg-[#6c7cff]/10 transition"
+                >
+                  Заучивание
+                </Link>
                 <Link href={`/folder/${folderId}/play/match`} className={modeButtonClass}>
                   Подбор
                   <MatchRecord scope={`folder:${folderId}`} />

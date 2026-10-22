@@ -13,6 +13,9 @@ export type SavedSession = {
   known: string[]
   firstTry?: number
   failed?: number
+  // Текущий этап заучивания для каждой карточки (0–3)
+  stages?: Record<string, number>
+  mistakes?: number
 }
 
 export function loadSession(key: string): SavedSession | null {

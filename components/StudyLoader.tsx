@@ -10,6 +10,7 @@ import { buildStudyQueue, patchCorrect, patchWrong, saveCardPatch } from '@/lib/
 import MatchGame from '@/components/MatchGame'
 import DictationGame from '@/components/DictationGame'
 import BlocksGame from '@/components/BlocksGame'
+import LearnGame from '@/components/LearnGame'
 
 type Props = {
   kind: 'folder' | 'favorites' | 'mistakes'
@@ -177,6 +178,19 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
   if (mode === 'blocks') {
     return (
       <BlocksGame
+        key={roundKey}
+        cards={queue}
+        recordResult={recordResult}
+        getMore={getMore}
+        onNextRound={load}
+        onExit={handleExit}
+      />
+    )
+  }
+
+  if (mode === 'learn') {
+    return (
+      <LearnGame
         key={roundKey}
         cards={queue}
         recordResult={recordResult}
