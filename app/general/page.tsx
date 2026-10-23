@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -28,11 +28,7 @@ export default function GeneralPage() {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) load()
-  }, [user])
-
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -58,7 +54,11 @@ export default function GeneralPage() {
     }
     setTrainingFolders(map)
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    if (user) void load()
+  }, [user, load])
 
   const toggleSelected = (id: string) => {
     setSelected(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -26,11 +26,7 @@ export default function FolderPage() {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user && folderId) load()
-  }, [user, folderId])
-
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -57,7 +53,11 @@ export default function FolderPage() {
     if (cErr) setError('Ошибка загрузки карточек')
     else setCards((c ?? []) as Card[])
     setLoading(false)
-  }
+  }, [folderId])
+
+  useEffect(() => {
+    if (user && folderId) void load()
+  }, [user, folderId, load])
 
   const toggleFav = async (card: Card) => {
     const newVal = !card.is_favorite
@@ -339,13 +339,54 @@ export default function FolderPage() {
                     )}
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-[#24221e] pt-3 text-[9px] uppercase tracking-[0.14em] text-[#6f6a61]">
-                    <span>SRS {card.srs_level} · ошибок {card.wrong_count}</span>
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => handleOpenEdit(card)} className="text-[#948e82] hover:text-[#c9a96e]">
-                        Изм.
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[#24221e] pt-3">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6f6a61]">
+                      SRS {card.srs_level} · ошибок {card.wrong_count}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenEdit(card)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#2d2a25] bg-[#171612] px-3 py-2 text-[11px] font-medium text-[#d8d2c7] transition hover:border-[#c9a96e]/60 hover:bg-[#c9a96e]/10 hover:text-[#c9a96e]"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.6}
+                          stroke="currentColor"
+                          className="h-3.5 w-3.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M19.5 7.125L16.862 4.487"
+                          />
+                        </svg>
+                        Изменить
                       </button>
-                      <button onClick={() => removeCard(card)} className="text-[#bb7464] hover:text-[#d9a093]">
+                      <button
+                        onClick={() => removeCard(card)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#bb7464]/40 bg-[#bb7464]/10 px-3 py-2 text-[11px] font-medium text-[#d9a093] transition hover:border-[#bb7464] hover:bg-[#bb7464]/20 hover:text-[#f0c0b4]"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.6}
+                          stroke="currentColor"
+                          className="h-3.5 w-3.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L5.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                          />
+                        </svg>
                         Удалить
                       </button>
                     </div>

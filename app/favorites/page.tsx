@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -21,20 +21,16 @@ export default function FavoritesPage() {
     }
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) {
-      fetchFavoriteCards()
-    }
-  }, [user])
+  const fetchFavoriteCards = useCallback(async () => {
+    if (!user) return
 
-  const fetchFavoriteCards = async () => {
     setLoading(true)
     setError(null)
 
     const { data, error } = await supabase
       .from('cards')
       .select('*')
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .eq('is_favorite', true)
       .order('created_at', { ascending: false })
 
@@ -44,7 +40,13 @@ export default function FavoritesPage() {
       setCards(data || [])
     }
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      void fetchFavoriteCards()
+    }
+  }, [user, fetchFavoriteCards])
 
   const handleRemoveFavorite = async (cardId: string) => {
     const { error } = await supabase

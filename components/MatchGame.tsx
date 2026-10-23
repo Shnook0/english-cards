@@ -45,7 +45,8 @@ export default function MatchGame({
   const [best, setBest] = useState<number | null>(null)
   const [isRecord, setIsRecord] = useState(false)
 
-  const startRef = useRef(Date.now())
+  const startRef = useRef(0)
+  const elapsedRef = useRef(0)
   const lockedRef = useRef(false)
 
   // Загружаем текущий рекорд
@@ -56,8 +57,11 @@ export default function MatchGame({
   useEffect(() => {
     if (phase !== 'playing') return
     startRef.current = Date.now()
+    elapsedRef.current = 0
     const id = setInterval(() => {
-      setElapsed((Date.now() - startRef.current) / 1000)
+      const value = (Date.now() - startRef.current) / 1000
+      elapsedRef.current = value
+      setElapsed(value)
     }, 100)
     return () => clearInterval(id)
   }, [phase, roundNo])
@@ -117,7 +121,7 @@ export default function MatchGame({
       }
 
       if (newMatched.length === tiles.length) {
-        const seconds = (Date.now() - startRef.current) / 1000
+        const seconds = elapsedRef.current
         setLastTime(seconds)
         setPhase('roundDone')
         checkRecord(seconds)

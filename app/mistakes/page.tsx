@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -19,11 +19,7 @@ export default function MistakesPage() {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) load()
-  }, [user])
-
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase
       .from('cards')
@@ -32,7 +28,11 @@ export default function MistakesPage() {
       .order('wrong_count', { ascending: false })
     setCards((data as CardWithFolder[]) || [])
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    if (user) void load()
+  }, [user, load])
 
   const toggleFav = async (cardId: string, current: boolean) => {
     await supabase.from('cards').update({ is_favorite: !current }).eq('id', cardId)

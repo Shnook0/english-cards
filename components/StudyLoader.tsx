@@ -38,11 +38,9 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) load()
-  }, [user, kind, folderId])
+  const load = useCallback(async () => {
+    if (!user) return
 
-  const load = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -79,7 +77,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
         const { data, error: cErr } = await supabase
           .from('cards')
           .select('*')
-          .eq('user_id', user!.id)
+          .eq('user_id', user.id)
           .eq('is_favorite', true)
         if (cErr) throw cErr
         list = (data ?? []) as Card[]
@@ -87,7 +85,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
         const { data, error: cErr } = await supabase
           .from('cards')
           .select('*')
-          .eq('user_id', user!.id)
+          .eq('user_id', user.id)
           .gte('wrong_count', 2)
         if (cErr) throw cErr
         list = (data ?? []) as Card[]
@@ -102,7 +100,11 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, kind, folderId])
+
+  useEffect(() => {
+    if (user) void load()
+  }, [user, load])
 
   // Записывает результат ответа в карточку (по тем же правилам, что и обычная тренировка)
   const recordResult = useCallback(async (card: Card, correct: boolean) => {

@@ -150,18 +150,19 @@ export default function TelegramBanner() {
   }
 
   return (
-    <section className="mt-3 grid gap-2 md:grid-cols-[1.05fr_0.95fr]">
-      <div className="panel flex flex-col justify-between gap-5 p-5">
-        <div>
+    <section className="panel mt-3 p-6 md:p-8">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="max-w-2xl">
           <p className="eyebrow">Telegram</p>
-          <h2 className="mt-2 text-2xl">Повторяйте слова в мессенджере</h2>
-          <p className="mt-2.5 max-w-md text-sm leading-6 text-[#b5aea1]">
-            Бот присылает сложные слова из ваших папок и сохраняет прогресс после
-            каждого ответа. Подключение занимает пару секунд — регистрация не нужна.
+          <h2 className="mt-2 text-2xl md:text-3xl">Повторяйте слова в мессенджере</h2>
+          <p className="mt-3 text-sm leading-6 text-[#b5aea1]">
+            Бот присылает сложные слова из ваших папок, помогает повторять их и
+            увеличивать ваш словарный запас. Прогресс сохраняется после каждого
+            ответа. Подключение занимает пару секунд — регистрация не нужна.
           </p>
         </div>
 
-        <div>
+        <div className="shrink-0">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -204,35 +205,61 @@ export default function TelegramBanner() {
             </p>
           )}
 
-          <p className="mt-3 text-[10px] leading-4 text-[#6f6a61]">
+          <p className="mt-3 max-w-[260px] text-[10px] leading-4 text-[#6f6a61]">
             Откроется Telegram и привяжет бота к вашему аккаунту на сайте.
           </p>
         </div>
       </div>
 
-      <div className="panel p-5">
+      <div className="mt-7 border-t border-[#24221e] pt-6">
         <p className="eyebrow">Как это работает</p>
-        <div className="mt-3 space-y-3 text-sm leading-6 text-[#b5aea1]">
-          <p>
-            <span className="text-[#f2eee5]">Окно</span> — время, когда бот присылает
-            слова. Например, 09:00–21:00.
-          </p>
-          <p>
-            <span className="text-[#f2eee5]">Интервал</span> — пауза между обычными
-            словами. Например, каждые 60 минут.
-          </p>
-          <p>
-            <span className="text-[#f2eee5]">«Не знаю»</span> — слово вернётся через
-            15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.
-          </p>
-          <p>
-            Перевод можно скрыть под спойлером, а ненужное слово — отключить кнопкой
-            «Больше не повторять».
-          </p>
-          <p>
-            Окно, интервал и часовой пояс меняются кнопкой «Настройки» прямо в боте.
-          </p>
+        <div className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          <div>
+            <p className="text-sm font-medium text-[#f2eee5]">Слова из ваших папок</p>
+            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+              Бот берёт слова с сайта и присылает их в удобное для вас время.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[#f2eee5]">Окно и интервал</p>
+            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+              Настройте, когда и как часто приходят слова. Например, с 09:00 до
+              21:00 каждые 60 минут.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[#f2eee5]">Кнопка «Не знаю»</p>
+            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+              Слово начнёт приходить чаще: через 15 минут, 2 и 5 часов, затем через
+              1, 2, 4, 7, 15 и 30 дней.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[#f2eee5]">Кнопка «Знаю»</p>
+            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+              Бот отметит слово как знакомое и будет повторять его реже. Прогресс
+              сохраняется автоматически.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[#f2eee5]">Перевод и лишние слова</p>
+            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+              Перевод можно скрыть под спойлером, а ненужное слово — отключить
+              кнопкой «Больше не повторять». В папке оно останется.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-[#f2eee5]">Настройки в боте</p>
+            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+              Окно, интервал и часовой пояс меняются кнопкой «Настройки» прямо в
+              Telegram.
+            </p>
+          </div>
         </div>
+        <p className="mt-5 text-xs leading-5 text-[#6f6a61]">
+          Нажмите «Подключить бота» — Telegram откроется автоматически, и бот
+          привяжется к вашему аккаунту.
+        </p>
       </div>
     </section>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -18,14 +18,12 @@ export default function TrainFavoritesPage() {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user) load()
-  }, [user])
+  const load = useCallback(async () => {
+    if (!user) return
 
-  const load = async () => {
     setLoading(true)
     const { data: lf } = await supabase
-      .from('folders').select('id').eq('user_id', user!.id).eq('type', 'learned').single()
+      .from('folders').select('id').eq('user_id', user.id).eq('type', 'learned').single()
     if (lf) setLearnedFolderId(lf.id)
 
     const { data } = await supabase
@@ -35,7 +33,11 @@ export default function TrainFavoritesPage() {
       .order('created_at', { ascending: false })
     setCards((data ?? []) as Card[])
     setLoading(false)
-  }
+  }, [user])
+
+  useEffect(() => {
+    if (user) void load()
+  }, [user, load])
 
   if (authLoading || loading) {
     return <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">Загрузка тренировки...</div>

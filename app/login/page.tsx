@@ -51,8 +51,9 @@ export default function LoginPage() {
         if (error) throw error
         router.push('/')
       }
-    } catch (err: any) {
-      setError(err.message || 'Произошла ошибка при авторизации')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Произошла ошибка при авторизации'
+      setError(message)
     } finally {
       setLoading(false)
     }

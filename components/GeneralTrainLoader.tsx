@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -29,11 +29,9 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user && trainingId) load()
-  }, [user, trainingId])
+  const load = useCallback(async () => {
+    if (!user) return
 
-  const load = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -48,7 +46,7 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
         return
       }
 
-      const cards = await fetchTrainingCards(t as GeneralTraining, user!.id)
+      const cards = await fetchTrainingCards(t as GeneralTraining, user.id)
       const prog = await fetchProgress(trainingId)
       setProgress(prog)
       setQueue(buildQueue(cards, prog, onlyMistakes))
@@ -57,7 +55,11 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, trainingId, onlyMistakes])
+
+  useEffect(() => {
+    if (user && trainingId) void load()
+  }, [user, trainingId, load])
 
   if (authLoading || loading) {
     return (

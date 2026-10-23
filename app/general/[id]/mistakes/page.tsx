@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -26,11 +26,9 @@ export default function GeneralMistakesPage() {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user && trainingId) load()
-  }, [user, trainingId])
+  const load = useCallback(async () => {
+    if (!user) return
 
-  const load = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -46,7 +44,7 @@ export default function GeneralMistakesPage() {
       }
       setTraining(t as GeneralTraining)
 
-      const cards = await fetchTrainingCards(t as GeneralTraining, user!.id)
+      const cards = await fetchTrainingCards(t as GeneralTraining, user.id)
       const progress = await fetchProgress(trainingId)
       const now = Date.now()
 
@@ -66,7 +64,11 @@ export default function GeneralMistakesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, trainingId])
+
+  useEffect(() => {
+    if (user && trainingId) void load()
+  }, [user, trainingId, load])
 
   const formatUntil = (iso: string | null) =>
     iso

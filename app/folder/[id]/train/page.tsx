@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -33,11 +33,9 @@ export default function TrainFolderPage() {
     if (!authLoading && !user) router.push('/login')
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (user && folderId) load()
-  }, [user, folderId])
+  const load = useCallback(async () => {
+    if (!user) return
 
-  const load = async () => {
     setLoading(true)
     setError(null)
     try {
@@ -56,7 +54,7 @@ export default function TrainFolderPage() {
       const { data: lf } = await supabase
         .from('folders')
         .select('id')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .eq('type', 'learned')
         .single()
       if (lf) setLearnedFolderId(lf.id)
@@ -105,7 +103,11 @@ export default function TrainFolderPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, folderId])
+
+  useEffect(() => {
+    if (user && folderId) void load()
+  }, [user, folderId, load])
 
   const handleExit = () => router.push(`/folder/${folderId}`)
 

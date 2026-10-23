@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
 
@@ -13,157 +13,119 @@ type Props = {
   cardToEdit?: Card | null
 }
 
-type ExistingMatch = {
-  id: string
+type ParsedCard = {
   word: string
   transcription: string | null
   translation: string
-  sentences: string[] | null
-  sync_group_id: string | null
-  folders?: { name: string }[] | { name: string } | null
+  sentences: string[]
 }
 
-type ExistingDuplicateInfo = {
-  id: string
-  word: string
-  transcription: string | null
-  translation: string
-  sentences: string[] | null
-  sync_group_id: string | null
-  folderName: string
+export default function AddCardModal(props: Props) {
+  if (!props.isOpen) return null
+
+  return <AddCardModalContent key={props.cardToEdit?.id ?? 'new'} {...props} />
 }
 
-type DuplicateItem = {
-  parsed: {
-    word: string
-    transcription: string | null
-    translation: string
-    sentences: string[]
-  }
-  existing: ExistingDuplicateInfo | null
-  choice: 'new' | 'old'
-}
-
-function getFolderName(folders: any): string {
-  if (!folders) return 'другой папке'
-  if (Array.isArray(folders)) return folders[0]?.name || 'другой папке'
-  return folders.name || 'другой папке'
-}
-
-export default function AddCardModal({
-  isOpen,
+function AddCardModalContent({
   onClose,
   folderId,
   userId,
   onCardAdded,
   cardToEdit,
-}: Props) {
+}: Omit<Props, 'isOpen'>) {
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual')
 
-  const [word, setWord] = useState('')
-  const [transcription, setTranscription] = useState('')
-  const [translation, setTranslation] = useState('')
-  const [sentencesText, setSentencesText] = useState('')
+  const [word, setWord] = useState(() => cardToEdit?.word ?? '')
+  const [transcription, setTranscription] = useState(() => cardToEdit?.transcription ?? '')
+  const [translation, setTranslation] = useState(() => cardToEdit?.translation ?? '')
+  const [sentencesText, setSentencesText] = useState(() =>
+    cardToEdit?.sentences ? cardToEdit.sentences.join('\n') : ''
+  )
 
   const [importText, setImportText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [existingMatches, setExistingMatches] = useState<ExistingMatch[]>([])
-  const [linkToGroup, setLinkToGroup] = useState<string | null>(null)
-  const [matchNotice, setMatchNotice] = useState<string | null>(null)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [suggesting, setSuggesting] = useState(false)
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suggestRequestRef = useRef(0)
+  const translationRef = useRef<HTMLInputElement>(null)
 
-  const [duplicates, setDuplicates] = useState<DuplicateItem[]>([])
-  const [showConflictScreen, setShowConflictScreen] = useState(false)
-  const [checkingDuplicates, setCheckingDuplicates] = useState(false)
+  const requestSuggestions = useCallback((value: string) => {
+    if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current)
+
+    const term = value.trim()
+    if (term.length < 2) {
+      suggestRequestRef.current += 1
+      setSuggestions([])
+      setSuggestionsOpen(false)
+      setSuggesting(false)
+      return
+    }
+
+    const requestId = ++suggestRequestRef.current
+
+    suggestTimerRef.current = setTimeout(async () => {
+      setSuggesting(true)
+      try {
+        const res = await fetch(`/api/translate?word=${encodeURIComponent(term)}`, {
+          cache: 'no-store',
+        })
+        const data = (await res.json().catch(() => null)) as
+          | { translations?: unknown }
+          | null
+
+        if (suggestRequestRef.current !== requestId) return
+
+        const list = Array.isArray(data?.translations)
+          ? data.translations.filter(
+              (item): item is string => typeof item === 'string' && item.trim().length > 0
+            )
+          : []
+
+        setSuggestions(list)
+        setSuggestionsOpen(list.length > 0)
+      } catch {
+        if (suggestRequestRef.current === requestId) {
+          setSuggestions([])
+          setSuggestionsOpen(false)
+        }
+      } finally {
+        if (suggestRequestRef.current === requestId) setSuggesting(false)
+      }
+    }, 500)
+  }, [])
 
   useEffect(() => {
-    if (cardToEdit) {
-      setWord(cardToEdit.word || '')
-      setTranscription(cardToEdit.transcription || '')
-      setTranslation(cardToEdit.translation || '')
-      setSentencesText(cardToEdit.sentences ? cardToEdit.sentences.join('\n') : '')
-      setLinkToGroup(cardToEdit.sync_group_id || null)
-      setActiveTab('manual')
-    } else {
-      setWord('')
-      setTranscription('')
-      setTranslation('')
-      setSentencesText('')
-      setLinkToGroup(null)
-    }
-    setExistingMatches([])
-    setMatchNotice(null)
-    setError(null)
-    setDuplicates([])
-    setShowConflictScreen(false)
-  }, [cardToEdit, isOpen])
+    const initialWord = (cardToEdit?.word ?? '').trim()
+    if (initialWord.length < 2) return
 
-  if (!isOpen) return null
+    const timer = setTimeout(() => requestSuggestions(initialWord), 0)
+
+    return () => {
+      clearTimeout(timer)
+      if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current)
+    }
+  }, [cardToEdit, requestSuggestions])
 
   const handleWordChange = (val: string) => {
     setWord(val)
-    if (cardToEdit) return
-
-    setLinkToGroup(null)
-    setMatchNotice(null)
-    setExistingMatches([])
-
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-
-    if (!val || val.trim().length < 2) return
-
-    debounceTimerRef.current = setTimeout(async () => {
-      const { data, error } = await supabase
-        .from('cards')
-        .select('id, word, transcription, translation, sentences, sync_group_id, folders(name)')
-        .ilike('word', val.trim())
-        .limit(5)
-
-      if (!error && data && data.length > 0) {
-        setExistingMatches(data as unknown as ExistingMatch[])
-        const first = data[0] as any
-        const folderName = getFolderName(first.folders)
-        setMatchNotice(
-          `Это слово уже есть в папке "${folderName}" (перевод: ${first.translation}).`
-        )
-      }
-    }, 500)
+    requestSuggestions(val)
   }
 
-  const handleUseExistingData = (match: ExistingMatch) => {
-    setTranscription(match.transcription || '')
-    setTranslation(match.translation || '')
-    setSentencesText(match.sentences ? match.sentences.join('\n') : '')
-    if (match.sync_group_id) setLinkToGroup(match.sync_group_id)
-    setMatchNotice('Данные заполнены из существующей карточки.')
-  }
-
-  const handleLinkToAll = async () => {
-    const first = existingMatches[0]
-    if (!first) return
-
-    let groupId = first.sync_group_id
-    if (!groupId) {
-      groupId = crypto.randomUUID()
-      const ids = existingMatches.map(m => m.id)
-      await supabase.from('cards').update({ sync_group_id: groupId }).in('id', ids)
-    }
-    setLinkToGroup(groupId)
-    setMatchNotice('Карточка будет связана со всеми копиями.')
+  const applySuggestion = (value: string) => {
+    setTranslation(value)
+    setSuggestionsOpen(false)
+    translationRef.current?.focus()
   }
 
   const parseImportText = (text: string) => {
     const lines = text.split('\n')
     let validCount = 0
     let skippedCount = 0
-    const parsedCards: {
-      word: string
-      transcription: string | null
-      translation: string
-      sentences: string[]
-    }[] = []
+    const parsedCards: ParsedCard[] = []
 
     for (const rawLine of lines) {
       const line = rawLine.trim()
@@ -224,27 +186,15 @@ export default function AddCardModal({
       .filter(Boolean)
 
     if (cardToEdit) {
-      const updateFields = {
-        word: word.trim(),
-        transcription: transcription.trim() || null,
-        translation: translation.trim(),
-        sentences: sentencesArray,
-      }
-
-      let updateError = null
-      if (cardToEdit.sync_group_id) {
-        const res = await supabase
-          .from('cards')
-          .update(updateFields)
-          .eq('sync_group_id', cardToEdit.sync_group_id)
-        updateError = res.error
-      } else {
-        const res = await supabase
-          .from('cards')
-          .update(updateFields)
-          .eq('id', cardToEdit.id)
-        updateError = res.error
-      }
+      const { error: updateError } = await supabase
+        .from('cards')
+        .update({
+          word: word.trim(),
+          transcription: transcription.trim() || null,
+          translation: translation.trim(),
+          sentences: sentencesArray,
+        })
+        .eq('id', cardToEdit.id)
 
       setLoading(false)
       if (updateError) {
@@ -253,153 +203,65 @@ export default function AddCardModal({
         onCardAdded()
         onClose()
       }
-    } else {
-      const insertData: Record<string, unknown> = {
+      return
+    }
+
+    const { error: insertError } = await supabase.from('cards').insert([
+      {
         user_id: userId,
         folder_id: folderId,
         word: word.trim(),
         transcription: transcription.trim() || null,
         translation: translation.trim(),
         sentences: sentencesArray,
-      }
-      if (linkToGroup) insertData.sync_group_id = linkToGroup
+      },
+    ])
 
-      const { error: insertError } = await supabase.from('cards').insert([insertData])
-      setLoading(false)
+    setLoading(false)
 
-      if (insertError) {
-        setError('Ошибка при добавлении карточки')
-      } else {
-        setWord('')
-        setTranscription('')
-        setTranslation('')
-        setSentencesText('')
-        setLinkToGroup(null)
-        setMatchNotice(null)
-        setExistingMatches([])
-        onCardAdded()
-        onClose()
-      }
+    if (insertError) {
+      setError('Ошибка при добавлении карточки')
+      return
     }
+
+    setWord('')
+    setTranscription('')
+    setTranslation('')
+    setSentencesText('')
+    setSuggestions([])
+    setSuggestionsOpen(false)
+    onCardAdded()
+    onClose()
   }
 
-  const handleStartImportCheck = async (e: React.FormEvent) => {
+  const handleImport = async (e: React.FormEvent) => {
     e.preventDefault()
     if (parsedCards.length === 0) return
 
-    setCheckingDuplicates(true)
-    setError(null)
-
-    const duplicateItems: DuplicateItem[] = []
-
-    for (const card of parsedCards) {
-      const { data, error } = await supabase
-        .from('cards')
-        .select('id, word, transcription, translation, sentences, sync_group_id, folders(name)')
-        .ilike('word', card.word)
-        .limit(1)
-
-      let existingInfo: ExistingDuplicateInfo | null = null
-
-      if (!error && data && data.length > 0) {
-        const match = data[0] as any
-        existingInfo = {
-          id: match.id,
-          word: match.word,
-          transcription: match.transcription,
-          translation: match.translation,
-          sentences: match.sentences,
-          sync_group_id: match.sync_group_id,
-          folderName: getFolderName(match.folders),
-        }
-      }
-
-      duplicateItems.push({
-        parsed: card,
-        existing: existingInfo,
-        choice: 'new',
-      })
-    }
-
-    setCheckingDuplicates(false)
-    setDuplicates(duplicateItems)
-
-    const hasConflicts = duplicateItems.some(item => item.existing !== null)
-
-    if (hasConflicts) {
-      setShowConflictScreen(true)
-    } else {
-      executeFinalImport(duplicateItems)
-    }
-  }
-
-  const executeFinalImport = async (itemsToImport: DuplicateItem[]) => {
     setLoading(true)
     setError(null)
 
-    const finalInsertCards: Record<string, unknown>[] = []
+    const rows = parsedCards.map(card => ({
+      user_id: userId,
+      folder_id: folderId,
+      word: card.word,
+      transcription: card.transcription,
+      translation: card.translation,
+      sentences: card.sentences,
+    }))
 
-    for (const item of itemsToImport) {
-      if (!item.existing) {
-        finalInsertCards.push({
-          user_id: userId,
-          folder_id: folderId,
-          word: item.parsed.word,
-          transcription: item.parsed.transcription,
-          translation: item.parsed.translation,
-          sentences: item.parsed.sentences,
-        })
-      } else if (item.choice === 'new') {
-        finalInsertCards.push({
-          user_id: userId,
-          folder_id: folderId,
-          word: item.parsed.word,
-          transcription: item.parsed.transcription,
-          translation: item.parsed.translation,
-          sentences: item.parsed.sentences,
-        })
-      } else {
-        let groupId = item.existing.sync_group_id
-
-        if (!groupId) {
-          groupId = crypto.randomUUID()
-          await supabase
-            .from('cards')
-            .update({ sync_group_id: groupId })
-            .eq('id', item.existing.id)
-        }
-
-        finalInsertCards.push({
-          user_id: userId,
-          folder_id: folderId,
-          word: item.existing.word,
-          transcription: item.existing.transcription,
-          translation: item.existing.translation,
-          sentences: item.existing.sentences || [],
-          sync_group_id: groupId,
-        })
-      }
-    }
-
-    const { error: importError } = await supabase.from('cards').insert(finalInsertCards)
+    const { error: importError } = await supabase.from('cards').insert(rows)
     setLoading(false)
 
     if (importError) {
       setError('Ошибка при импорте карточек')
-    } else {
-      setImportText('')
-      setShowConflictScreen(false)
-      setDuplicates([])
-      onCardAdded()
-      onClose()
+      return
     }
-  }
 
-  const duplicateItemsOnly = duplicates.filter(d => d.existing !== null)
-  const allNew = duplicateItemsOnly.length > 0 && duplicateItemsOnly.every(d => d.choice === 'new')
-  const allOld = duplicateItemsOnly.length > 0 && duplicateItemsOnly.every(d => d.choice === 'old')
-  const countNew = duplicateItemsOnly.filter(d => d.choice === 'new').length
-  const countOld = duplicateItemsOnly.filter(d => d.choice === 'old').length
+    setImportText('')
+    onCardAdded()
+    onClose()
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
@@ -453,40 +315,56 @@ export default function AddCardModal({
               <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Слово (англ) *
               </label>
-              <input
-                type="text"
-                required
-                value={word}
-                onChange={e => handleWordChange(e.target.value)}
-                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
-                placeholder="apple"
-              />
-              {matchNotice && !cardToEdit && (
-                <div className="mt-2 rounded-xl border border-[#c9a96e]/30 bg-[#090909] p-3 text-sm">
-                  <p className="mb-2 text-[#f2eee5]">{matchNotice}</p>
-                  {existingMatches.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleUseExistingData(existingMatches[0])}
-                        className="rounded-lg bg-[#1b1a17] px-3 py-1 text-xs hover:bg-[#2d2a25] transition"
-                      >
-                        Использовать данные
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleLinkToAll}
-                        className="rounded-lg bg-[#c9a96e]/20 text-[#c9a96e] px-3 py-1 text-xs hover:bg-[#c9a96e]/30 transition"
-                      >
-                        Связать со всеми копиями
-                      </button>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={word}
+                  onChange={e => handleWordChange(e.target.value)}
+                  onFocus={() => {
+                    if (suggestions.length > 0) setSuggestionsOpen(true)
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setSuggestionsOpen(false), 120)
+                  }}
+                  className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 pr-20 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
+                  placeholder="apple"
+                />
+                {suggesting && (
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                    ищу...
+                  </span>
+                )}
+
+                {suggestionsOpen && suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-[#2d2a25] bg-[#111110] shadow-2xl">
+                    <p className="border-b border-[#24221e] px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-[#948e82]">
+                      Возможные переводы
+                    </p>
+                    <div className="max-h-52 overflow-y-auto p-1">
+                      {suggestions.map(item => (
+                        <button
+                          key={item}
+                          type="button"
+                          onMouseDown={event => event.preventDefault()}
+                          onClick={() => applySuggestion(item)}
+                          className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-[#f2eee5] transition hover:bg-[#c9a96e]/10 hover:text-[#c9a96e]"
+                        >
+                          <span>{item}</span>
+                          <span className="text-xs text-[#6f6a61]">→</span>
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
-              {linkToGroup && (
-                <p className="mt-1 text-xs text-[#c9a96e]">🔗 Связано с другими копиями</p>
-              )}
+                  </div>
+                )}
+              </div>
+              <p className="mt-1.5 text-[10px] leading-4 text-[#6f6a61]">
+                {suggesting
+                  ? 'Подбираю перевод...'
+                  : suggestions.length > 0
+                  ? 'Выберите вариант из списка или введите свой перевод.'
+                  : 'Начните вводить слово — появятся варианты перевода.'}
+              </p>
             </div>
 
             <div>
@@ -507,6 +385,7 @@ export default function AddCardModal({
                 Перевод *
               </label>
               <input
+                ref={translationRef}
                 type="text"
                 required
                 value={translation}
@@ -550,143 +429,8 @@ export default function AddCardModal({
               </button>
             </div>
           </form>
-        ) : showConflictScreen ? (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-[#24221e] pb-3">
-              <h4 className="text-sm font-semibold text-[#f2eee5]">
-                Найдены дубликаты: {duplicateItemsOnly.length}. Что использовать?
-              </h4>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDuplicates(prev =>
-                      prev.map(d => (d.existing ? { ...d, choice: 'new' } : d))
-                    )
-                  }
-                  className={`rounded px-2 py-1 text-xs border transition ${
-                    allNew
-                      ? 'bg-[#c9a96e]/20 border-[#c9a96e] text-[#c9a96e]'
-                      : 'bg-[#111110] border-[#24221e] text-[#c9a96e] hover:bg-[#24221e]'
-                  }`}
-                >
-                  Для всех: Новое ({countNew})
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDuplicates(prev =>
-                      prev.map(d => (d.existing ? { ...d, choice: 'old' } : d))
-                    )
-                  }
-                  className={`rounded px-2 py-1 text-xs border transition ${
-                    allOld
-                      ? 'bg-[#c9a96e]/20 border-[#c9a96e] text-[#f2eee5]'
-                      : 'bg-[#111110] border-[#24221e] text-[#948e82] hover:bg-[#24221e]'
-                  }`}
-                >
-                  Для всех: Старое ({countOld})
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-[320px] overflow-y-auto space-y-3 pr-1">
-              {duplicateItemsOnly.map(item => {
-                const ext = item.existing!
-                return (
-                  <div
-                    key={item.parsed.word}
-                    className="rounded-xl border border-[#24221e] bg-[#090909] p-3.5 space-y-2"
-                  >
-                    <div className="text-base font-bold text-[#f2eee5]">
-                      {item.parsed.word}
-                    </div>
-
-                    <div className="space-y-1.5 text-sm">
-                      <label className="flex items-start gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`conflict-${item.parsed.word}`}
-                          checked={item.choice === 'new'}
-                          onChange={() =>
-                            setDuplicates(prev =>
-                              prev.map(d =>
-                                d.parsed.word === item.parsed.word
-                                  ? { ...d, choice: 'new' }
-                                  : d
-                              )
-                            )
-                          }
-                          className="mt-1 accent-[#c9a96e]"
-                        />
-                        <div>
-                          <span className="text-[#948e82] text-xs uppercase tracking-wider block">
-                            Новое:
-                          </span>
-                          <span>{item.parsed.translation}</span>
-                          {item.parsed.transcription && (
-                            <span className="text-[#948e82] ml-2">
-                              ({item.parsed.transcription})
-                            </span>
-                          )}
-                        </div>
-                      </label>
-
-                      <label className="flex items-start gap-2 cursor-pointer pt-1 border-t border-[#24221e]/50">
-                        <input
-                          type="radio"
-                          name={`conflict-${item.parsed.word}`}
-                          checked={item.choice === 'old'}
-                          onChange={() =>
-                            setDuplicates(prev =>
-                              prev.map(d =>
-                                d.parsed.word === item.parsed.word
-                                  ? { ...d, choice: 'old' }
-                                  : d
-                              )
-                            )
-                          }
-                          className="mt-1 accent-[#c9a96e]"
-                        />
-                        <div className="text-[#948e82]">
-                          <span className="text-xs uppercase tracking-wider block">
-                            Старое:
-                          </span>
-                          <span className="text-[#f2eee5]">{ext.translation}</span>
-                          {ext.transcription && (
-                            <span className="ml-2">({ext.transcription})</span>
-                          )}
-                          <span className="block text-xs text-[#c9a96e] mt-0.5">
-                            (в папке "{ext.folderName}")
-                          </span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="flex space-x-3 pt-2 border-t border-[#24221e]">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => executeFinalImport(duplicates)}
-                className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
-              >
-                {loading ? 'Импорт...' : `Импортировать ${duplicates.length} слов`}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowConflictScreen(false)}
-                className="px-4 rounded-lg border border-[#24221e] bg-transparent text-[#948e82] hover:text-[#f2eee5] hover:border-[#4a463e] transition"
-              >
-                Отмена
-              </button>
-            </div>
-          </div>
         ) : (
-          <form onSubmit={handleStartImportCheck} className="space-y-4">
+          <form onSubmit={handleImport} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#948e82] mb-1">
                 Импорт через разделитель «|» (слово | транскрипция | перевод | пример 1 | пример 2)
@@ -713,14 +457,10 @@ export default function AddCardModal({
             <div className="flex space-x-3 pt-2">
               <button
                 type="submit"
-                disabled={loading || checkingDuplicates || validCount === 0}
+                disabled={loading || validCount === 0}
                 className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
               >
-                {checkingDuplicates
-                  ? 'Проверяю дубликаты...'
-                  : loading
-                  ? 'Импорт...'
-                  : 'Импортировать слова'}
+                {loading ? 'Импорт...' : 'Импортировать слова'}
               </button>
               <button
                 type="button"
