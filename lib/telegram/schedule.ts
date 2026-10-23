@@ -248,15 +248,23 @@ export function parseTimeRange(input: string): { start: string; end: string } | 
   }
 }
 
+const INTERVAL_UNITS =
+  'm|min|mins|minute|minutes|мин\\.?|минут[аы]?|h|hour|hours|ч|час|часа|часов'
+
+export function isIntervalInput(input: string): boolean {
+  return new RegExp(`^\\d+\\s*(?:${INTERVAL_UNITS})?$`, 'i').test(input.trim())
+}
+
 export function parseInterval(input: string): number | null {
-  const match = input.trim().match(/^(\d+)\s*(m|min|мин|h|hour|час|ч)?$/i)
+  const match = input
+    .trim()
+    .match(new RegExp(`^(\\d+)\\s*(${INTERVAL_UNITS})?$`, 'i'))
   if (!match) return null
 
   const value = Number(match[1])
   const unit = (match[2] ?? '').toLowerCase()
-  const minutes = unit === 'h' || unit === 'hour' || unit === 'час' || unit === 'ч'
-    ? value * 60
-    : value
+  const hours = ['h', 'hour', 'hours', 'ч', 'час', 'часа', 'часов']
+  const minutes = hours.includes(unit) ? value * 60 : value
 
   if (!Number.isFinite(minutes) || minutes < 5 || minutes > 1440) return null
   return minutes

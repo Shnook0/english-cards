@@ -439,7 +439,7 @@ export function intervalText(settings: TelegramSettings): string {
     '',
     `Сейчас: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
     '',
-    '<i>Выбери готовый вариант или задай своё количество минут.</i>',
+    '<i>Выбери готовый вариант или просто отправь число минут — например, 45.</i>',
   ].join('\n')
 }
 

@@ -50,6 +50,7 @@ import {
 import {
   buildDontKnowSchedule,
   formatInterval,
+  isIntervalInput,
   normalizeTime,
   parseInterval,
   parseTimeRange,
@@ -235,9 +236,8 @@ async function handleCustomIntervalInput(
   settings: TelegramSettings,
   text: string,
 ): Promise<void> {
-  const match = text.match(/\d+/)
-  const minutes = match ? Number(match[0]) : NaN
-  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 1440) {
+  const minutes = parseInterval(text)
+  if (!minutes) {
     await sendMessage(
       chatId,
       'Нужно число от 5 до 1440. Например: 5 или 45.',
@@ -375,8 +375,16 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
   if (!parsed) {
     const command = REPLY_BUTTON_COMMANDS[text]
     if (!command) {
-      if (settings.awaiting_input === 'interval') {
+      if (settings.awaiting_input === 'interval' || parseInterval(text) !== null) {
         await handleCustomIntervalInput(chatId, settings, text)
+        return
+      }
+      if (isIntervalInput(text)) {
+        await sendMessage(
+          chatId,
+          'Интервал должен быть от 5 до 1440 минут. Например: 45.',
+          customIntervalKeyboard(),
+        )
         return
       }
       await sendMessage(chatId, `Не понял.\n\n${helpText()}`, helpKeyboard())
