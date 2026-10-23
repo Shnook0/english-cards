@@ -15,6 +15,7 @@ import type {
   BotStats,
   DeliveryRow,
   PendingRow,
+  RevealMode,
   TelegramSettings,
   UpcomingReview,
 } from './store'
@@ -370,6 +371,7 @@ export function settingsText(settings: TelegramSettings): string {
     '',
     `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
     `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
+    `Формат: <b>${settings.reveal_mode === 'spoiler' ? 'перевод скрыт' : 'перевод виден'}</b>`,
     `Статус: <b>${statusLabel(settings)}</b>`,
     `Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
@@ -392,10 +394,13 @@ export function settingsKeyboard(settings: TelegramSettings): InlineKeyboard {
       { text: 'Статистика', callback_data: 'set:stats' },
     ],
     [
+      { text: 'Формат перевода', callback_data: 'set:fmt' },
       { text: 'Часовой пояс', callback_data: 'set:tz' },
-      { text: 'Обновить', callback_data: 'set:menu' },
     ],
-    [{ text: 'Прислать слово сейчас', callback_data: 'set:next' }],
+    [
+      { text: 'Обновить', callback_data: 'set:menu' },
+      { text: 'Прислать слово сейчас', callback_data: 'set:next' },
+    ],
   ]
 }
 
@@ -412,7 +417,7 @@ export function welcomeText(settings: TelegramSettings): string {
     '<i>Интервал — пауза между обычными словами.</i>',
     `Статус: <b>${statusLabel(settings)}</b>`,
     '',
-    '<i>Кнопка «Не знаю» возвращает слово через 20 минут, завтра и через 3 дня.</i>',
+    '<i>Кнопка «Не знаю» возвращает слово через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.</i>',
     '<i>Настроить всё можно кнопками ниже или командой /settings.</i>',
   ].join('\n')
 }
@@ -477,6 +482,38 @@ export function customIntervalText(settings: TelegramSettings): string {
 
 export function customIntervalKeyboard(): InlineKeyboard {
   return [[{ text: 'Отмена', callback_data: 'set:interval' }]]
+}
+
+export function formatText(settings: TelegramSettings): string {
+  return [
+    '<b>Формат напоминаний</b>',
+    '',
+    'Перевод можно показывать сразу или скрывать под спойлером.',
+    '',
+    `Сейчас: <b>${
+      settings.reveal_mode === 'spoiler' ? 'перевод скрыт' : 'перевод виден'
+    }</b>`,
+    '',
+    '<i>Спойлер открывается нажатием на перевод.</i>',
+  ].join('\n')
+}
+
+export function formatKeyboard(settings: TelegramSettings): InlineKeyboard {
+  return [
+    [
+      {
+        text: `${tick(settings.reveal_mode === 'open')}Перевод виден`,
+        callback_data: 'set:fmt:open',
+      },
+    ],
+    [
+      {
+        text: `${tick(settings.reveal_mode === 'spoiler')}Перевод скрыт`,
+        callback_data: 'set:fmt:spoiler',
+      },
+    ],
+    [{ text: 'Назад', callback_data: 'set:menu' }],
+  ]
 }
 
 export function timeText(settings: TelegramSettings): string {
@@ -586,9 +623,13 @@ export function statsKeyboard(): InlineKeyboard {
   ]
 }
 
-export function cardText(card: BotCard): string {
+export function cardText(card: BotCard, mode: RevealMode = 'open'): string {
+  const translation =
+    mode === 'spoiler'
+      ? `<tg-spoiler>${escapeHtml(card.translation)}</tg-spoiler>`
+      : escapeHtml(card.translation)
   const lines: string[] = []
-  lines.push(`<b>${escapeHtml(card.word.trim().toUpperCase())}</b> - ${escapeHtml(card.translation)}`)
+  lines.push(`<b>${escapeHtml(card.word.trim().toUpperCase())}</b> - ${translation}`)
 
   const sentences = (card.sentences ?? [])
     .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
@@ -615,6 +656,7 @@ export function cardKeyboard(cardId: string): InlineKeyboard {
       { text: 'Не знаю', callback_data: `dont:${cardId}` },
       { text: 'Пропустить', callback_data: `skip:${cardId}` },
     ],
+    [{ text: 'Больше не повторять', callback_data: `mute:${cardId}` }],
     [{ text: 'Удалить из папки', callback_data: `del:${cardId}` }],
   ]
 }

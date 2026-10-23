@@ -1,7 +1,7 @@
 import type { TelegramSettings } from './store'
 
 export const ACTIVITY_BONUS_MINUTES = 30
-export const DONT_KNOW_FIRST_MINUTES = 20
+export const DONT_KNOW_FIRST_MINUTES = 15
 
 export function normalizeTime(value: string): string {
   return value.slice(0, 5)
@@ -192,37 +192,71 @@ function windowPoint(settings: TelegramSettings, fraction: number): string {
 }
 
 export const DONT_KNOW_STAGE_LABELS = [
-  'через 20 минут',
-  'через 1 день · первый раз',
-  'через 1 день · второй раз',
-  'через 3 дня · первый раз',
-  'через 3 дня · второй раз',
+  'через 15 минут',
+  'через 2 часа',
+  'через 5 часов',
+  'через 1 день',
+  'через 2 дня',
+  'через 4 дня',
+  'через 7 дней · первый раз',
+  'через 7 дней · второй раз',
+  'через 15 дней',
+  'через 30 дней',
 ] as const
 
 export function buildDontKnowSchedule(
   settings: TelegramSettings,
   now = new Date(),
 ): { stage: number; dueAt: string }[] {
+  const hourMs = 60 * 60 * 1000
   const result: { stage: number; dueAt: string }[] = [
     {
       stage: 0,
       dueAt: new Date(now.getTime() + DONT_KNOW_FIRST_MINUTES * 60 * 1000).toISOString(),
     },
+    {
+      stage: 1,
+      dueAt: new Date(now.getTime() + 2 * hourMs).toISOString(),
+    },
+    {
+      stage: 2,
+      dueAt: new Date(now.getTime() + 5 * hourMs).toISOString(),
+    },
   ]
 
   const today = localDateKey(now, settings.timezone)
+  const middle = windowPoint(settings, 0.5)
   const first = windowPoint(settings, 0.25)
   const second = windowPoint(settings, 0.75)
 
-  for (const days of [1, 3]) {
-    const dateKey = addDaysToDateKey(today, days)
+  for (const [days, stage] of [
+    [1, 3],
+    [2, 4],
+    [4, 5],
+    [15, 8],
+    [30, 9],
+  ] as const) {
     result.push({
-      stage: days === 1 ? 1 : 3,
-      dueAt: localTimeToUtc(dateKey, first, settings.timezone).toISOString(),
+      stage,
+      dueAt: localTimeToUtc(
+        addDaysToDateKey(today, days),
+        middle,
+        settings.timezone,
+      ).toISOString(),
     })
+  }
+
+  for (const [stage, time] of [
+    [6, first],
+    [7, second],
+  ] as const) {
     result.push({
-      stage: days === 1 ? 2 : 4,
-      dueAt: localTimeToUtc(dateKey, second, settings.timezone).toISOString(),
+      stage,
+      dueAt: localTimeToUtc(
+        addDaysToDateKey(today, 7),
+        time,
+        settings.timezone,
+      ).toISOString(),
     })
   }
 

@@ -10,6 +10,8 @@ const REPEAT_MAX_MINUTES = 20
 const CARD_SELECT =
   'id, user_id, folder_id, word, transcription, translation, sentences, is_favorite, known_streak, wrong_count, srs_level, next_review_at, learned_at, created_at, sync_group_id, folders(name)'
 
+export type RevealMode = 'open' | 'spoiler'
+
 export type TelegramSettings = {
   chat_id: number
   user_id: string
@@ -21,6 +23,8 @@ export type TelegramSettings = {
   last_sent_at: string | null
   last_activity_at: string | null
   awaiting_input: string | null
+  linked: boolean
+  reveal_mode: RevealMode
 }
 
 export type BotCard = Card & {
@@ -116,7 +120,7 @@ export async function resolveOwnerUserId(): Promise<string | null> {
   return ids.length === 1 ? ids[0] : null
 }
 
-export async function getSettings(chatId: number): Promise<TelegramSettings | null> {
+export async function getChatSettings(chatId: number): Promise<TelegramSettings | null> {
   const { data, error } = await db()
     .from('telegram_settings')
     .select('*')
@@ -126,9 +130,26 @@ export async function getSettings(chatId: number): Promise<TelegramSettings | nu
   return (data as TelegramSettings | null) ?? null
 }
 
+export async function getSettings(chatId: number): Promise<TelegramSettings | null> {
+  const { data, error } = await db()
+    .from('telegram_settings')
+    .select('*')
+    .eq('chat_id', chatId)
+    .eq('linked', true)
+    .maybeSingle()
+  if (error) throw error
+  return (data as TelegramSettings | null) ?? null
+}
+
 export async function ensureSettings(chatId: number): Promise<TelegramSettings> {
-  const existing = await getSettings(chatId)
-  if (existing) return existing
+  const existing = await getChatSettings(chatId)
+  if (existing) {
+    if (!existing.linked) {
+      await updateSettings(chatId, { linked: true })
+      return { ...existing, linked: true }
+    }
+    return existing
+  }
 
   const userId = await resolveOwnerUserId()
   if (!userId) {
@@ -161,10 +182,85 @@ export async function getSettingsForUser(userId: string): Promise<TelegramSettin
     .from('telegram_settings')
     .select('*')
     .eq('user_id', userId)
+    .order('linked', { ascending: false })
     .order('created_at', { ascending: true })
     .limit(1)
   if (error) throw error
   return ((data ?? [])[0] as TelegramSettings | undefined) ?? null
+}
+
+export async function getUserEmail(userId: string): Promise<string | null> {
+  const { data, error } = await db().auth.admin.getUserById(userId)
+  if (error) return null
+  return data.user?.email ?? null
+}
+
+async function migrateChatHistory(fromChatId: number, toChatId: number): Promise<void> {
+  const admin = db()
+  for (const table of ['telegram_pending', 'telegram_reviews', 'telegram_deliveries']) {
+    const { error } = await admin
+      .from(table)
+      .update({ chat_id: toChatId })
+      .eq('chat_id', fromChatId)
+    if (error) throw error
+  }
+}
+
+async function deleteChatHistory(chatId: number): Promise<void> {
+  const admin = db()
+  for (const table of ['telegram_pending', 'telegram_reviews', 'telegram_deliveries']) {
+    const { error } = await admin.from(table).delete().eq('chat_id', chatId)
+    if (error) throw error
+  }
+}
+
+export type BindChatResult =
+  | { ok: true; settings: TelegramSettings }
+  | { ok: false; reason: 'taken' }
+  | { ok: false; reason: 'already_linked'; email: string | null }
+
+export async function unlinkUser(userId: string): Promise<number[]> {
+  const admin = db()
+  const { data, error } = await admin
+    .from('telegram_settings')
+    .select('chat_id')
+    .eq('user_id', userId)
+    .eq('linked', true)
+  if (error) throw error
+
+  const chats = ((data ?? []) as { chat_id: number }[]).map(row => row.chat_id)
+  if (chats.length === 0) return []
+
+  const { error: updateError } = await admin
+    .from('telegram_settings')
+    .update({ linked: false, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('linked', true)
+  if (updateError) throw updateError
+
+  return chats
+}
+
+export async function muteCard(userId: string, cardId: string): Promise<void> {
+  const { error } = await db()
+    .from('telegram_muted_cards')
+    .upsert(
+      { user_id: userId, card_id: cardId },
+      { onConflict: 'user_id,card_id', ignoreDuplicates: true }
+    )
+  if (error) throw error
+}
+
+export async function getMutedCardIds(userId: string): Promise<Set<string>> {
+  const { data, error } = await db()
+    .from('telegram_muted_cards')
+    .select('card_id')
+    .eq('user_id', userId)
+  if (error) {
+    if (isMissingBotSchema(error)) return new Set()
+    throw error
+  }
+  return new Set(((data ?? []) as { card_id: string }[]).map(row => row.card_id))
 }
 
 export async function createLinkCode(
@@ -207,11 +303,64 @@ export async function consumeLinkCode(code: string): Promise<string | null> {
 export async function bindChatToUser(
   chatId: number,
   userId: string
-): Promise<{ ok: true; settings: TelegramSettings } | { ok: false; reason: 'taken' }> {
-  const existing = await getSettings(chatId)
+): Promise<BindChatResult> {
+  const existing = await getChatSettings(chatId)
+  if (existing && existing.linked && existing.user_id !== userId) {
+    return { ok: false, reason: 'taken' }
+  }
+
+  const userSettings = await getSettingsForUser(userId)
+
+  if (userSettings && userSettings.chat_id !== chatId) {
+    if (userSettings.linked) {
+      return {
+        ok: false,
+        reason: 'already_linked',
+        email: await getUserEmail(userId),
+      }
+    }
+
+    if (existing && existing.user_id !== userId) {
+      await deleteChatHistory(chatId)
+    }
+
+    if (existing && existing.chat_id === chatId) {
+      const { error } = await db()
+        .from('telegram_settings')
+        .delete()
+        .eq('chat_id', chatId)
+      if (error) throw error
+    }
+
+    await migrateChatHistory(userSettings.chat_id, chatId)
+
+    const { error } = await db()
+      .from('telegram_settings')
+      .update({
+        chat_id: chatId,
+        linked: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('chat_id', userSettings.chat_id)
+    if (error) throw error
+
+    const settings = await getChatSettings(chatId)
+    if (!settings) throw new Error('Не удалось перепривязать Telegram-аккаунт')
+    return { ok: true, settings }
+  }
+
+  if (userSettings) {
+    if (!userSettings.linked) {
+      await updateSettings(chatId, { linked: true })
+      return { ok: true, settings: { ...userSettings, linked: true } }
+    }
+    return { ok: true, settings: userSettings }
+  }
+
   if (existing) {
-    if (existing.user_id !== userId) return { ok: false, reason: 'taken' }
-    return { ok: true, settings: existing }
+    await deleteChatHistory(chatId)
+    const { error } = await db().from('telegram_settings').delete().eq('chat_id', chatId)
+    if (error) throw error
   }
 
   const settings = await createSettings(chatId, userId)
@@ -248,7 +397,10 @@ export async function touchActivity(chatId: number): Promise<void> {
 }
 
 export async function listSettings(): Promise<TelegramSettings[]> {
-  const { data, error } = await db().from('telegram_settings').select('*')
+  const { data, error } = await db()
+    .from('telegram_settings')
+    .select('*')
+    .eq('linked', true)
   if (error) throw error
   return (data ?? []) as TelegramSettings[]
 }
@@ -343,6 +495,7 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
 
   const priorityFolderIds = new Set(folders.slice(0, 2).map(f => f.id))
   const folderIds = folders.map(f => f.id)
+  const mutedIds = await getMutedCardIds(userId)
   const since = new Date(Date.now() - 2 * DAY_MS).toISOString()
 
   const { data: recentData, error: recentError } = await admin
@@ -397,6 +550,7 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
     .map(normalizeCard)
     .filter(isHardCard)
     .filter(card => !reviewIds.has(card.id))
+    .filter(card => !mutedIds.has(card.id))
 
   const priority = candidates.filter(c => priorityFolderIds.has(c.folder_id))
   const other = candidates.filter(c => !priorityFolderIds.has(c.folder_id))
@@ -488,12 +642,16 @@ export async function replaceDontKnowReviews(
   if (error) console.error('telegram_reviews:', error.message)
 }
 
-export async function listDueReviews(): Promise<DueReview[]> {
-  const { data, error } = await db()
+export async function listDueReviews(chatIds?: number[]): Promise<DueReview[]> {
+  if (chatIds && chatIds.length === 0) return []
+
+  const base = db()
     .from('telegram_reviews')
     .select('id, chat_id, card_id, stage, due_at')
     .is('sent_at', null)
     .lte('due_at', new Date().toISOString())
+
+  const { data, error } = await (chatIds ? base.in('chat_id', chatIds) : base)
     .order('due_at', { ascending: true })
     .limit(20)
   if (error) {
@@ -549,12 +707,16 @@ export async function countUpcomingReviews(chatId: number): Promise<number> {
   return count ?? 0
 }
 
-export async function listDuePending(): Promise<PendingRepeat[]> {
-  const { data, error } = await db()
+export async function listDuePending(chatIds?: number[]): Promise<PendingRepeat[]> {
+  if (chatIds && chatIds.length === 0) return []
+
+  const base = db()
     .from('telegram_pending')
     .select('id, chat_id, card_id, due_at')
     .is('sent_at', null)
     .lte('due_at', new Date().toISOString())
+
+  const { data, error } = await (chatIds ? base.in('chat_id', chatIds) : base)
     .order('due_at', { ascending: true })
     .limit(20)
   if (error) throw error

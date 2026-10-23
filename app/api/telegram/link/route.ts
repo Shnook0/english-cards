@@ -1,8 +1,9 @@
-import { getBotUsername } from '@/lib/telegram/api'
+import { getBotUsername, sendMessage } from '@/lib/telegram/api'
 import {
   createLinkCode,
   db,
   getSettingsForUser,
+  unlinkUser,
 } from '@/lib/telegram/store'
 
 export const runtime = 'nodejs'
@@ -37,9 +38,34 @@ export async function GET(request: Request): Promise<Response> {
     ])
     return Response.json({
       ok: true,
-      connected: Boolean(settings),
+      connected: Boolean(settings?.linked),
       botUrl: url,
     })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Неизвестная ошибка'
+    return Response.json({ ok: false, error: message }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request): Promise<Response> {
+  const userId = await authenticatedUserId(request)
+  if (!userId) {
+    return Response.json({ ok: false, error: 'Нужна авторизация' }, { status: 401 })
+  }
+
+  try {
+    const chats = await unlinkUser(userId)
+    await Promise.all(
+      chats.map(chatId =>
+        sendMessage(
+          chatId,
+          'Вы успешно отвязали ваш аккаунт English Cards, можете привязать его к другому Telegram-аккаунту.'
+        ).catch(error => {
+          console.error('telegram unlink message:', error)
+        })
+      )
+    )
+    return Response.json({ ok: true, unlinked: chats.length })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Неизвестная ошибка'
     return Response.json({ ok: false, error: message }, { status: 500 })

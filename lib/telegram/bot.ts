@@ -9,6 +9,8 @@ import {
   debugText,
   deleteConfirmKeyboard,
   escapeHtml,
+  formatKeyboard,
+  formatText,
   helpKeyboard,
   intervalKeyboard,
   intervalText,
@@ -37,17 +39,20 @@ import {
   deleteCard,
   ensureSettings,
   getCard,
+  getCustomFolders,
   getSettings,
   getStats,
   listPendingForChat,
   listRecentDeliveries,
   listUpcomingReviews,
+  muteCard,
   pickNextCard,
   recordDelivery,
   replaceDontKnowReviews,
   touchActivity,
   updateSettings,
   type BotCard,
+  type RevealMode,
   type TelegramSettings,
 } from './store'
 import {
@@ -95,7 +100,8 @@ function helpText(): string {
     '<b>Что я умею</b>',
     '',
     '• присылаю сложные слова из ваших папок на сайте',
-    '• слова «Не знаю» повторяю через 20 минут, через день и через 3 дня',
+    '• слова «Не знаю» повторяю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней',
+    '• могу скрыть перевод под спойлером или перестать присылать отдельное слово',
     '• показываю статистику и следующие отправки',
     '',
     '<b>Понятия</b>',
@@ -136,22 +142,68 @@ async function isOwner(chatId: number): Promise<{ ok: boolean; settings: Telegra
   return { ok: Boolean(settings), settings }
 }
 
-export async function sendCard(chatId: number, card: BotCard, kind: string): Promise<void> {
-  await sendMessage(chatId, cardText(card), cardKeyboard(card.id))
+function siteUrl(): string | null {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL
+  if (!raw) return null
+  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+  return withProtocol.replace(/\/+$/, '')
+}
+
+async function sendNoFolders(chatId: number): Promise<void> {
+  const url = siteUrl()
+  await sendMessage(
+    chatId,
+    [
+      'Сначала создайте папку со словами на нашем сайте' + (url ? `: ${url}` : '.'),
+      '',
+      'После этого повторение через бота станет доступно.',
+    ].join('\n'),
+    url ? [[{ text: 'Открыть сайт', url }]] : undefined
+  )
+}
+
+async function requireFolders(chatId: number, userId: string): Promise<boolean> {
+  const folders = await getCustomFolders(userId)
+  if (folders.length > 0) return true
+  await sendNoFolders(chatId)
+  return false
+}
+
+export async function sendCard(
+  chatId: number,
+  card: BotCard,
+  kind: string,
+  settings?: TelegramSettings
+): Promise<void> {
+  await sendMessage(
+    chatId,
+    cardText(card, settings?.reveal_mode ?? 'open'),
+    cardKeyboard(card.id)
+  )
   await recordDelivery(chatId, card.id, kind)
 }
 
 export async function sendNextCard(
   chatId: number,
   userId: string,
-  kind: string
+  kind: string,
+  settings?: TelegramSettings
 ): Promise<void> {
-  const card = await pickNextCard(userId, chatId)
-  if (!card) {
-    await sendMessage(chatId, 'Пока нет сложных слов в твоих папках.')
+  const folders = await getCustomFolders(userId)
+  if (folders.length === 0) {
+    await sendNoFolders(chatId)
     return
   }
-  await sendCard(chatId, card, kind)
+
+  const card = await pickNextCard(userId, chatId)
+  if (!card) {
+    await sendMessage(chatId, 'Пока нет сложных слов в ваших папках.')
+    return
+  }
+  await sendCard(chatId, card, kind, settings)
 }
 
 async function debugView(
@@ -205,6 +257,11 @@ async function sendWelcome(chatId: number, settings: TelegramSettings): Promise<
   await touchActivity(chatId)
   await syncBotMenu()
   await sendMessage(chatId, welcomeText(settings), undefined, mainReplyKeyboard())
+
+  const folders = await getCustomFolders(settings.user_id)
+  if (folders.length === 0) {
+    await sendNoFolders(chatId)
+  }
 }
 
 async function handleStart(chatId: number, arg: string): Promise<void> {
@@ -227,9 +284,22 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
     if (userId) {
       const bound = await bindChatToUser(chatId, userId)
       if (!bound.ok) {
+        if (bound.reason === 'already_linked') {
+          const account = bound.email ? ` (${escapeHtml(bound.email)})` : ''
+          await sendMessage(
+            chatId,
+            [
+              `Ваш аккаунт на сайте${account} уже привязан к другому Telegram-аккаунту.`,
+              '',
+              'Если хотите привязать его к этому Telegram-аккаунту, удалите привязку в личном кабинете на сайте — кнопка «Отвязать Telegram». После этого нажмите «Подключить бота» на сайте ещё раз.',
+            ].join('\n')
+          )
+          return
+        }
+
         await sendMessage(
           chatId,
-          'Этот чат уже подключён к другому аккаунту. Сначала отключите его в настройках на сайте.'
+          'Этот Telegram-аккаунт уже привязан к другому аккаунту сайта. Сначала отвяжите его в личном кабинете на сайте.'
         )
         return
       }
@@ -297,10 +367,12 @@ async function handleCommand(
       return
 
     case '/settings':
+      if (!(await requireFolders(chatId, settings.user_id))) return
       await sendMessage(chatId, settingsText(settings), settingsKeyboard(settings))
       return
 
     case '/time': {
+      if (!(await requireFolders(chatId, settings.user_id))) return
       if (!args) {
         await sendMessage(chatId, timeText(settings), timeKeyboard(settings))
         return
@@ -317,6 +389,7 @@ async function handleCommand(
     }
 
     case '/every': {
+      if (!(await requireFolders(chatId, settings.user_id))) return
       if (!args) {
         await sendMessage(chatId, intervalText(settings), intervalKeyboard(settings))
         return
@@ -351,7 +424,7 @@ async function handleCommand(
       return
 
     case '/next':
-      await sendNextCard(chatId, settings.user_id, 'manual')
+      await sendNextCard(chatId, settings.user_id, 'manual', settings)
       return
 
     case '/stats': {
@@ -540,6 +613,21 @@ async function handleSettingsCallback(
       return
     }
 
+    case 'fmt': {
+      const mode: RevealMode | null =
+        value === 'open' ? 'open' : value === 'spoiler' ? 'spoiler' : null
+      if (!mode) {
+        await safeEdit(chatId, messageId, formatText(settings), formatKeyboard(settings))
+        await answerCallbackQuery(query.id)
+        return
+      }
+      await updateSettings(chatId, { reveal_mode: mode })
+      const next = { ...settings, reveal_mode: mode }
+      await safeEdit(chatId, messageId, formatText(next), formatKeyboard(next))
+      await answerCallbackQuery(query.id, mode === 'spoiler' ? 'Перевод скрыт' : 'Перевод виден')
+      return
+    }
+
     case 'toggle': {
       const paused = !settings.paused
       await updateSettings(chatId, { paused })
@@ -571,7 +659,11 @@ async function handleSettingsCallback(
     }
 
     case 'next':
-      await sendNextCard(chatId, settings.user_id, 'manual')
+      if (!(await requireFolders(chatId, settings.user_id))) {
+        await answerCallbackQuery(query.id)
+        return
+      }
+      await sendNextCard(chatId, settings.user_id, 'manual', settings)
       await answerCallbackQuery(query.id, 'Отправил слово')
       return
 
@@ -660,12 +752,24 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       await safeEdit(
         chatId,
         messageId,
-        `${cardText(card)}\n\nОтмечено: не знаю. Повторю через 20 минут, завтра и через 3 дня — по два раза в день.`,
+        `${cardText(card)}\n\nОтмечено: не знаю. Повторю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.`,
         []
       )
       await answerCallbackQuery(query.id, 'Запланировал повторы')
       return
     }
+
+    case 'mute':
+      await muteCard(settings.user_id, card.id)
+      await clearCardQueue(chatId, card.id)
+      await safeEdit(
+        chatId,
+        messageId,
+        `${cardText(card)}\n\nБольше не буду присылать это слово. В папке оно останется, прогресс и ошибки не изменятся.`,
+        []
+      )
+      await answerCallbackQuery(query.id, 'Больше не повторяю')
+      return
 
     case 'skip':
       await safeEdit(chatId, messageId, `${cardText(card)}\n\nПропущено.`, [])
@@ -694,7 +798,12 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       return
 
     case 'delno':
-      await safeEdit(chatId, messageId, cardText(card), cardKeyboard(card.id))
+      await safeEdit(
+        chatId,
+        messageId,
+        cardText(card, settings.reveal_mode),
+        cardKeyboard(card.id)
+      )
       await answerCallbackQuery(query.id, 'Отмена')
       return
 

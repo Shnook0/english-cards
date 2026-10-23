@@ -17,7 +17,9 @@ export default function TelegramBanner() {
   const [info, setInfo] = useState<BotInfo>({ connected: false, botUrl: null })
   const [checking, setChecking] = useState(false)
   const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (loading || !user) return
@@ -65,6 +67,7 @@ export default function TelegramBanner() {
 
     setConnecting(true)
     setError(null)
+    setNotice(null)
 
     const popup = window.open('about:blank', '_blank')
 
@@ -103,6 +106,49 @@ export default function TelegramBanner() {
     }
   }
 
+  const disconnect = async () => {
+    if (!user) return
+    if (
+      !window.confirm(
+        'Отвязать Telegram-аккаунт? Бот перестанет присылать слова, прогресс на сайте сохранится.'
+      )
+    ) {
+      return
+    }
+
+    setDisconnecting(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      const res = await fetch('/api/telegram/link', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Не удалось отвязать Telegram')
+      }
+
+      setInfo(previous => ({ ...previous, connected: false }))
+      setNotice(
+        'Telegram отвязан. Теперь аккаунт можно привязать к другому Telegram-аккаунту.'
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось отвязать Telegram')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
   return (
     <section className="mt-3 grid gap-2 md:grid-cols-[1.05fr_0.95fr]">
       <div className="panel flex flex-col justify-between gap-5 p-5">
@@ -120,7 +166,7 @@ export default function TelegramBanner() {
             <button
               type="button"
               onClick={connect}
-              disabled={connecting || checking}
+              disabled={connecting || checking || disconnecting}
               className="btn btn-primary"
             >
               {connecting
@@ -130,11 +176,27 @@ export default function TelegramBanner() {
                   : 'Подключить бота'}
             </button>
             {info.connected && (
-              <span className="text-[10px] uppercase tracking-[0.16em] text-[#9fb59f]">
-                уже подключён
-              </span>
+              <>
+                <span className="text-[10px] uppercase tracking-[0.16em] text-[#9fb59f]">
+                  уже подключён
+                </span>
+                <button
+                  type="button"
+                  onClick={disconnect}
+                  disabled={disconnecting || connecting}
+                  className="btn btn-ghost !px-0 !py-0 text-[10px] text-[#bb7464] hover:text-[#d9a093]"
+                >
+                  {disconnecting ? 'Отвязываем...' : 'Отвязать Telegram'}
+                </button>
+              </>
             )}
           </div>
+
+          {notice && (
+            <p className="mt-3 border border-[#9fb59f]/40 bg-[#9fb59f]/10 px-3 py-2 text-xs text-[#b9c9b8]">
+              {notice}
+            </p>
+          )}
 
           {error && (
             <p className="mt-3 border border-[#bb7464]/50 bg-[#bb7464]/10 px-3 py-2 text-xs text-[#d9a093]">
@@ -161,7 +223,11 @@ export default function TelegramBanner() {
           </p>
           <p>
             <span className="text-[#f2eee5]">«Не знаю»</span> — слово вернётся через
-            20 минут, завтра и через 3 дня.
+            15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.
+          </p>
+          <p>
+            Перевод можно скрыть под спойлером, а ненужное слово — отключить кнопкой
+            «Больше не повторять».
           </p>
           <p>
             Окно, интервал и часовой пояс меняются кнопкой «Настройки» прямо в боте.

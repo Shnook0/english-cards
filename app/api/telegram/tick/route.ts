@@ -47,9 +47,12 @@ async function runTick(request: Request): Promise<Response> {
   }
 
   const settingsByChat = new Map(settings.map(setting => [setting.chat_id, setting]))
+  const activeChatIds = settings
+    .filter(setting => !setting.paused)
+    .map(setting => setting.chat_id)
 
   try {
-    const due = await listDueReviews()
+    const due = await listDueReviews(activeChatIds)
     const seen = new Set<string>()
 
     for (const review of due) {
@@ -69,7 +72,7 @@ async function runTick(request: Request): Promise<Response> {
       }
 
       try {
-        await sendCard(review.chat_id, card, 'review')
+        await sendCard(review.chat_id, card, 'review', setting)
         await markReviewSent(review.id)
         sent.push(`review:${card.id}`)
       } catch (error) {
@@ -82,7 +85,7 @@ async function runTick(request: Request): Promise<Response> {
   }
 
   try {
-    const due = await listDuePending()
+    const due = await listDuePending(activeChatIds)
     const seen = new Set<string>()
 
     for (const pending of due) {
@@ -109,7 +112,7 @@ async function runTick(request: Request): Promise<Response> {
       }
 
       try {
-        await sendCard(pending.chat_id, card, 'repeat')
+        await sendCard(pending.chat_id, card, 'repeat', setting)
         await markPendingSent(pending.id)
         sentChats.add(pending.chat_id)
         sent.push(`repeat:${card.id}`)
@@ -135,7 +138,7 @@ async function runTick(request: Request): Promise<Response> {
       if (!card) continue
 
       try {
-        await sendCard(setting.chat_id, card, 'scheduled')
+        await sendCard(setting.chat_id, card, 'scheduled', setting)
         await updateSettings(setting.chat_id, { last_sent_at: new Date().toISOString() })
         sent.push(`scheduled:${card.id}`)
       } catch (error) {

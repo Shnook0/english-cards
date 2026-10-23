@@ -22,6 +22,16 @@ alter table public.telegram_settings
 alter table public.telegram_settings
   add column if not exists awaiting_input text;
 
+alter table public.telegram_settings
+  add column if not exists linked boolean not null default true;
+
+alter table public.telegram_settings
+  add column if not exists reveal_mode text not null default 'open';
+
+create unique index if not exists telegram_settings_active_user_idx
+  on public.telegram_settings (user_id)
+  where linked;
+
 -- Одноразовые коды для привязки чата к аккаунту на сайте.
 create table if not exists public.telegram_link_codes (
   code text primary key,
@@ -48,8 +58,9 @@ create index if not exists telegram_pending_due_idx
   on public.telegram_pending (chat_id, due_at)
   where sent_at is null;
 
--- Независимая очередь слов «Не знаю»: 20 минут, 1 день и 3 дня.
--- stage: 0 = +20 минут, 1–2 = день 1, 3–4 = день 3.
+-- Независимая очередь слов «Не знаю».
+-- stage: 0 = +15 минут, 1 = +2 часа, 2 = +5 часов, 3 = +1 день,
+-- 4 = +2 дня, 5 = +4 дня, 6–7 = +7 дней дважды, 8 = +15 дней, 9 = +30 дней.
 create table if not exists public.telegram_reviews (
   id bigserial primary key,
   chat_id bigint not null,
@@ -75,10 +86,20 @@ create table if not exists public.telegram_deliveries (
 create index if not exists telegram_deliveries_recent_idx
   on public.telegram_deliveries (chat_id, sent_at desc);
 
+-- Слова, которые больше не должны приходить в Telegram.
+-- В папке на сайте они остаются без изменений.
+create table if not exists public.telegram_muted_cards (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  card_id uuid not null references public.cards(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, card_id)
+);
+
 alter table public.telegram_settings enable row level security;
 alter table public.telegram_link_codes enable row level security;
 alter table public.telegram_pending enable row level security;
 alter table public.telegram_reviews enable row level security;
 alter table public.telegram_deliveries enable row level security;
+alter table public.telegram_muted_cards enable row level security;
 
 -- Политики не добавляем: доступ только через service_role на сервере.
