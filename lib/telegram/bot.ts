@@ -31,7 +31,9 @@ import {
 import { syncBotMenu } from './menu'
 import {
   applyBotResult,
+  bindChatToUser,
   clearCardQueue,
+  consumeLinkCode,
   deleteCard,
   ensureSettings,
   getCard,
@@ -92,9 +94,13 @@ function helpText(): string {
   return [
     '<b>Что я умею</b>',
     '',
-    '• присылаю сложные слова из твоих папок',
+    '• присылаю сложные слова из ваших папок на сайте',
     '• слова «Не знаю» повторяю через 20 минут, через день и через 3 дня',
     '• показываю статистику и следующие отправки',
+    '',
+    '<b>Понятия</b>',
+    '<b>Окно</b> — время, когда я присылаю слова. Например, 09:00–21:00.',
+    '<b>Интервал</b> — пауза между обычными словами. Например, каждые 60 минут.',
     '',
     '<b>Команды</b>',
     '/settings — настройки',
@@ -214,22 +220,40 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
   }
 
   const existing = await getSettings(chatId)
+  const code = arg.trim()
+
+  if (code) {
+    const userId = await consumeLinkCode(code)
+    if (userId) {
+      const bound = await bindChatToUser(chatId, userId)
+      if (!bound.ok) {
+        await sendMessage(
+          chatId,
+          'Этот чат уже подключён к другому аккаунту. Сначала отключите его в настройках на сайте.'
+        )
+        return
+      }
+      await sendWelcome(chatId, bound.settings)
+      return
+    }
+  }
+
   if (existing) {
     await sendWelcome(chatId, existing)
     return
   }
 
-  const linkCode = process.env.TELEGRAM_LINK_CODE
-  if (linkCode && arg !== linkCode) {
-    await sendMessage(
-      chatId,
-      'Чтобы подключить бота, отправь команду /start с кодом из настроек приложения.'
-    )
-    return
-  }
-
-  const settings = await ensureSettings(chatId)
-  await sendWelcome(chatId, settings)
+  await sendMessage(
+    chatId,
+    [
+      '<b>Здравствуйте!</b>',
+      '',
+      'Я бот для повторения английских слов.',
+      'Чтобы подключиться, откройте сайт English Cards, найдите блок «Бот в Telegram» и нажмите «Подключить бота».',
+      '',
+      'После этого я смогу присылать слова из ваших папок.',
+    ].join('\n')
+  )
 }
 
 async function handleCustomIntervalInput(

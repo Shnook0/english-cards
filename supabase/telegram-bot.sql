@@ -22,6 +22,19 @@ alter table public.telegram_settings
 alter table public.telegram_settings
   add column if not exists awaiting_input text;
 
+-- Одноразовые коды для привязки чата к аккаунту на сайте.
+create table if not exists public.telegram_link_codes (
+  code text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  used_at timestamptz
+);
+
+create index if not exists telegram_link_codes_user_idx
+  on public.telegram_link_codes (user_id)
+  where used_at is null;
+
 create table if not exists public.telegram_pending (
   id bigserial primary key,
   chat_id bigint not null,
@@ -63,6 +76,7 @@ create index if not exists telegram_deliveries_recent_idx
   on public.telegram_deliveries (chat_id, sent_at desc);
 
 alter table public.telegram_settings enable row level security;
+alter table public.telegram_link_codes enable row level security;
 alter table public.telegram_pending enable row level security;
 alter table public.telegram_reviews enable row level security;
 alter table public.telegram_deliveries enable row level security;

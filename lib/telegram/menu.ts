@@ -18,10 +18,10 @@ export const BOT_COMMANDS: BotCommand[] = [
 ]
 
 const DESCRIPTION =
-  'Присылаю сложные слова из твоих папок, помогаю повторять их и настраивать расписание. Открой /start.'
+  'Присылаю сложные слова из ваших папок на сайте, помогаю повторять их и настраивать расписание. Начните с /start.'
 
 const SHORT_DESCRIPTION =
-  'Сложные слова из твоих папок с повторением и настройками.'
+  'Сложные слова из ваших папок с повторением и настройками.'
 
 export async function syncBotMenu(): Promise<void> {
   const results = await Promise.allSettled([

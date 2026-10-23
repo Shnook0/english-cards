@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Folder } from '@/types/database'
+import TelegramBanner from '@/components/TelegramBanner'
 
 function vocabularyPhrase(count: number): string {
   if (count === 0) return 'Пока пусто — но начало уже положено.'
@@ -240,6 +241,8 @@ export default function HomePage() {
             </div>
           )}
         </footer>
+
+        <TelegramBanner />
       </div>
     </div>
   )

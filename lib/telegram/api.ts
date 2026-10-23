@@ -123,6 +123,27 @@ export function setMyDescription(description: string): Promise<unknown> {
   return telegram('setMyDescription', { description })
 }
 
+let cachedBotUsername: string | null = null
+
+export async function getBotUsername(): Promise<string | null> {
+  if (cachedBotUsername) return cachedBotUsername
+
+  const fromEnv =
+    process.env.TELEGRAM_BOT_USERNAME ?? process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+  if (fromEnv) {
+    cachedBotUsername = fromEnv.replace(/^@/, '')
+    return cachedBotUsername
+  }
+
+  try {
+    const me = await telegram<{ username?: string }>('getMe')
+    if (me.username) cachedBotUsername = me.username
+  } catch (error) {
+    console.error('telegram getMe:', error)
+  }
+  return cachedBotUsername
+}
+
 export function setMyShortDescription(short_description: string): Promise<unknown> {
   return telegram('setMyShortDescription', { short_description })
 }

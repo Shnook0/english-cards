@@ -401,15 +401,19 @@ export function settingsKeyboard(settings: TelegramSettings): InlineKeyboard {
 
 export function welcomeText(settings: TelegramSettings): string {
   return [
-    '<b>Бот подключён</b>',
+    '<b>Здравствуйте!</b>',
     '',
-    'Я присылаю сложные слова из твоих папок.',
+    'Я бот для повторения английских слов.',
+    'Присылаю сложные слова из ваших папок и помогаю повторять их в удобное время.',
     '',
     `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
+    '<i>Окно — время, когда я присылаю слова.</i>',
     `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
+    '<i>Интервал — пауза между обычными словами.</i>',
     `Статус: <b>${statusLabel(settings)}</b>`,
     '',
-    '<i>Настроить можно кнопками ниже.</i>',
+    '<i>Кнопка «Не знаю» возвращает слово через 20 минут, завтра и через 3 дня.</i>',
+    '<i>Настроить всё можно кнопками ниже или командой /settings.</i>',
   ].join('\n')
 }
 

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Card } from '@/types/database'
 import { patchCorrect, patchWrong } from '@/lib/study'
@@ -134,21 +135,87 @@ export async function ensureSettings(chatId: number): Promise<TelegramSettings> 
     throw new Error('Не удалось определить user_id. Задай OWNER_USER_ID или OWNER_EMAIL.')
   }
 
+  return createSettings(chatId, userId)
+}
+
+export async function createSettings(
+  chatId: number,
+  userId: string
+): Promise<TelegramSettings> {
   const { data, error } = await db()
     .from('telegram_settings')
-    .upsert(
-      {
-        chat_id: chatId,
-        user_id: userId,
-        timezone: process.env.TELEGRAM_TIMEZONE || 'Europe/Moscow',
-        interval_minutes: 60,
-      },
-      { onConflict: 'chat_id' }
-    )
+    .insert({
+      chat_id: chatId,
+      user_id: userId,
+      timezone: process.env.TELEGRAM_TIMEZONE || 'Europe/Moscow',
+      interval_minutes: 60,
+    })
     .select('*')
     .single()
   if (error) throw error
   return data as TelegramSettings
+}
+
+export async function getSettingsForUser(userId: string): Promise<TelegramSettings | null> {
+  const { data, error } = await db()
+    .from('telegram_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+  if (error) throw error
+  return ((data ?? [])[0] as TelegramSettings | undefined) ?? null
+}
+
+export async function createLinkCode(
+  userId: string
+): Promise<{ code: string; expires_at: string }> {
+  const admin = db()
+  const code = randomBytes(6).toString('hex')
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+
+  await admin
+    .from('telegram_link_codes')
+    .delete()
+    .eq('user_id', userId)
+    .is('used_at', null)
+
+  const { error } = await admin.from('telegram_link_codes').insert({
+    code,
+    user_id: userId,
+    expires_at: expiresAt,
+  })
+  if (error) throw error
+
+  return { code, expires_at: expiresAt }
+}
+
+export async function consumeLinkCode(code: string): Promise<string | null> {
+  const now = new Date().toISOString()
+  const { data, error } = await db()
+    .from('telegram_link_codes')
+    .update({ used_at: now })
+    .eq('code', code)
+    .is('used_at', null)
+    .gt('expires_at', now)
+    .select('user_id')
+    .maybeSingle()
+  if (error) throw error
+  return (data as { user_id: string } | null)?.user_id ?? null
+}
+
+export async function bindChatToUser(
+  chatId: number,
+  userId: string
+): Promise<{ ok: true; settings: TelegramSettings } | { ok: false; reason: 'taken' }> {
+  const existing = await getSettings(chatId)
+  if (existing) {
+    if (existing.user_id !== userId) return { ok: false, reason: 'taken' }
+    return { ok: true, settings: existing }
+  }
+
+  const settings = await createSettings(chatId, userId)
+  return { ok: true, settings }
 }
 
 export async function updateSettings(
