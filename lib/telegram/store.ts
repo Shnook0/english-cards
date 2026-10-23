@@ -83,7 +83,14 @@ export function db(): SupabaseClient {
 function isMissingBotSchema(error: unknown): boolean {
   const value = error as { code?: string; message?: string } | null
   if (!value) return false
-  if (value.code === '42P01' || value.code === '42703') return true
+  if (
+    value.code === '42P01' ||
+    value.code === '42703' ||
+    value.code === 'PGRST204' ||
+    value.code === 'PGRST205'
+  ) {
+    return true
+  }
   return /does not exist|schema cache/i.test(value.message ?? '')
 }
 
@@ -202,7 +209,7 @@ async function migrateChatHistory(fromChatId: number, toChatId: number): Promise
       .from(table)
       .update({ chat_id: toChatId })
       .eq('chat_id', fromChatId)
-    if (error) throw error
+    if (error && !isMissingBotSchema(error)) throw error
   }
 }
 
@@ -210,7 +217,7 @@ async function deleteChatHistory(chatId: number): Promise<void> {
   const admin = db()
   for (const table of ['telegram_pending', 'telegram_reviews', 'telegram_deliveries']) {
     const { error } = await admin.from(table).delete().eq('chat_id', chatId)
-    if (error) throw error
+    if (error && !isMissingBotSchema(error)) throw error
   }
 }
 

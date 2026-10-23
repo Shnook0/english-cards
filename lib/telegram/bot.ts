@@ -444,13 +444,30 @@ async function handleCommand(
   }
 }
 
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (error && typeof error === 'object') {
+    const value = error as Record<string, unknown>
+    const parts = [value.message, value.details, value.hint, value.code].filter(
+      (part): part is string => typeof part === 'string' && part.length > 0
+    )
+    if (parts.length > 0) return parts.join(' | ')
+    try {
+      return JSON.stringify(error)
+    } catch {
+      return 'неизвестная ошибка'
+    }
+  }
+  return String(error ?? 'неизвестная ошибка')
+}
+
 async function handleMessage(message: TelegramMessage): Promise<void> {
   try {
     await handleMessageInner(message)
   } catch (error) {
     console.error('telegram message:', error)
-    const reason = error instanceof Error ? error.message : 'неизвестная ошибка'
-    await sendMessage(message.chat.id, `Ошибка: ${reason}`).catch(() => {})
+    await sendMessage(message.chat.id, `Ошибка: ${describeError(error)}`).catch(() => {})
   }
 }
 
@@ -682,7 +699,7 @@ async function handleCallback(query: TelegramCallbackQuery): Promise<void> {
     await handleCallbackInner(query)
   } catch (error) {
     console.error('telegram callback:', error)
-    await answerCallbackQuery(query.id, 'Ошибка').catch(() => {})
+    await answerCallbackQuery(query.id, describeError(error).slice(0, 190)).catch(() => {})
   }
 }
 
