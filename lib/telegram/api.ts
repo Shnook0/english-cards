@@ -17,6 +17,12 @@ export type ReplyKeyboard = {
   input_field_placeholder?: string
 }
 
+export type ForceReply = {
+  force_reply: true
+  input_field_placeholder?: string
+  selective?: boolean
+}
+
 export type BotCommand = {
   command: string
   description: string
@@ -55,7 +61,7 @@ export function sendMessage(
   chatId: number | string,
   text: string,
   keyboard?: InlineKeyboard,
-  replyKeyboard?: ReplyKeyboard
+  replyKeyboard?: ReplyKeyboard | ForceReply
 ): Promise<unknown> {
   const replyMarkup = keyboard
     ? { inline_keyboard: keyboard }

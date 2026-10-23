@@ -439,7 +439,7 @@ export function intervalText(settings: TelegramSettings): string {
     '',
     `Сейчас: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
     '',
-    '<i>Выбери готовый вариант или просто отправь число минут — например, 45.</i>',
+    '<i>Выбери готовый вариант или задай своё количество минут.</i>',
   ].join('\n')
 }
 
@@ -456,6 +456,9 @@ export function intervalKeyboard(settings: TelegramSettings): InlineKeyboard {
     [{ text: 'Назад', callback_data: 'set:menu' }],
   ]
 }
+
+export const CUSTOM_INTERVAL_PROMPT =
+  'Жду число минут. Отправь его одним сообщением, например 45.'
 
 export function customIntervalText(settings: TelegramSettings): string {
   return [

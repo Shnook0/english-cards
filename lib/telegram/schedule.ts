@@ -251,10 +251,6 @@ export function parseTimeRange(input: string): { start: string; end: string } | 
 const INTERVAL_UNITS =
   'm|min|mins|minute|minutes|мин\\.?|минут[аы]?|h|hour|hours|ч|час|часа|часов'
 
-export function isIntervalInput(input: string): boolean {
-  return new RegExp(`^\\d+\\s*(?:${INTERVAL_UNITS})?$`, 'i').test(input.trim())
-}
-
 export function parseInterval(input: string): number | null {
   const match = input
     .trim()

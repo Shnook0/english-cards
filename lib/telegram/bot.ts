@@ -2,6 +2,7 @@ import { answerCallbackQuery, editMessageText, sendMessage, type InlineKeyboard 
 import {
   cardKeyboard,
   cardText,
+  CUSTOM_INTERVAL_PROMPT,
   customIntervalKeyboard,
   customIntervalText,
   debugKeyboard,
@@ -50,7 +51,6 @@ import {
 import {
   buildDontKnowSchedule,
   formatInterval,
-  isIntervalInput,
   normalizeTime,
   parseInterval,
   parseTimeRange,
@@ -66,6 +66,7 @@ type TelegramMessage = {
   chat: TelegramChat
   text?: string
   date: number
+  reply_to_message?: TelegramMessage
 }
 type TelegramCallbackQuery = {
   id: string
@@ -375,16 +376,12 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
   if (!parsed) {
     const command = REPLY_BUTTON_COMMANDS[text]
     if (!command) {
-      if (settings.awaiting_input === 'interval' || parseInterval(text) !== null) {
+      const repliedTo = message.reply_to_message
+      const isIntervalReply = Boolean(
+        repliedTo?.from?.is_bot && repliedTo.text?.includes(CUSTOM_INTERVAL_PROMPT)
+      )
+      if (settings.awaiting_input === 'interval' || isIntervalReply) {
         await handleCustomIntervalInput(chatId, settings, text)
-        return
-      }
-      if (isIntervalInput(text)) {
-        await sendMessage(
-          chatId,
-          'Интервал должен быть от 5 до 1440 минут. Например: 45.',
-          customIntervalKeyboard(),
-        )
         return
       }
       await sendMessage(chatId, `Не понял.\n\n${helpText()}`, helpKeyboard())
@@ -429,6 +426,10 @@ async function handleSettingsCallback(
     case 'ivc':
       await updateSettings(chatId, { awaiting_input: 'interval' })
       await safeEdit(chatId, messageId, customIntervalText(settings), customIntervalKeyboard())
+      await sendMessage(chatId, CUSTOM_INTERVAL_PROMPT, undefined, {
+        force_reply: true,
+        input_field_placeholder: 'Число минут',
+      })
       await answerCallbackQuery(query.id, 'Напиши число минут')
       return
 
