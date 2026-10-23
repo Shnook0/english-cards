@@ -313,13 +313,16 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
     return
   }
 
+  const site = siteUrl()
+  const siteLabel = site ? `<a href="${site}">English Cards</a>` : 'English Cards'
+
   await sendMessage(
     chatId,
     [
       '<b>Здравствуйте!</b>',
       '',
       'Я бот для повторения английских слов.',
-      'Чтобы подключиться, откройте сайт English Cards, найдите блок «Бот в Telegram» и нажмите «Подключить бота».',
+      `Чтобы подключиться, откройте сайт ${siteLabel}, найдите блок «Бот в Telegram» и нажмите «Подключить бота».`,
       '',
       'После этого я смогу присылать слова из ваших папок.',
     ].join('\n')
