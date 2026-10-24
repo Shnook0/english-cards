@@ -128,23 +128,20 @@ function debugReason(
 ): string {
   if (settings.paused) return 'бот на паузе.'
 
+  const dueReview = [...pending, ...reviews].some(
+    item => new Date(item.due_at).getTime() <= now
+  )
+  if (dueReview) {
+    return 'есть повтор «Не знаю», который уже должен был прийти. Если его нет — cron-job.org не запускается или неверный TELEGRAM_TICK_SECRET.'
+  }
+
   const nowDate = new Date(now)
   if (!canSendRegular(settings, nowDate)) {
-    return 'сейчас вне окна отправки — обычные слова ждут открытия окна.'
+    return 'сейчас вне окна отправки — обычные слова ждут открытия окна, а повторы «Не знаю» приходят по своему времени.'
   }
 
   if (!isWithinWindow(settings, nowDate) && hasActivityBonus(settings, nowDate)) {
     return `действует бонус после действия: обычные слова ещё приходят вне окна ${ACTIVITY_BONUS_MINUTES} мин.`
-  }
-
-  const duePending = pending.some(item => new Date(item.due_at).getTime() <= now)
-  if (duePending) {
-    return 'есть обычный повтор, который уже должен был прийти. Если его нет — cron-job.org не запускается.'
-  }
-
-  const dueReview = reviews.some(item => new Date(item.due_at).getTime() <= now)
-  if (dueReview && isWithinWindow(settings, nowDate)) {
-    return 'есть повтор «Не знаю», который уже должен был прийти. Если его нет — cron-job.org не запускается.'
   }
 
   if (stats.hard === 0) return 'нет сложных слов в твоих папках.'
@@ -185,6 +182,11 @@ export function debugText(
     ? `да, ещё ${ACTIVITY_BONUS_MINUTES} мин после действия`
     : 'нет'
 
+  const queue = [...pending, ...reviews].sort(
+    (a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime()
+  )
+  const queueCount = stats.pending + stats.reviews
+
   const lines = [
     '<b>Диагностика</b>',
     '',
@@ -192,16 +194,13 @@ export function debugText(
     `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
     `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
     `Статус: <b>${statusLabel(settings)}</b>`,
-    `Последняя плановая: <b>${
+    `Последняя отправка: <b>${
       settings.last_sent_at ? formatDateTime(settings.last_sent_at, tz) : 'ещё не было'
     }</b>`,
-    `Следующая плановая: <b>${nextText}</b>`,
+    `Следующая отправка: <b>${nextText}</b>`,
     `Бонус после действия: <b>${bonus}</b>`,
-    `Повторов «Не знаю»: <b>${reviews.length}</b>${
-      reviews[0] ? ` (ближайший ${formatDateTime(reviews[0].due_at, tz)})` : ''
-    }`,
-    `Обычных повторов: <b>${pending.length}</b>${
-      pending[0] ? ` (ближайший в ${formatTime(pending[0].due_at, tz)})` : ''
+    `В очереди «Не знаю»: <b>${queueCount}</b>${
+      queue[0] ? ` (ближайший ${formatDateTime(queue[0].due_at, tz)})` : ''
     }`,
   ]
 
@@ -238,7 +237,7 @@ export function debugKeyboard(): InlineKeyboard {
   ]
 }
 
-type UpcomingKind = 'review' | 'pending' | 'regular'
+type UpcomingKind = 'review' | 'regular'
 
 type UpcomingItem = {
   at: string
@@ -279,12 +278,13 @@ function upcomingState(
 
   const at = new Date(item.at)
   const overdue = at.getTime() <= now.getTime()
-  const allowedAt =
-    item.kind === 'review' ? isWithinWindow(settings, at) : canSendRegular(settings, at)
-  const allowedNow =
-    item.kind === 'review'
-      ? isWithinWindow(settings, now)
-      : canSendRegular(settings, now)
+
+  if (item.kind === 'review') {
+    return overdue ? 'готова к отправке' : 'по расписанию, окно не важно'
+  }
+
+  const allowedAt = canSendRegular(settings, at)
+  const allowedNow = canSendRegular(settings, now)
 
   if (overdue) return allowedNow ? 'готова к отправке' : 'ждёт окно'
   return allowedAt ? 'не ждёт окно' : 'ждёт окно'
@@ -298,7 +298,7 @@ export function upcomingText(
   const tz = settings.timezone
   const now = new Date()
 
-  const items: UpcomingItem[] = [
+  const reviewItems: UpcomingItem[] = [
     ...reviews.map(review => ({
       at: review.due_at,
       label: `Повтор «Не знаю»: ${review.word}`,
@@ -307,12 +307,13 @@ export function upcomingText(
     })),
     ...pending.map(item => ({
       at: item.due_at,
-      label: 'Обычное повторение из папки',
-      detail: 'после ответа',
-      kind: 'pending' as const,
+      label: `Повтор «Не знаю»: ${item.word}`,
+      detail: item.stage === null ? 'по расписанию' : reviewLabel(item.stage),
+      kind: 'review' as const,
     })),
-    ...regularUpcomingItems(settings, now, 8),
   ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+
+  const regularItems = regularUpcomingItems(settings, now, 3)
 
   const lines = [
     '<b>Следующие отправки</b>',
@@ -330,10 +331,8 @@ export function upcomingText(
     '',
   ]
 
-  if (items.length === 0) {
-    lines.push('пока нет запланированных отправок.')
-  } else {
-    for (const [index, item] of items.slice(0, 5).entries()) {
+  const renderItems = (items: UpcomingItem[], limit: number) => {
+    for (const [index, item] of items.slice(0, limit).entries()) {
       lines.push(
         `${index + 1}) <b>${formatDateWords(item.at, tz)}, ${formatTime(item.at, tz)}</b>`
       )
@@ -343,10 +342,27 @@ export function upcomingText(
       lines.push(`Состояние: <b>${upcomingState(settings, item, now)}</b>`)
       lines.push('')
     }
+    if (items.length > limit) {
+      lines.push(`… и ещё ${items.length - limit}`)
+      lines.push('')
+    }
+  }
+
+  lines.push('<b>«Не знаю»</b>')
+  if (reviewItems.length === 0) {
+    lines.push('пока нет запланированных повторов.')
+    lines.push('')
+  } else {
+    renderItems(reviewItems, 5)
+  }
+
+  if (regularItems.length > 0) {
+    lines.push('<b>Обычные отправки</b>')
+    renderItems(regularItems, 3)
   }
 
   lines.push(
-    '<i>«Не знаю» ждут окно. Обычные отправки — в окне и ещё 30 мин после действия.</i>'
+    '<i>«Не знаю» приходят по своему расписанию в любое время. Обычные отправки — в окне и ещё 30 мин после действия.</i>'
   )
 
   return lines.join('\n')
@@ -376,7 +392,7 @@ export function settingsText(settings: TelegramSettings): string {
     `Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
     '<i>Обычные слова приходят в окне и ещё 30 мин после любого действия в боте.</i>',
-    '<i>Слова «Не знаю» повторяются через 20 мин, через день и через 3 дня — только внутри окна.</i>',
+    '<i>Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Окно на них не влияет.</i>',
   ].join('\n')
 }
 
@@ -417,7 +433,7 @@ export function welcomeText(settings: TelegramSettings): string {
     '<i>Интервал — пауза между обычными словами.</i>',
     `Статус: <b>${statusLabel(settings)}</b>`,
     '',
-    '<i>Кнопка «Не знаю» возвращает слово через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.</i>',
+    '<i>Кнопка «Не знаю» возвращает слово через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней — в любое время, даже вне окна.</i>',
     '<i>Настроить всё можно кнопками ниже или командой /settings.</i>',
   ].join('\n')
 }
@@ -609,7 +625,7 @@ export function statsText(stats: BotStats): string {
     '',
     `Сложных слов: <b>${stats.hard}</b>`,
     `Всего слов: <b>${stats.total}</b>`,
-    `В очереди на повтор: <b>${stats.pending}</b>`,
+    `В очереди «Не знаю»: <b>${stats.pending + stats.reviews}</b>`,
     `Отправлено за 7 дней: <b>${stats.sentWeek}</b>`,
   ].join('\n')
 }

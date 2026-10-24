@@ -48,7 +48,7 @@ import {
   muteCard,
   pickNextCard,
   recordDelivery,
-  replaceDontKnowReviews,
+  replaceDontKnowQueue,
   touchActivity,
   updateSettings,
   type BotCard,
@@ -100,7 +100,7 @@ function helpText(): string {
     '<b>Что я умею</b>',
     '',
     '• присылаю сложные слова из ваших папок на сайте',
-    '• слова «Не знаю» повторяю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней',
+    '• слова «Не знаю» повторяю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней — в любое время, даже вне окна',
     '• могу скрыть перевод под спойлером или перестать присылать отдельное слово',
     '• показываю статистику и следующие отправки',
     '',
@@ -764,7 +764,7 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
 
     case 'dont': {
       await applyBotResult(card, false)
-      await replaceDontKnowReviews(
+      await replaceDontKnowQueue(
         chatId,
         card.id,
         buildDontKnowSchedule(settings),
@@ -772,7 +772,13 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       await safeEdit(
         chatId,
         messageId,
-        `${cardText(card)}\n\nОтмечено: не знаю. Повторю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.`,
+        [
+          cardText(card),
+          '',
+          'Отмечено: не знаю. Ошибка записана, слово будет приходить чаще.',
+          'Повторю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.',
+          'Очередь повторов видна в «Диагностика» → «Следующие».',
+        ].join('\n'),
         []
       )
       await answerCallbackQuery(query.id, 'Запланировал повторы')

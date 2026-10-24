@@ -1,5 +1,5 @@
 import { sendCard } from '@/lib/telegram/bot'
-import { canSendRegular, isWithinWindow } from '@/lib/telegram/schedule'
+import { canSendRegular } from '@/lib/telegram/schedule'
 import {
   getCard,
   listDuePending,
@@ -7,6 +7,7 @@ import {
   listSettings,
   markPendingSent,
   markReviewSent,
+  normalizeWord,
   pickNextCard,
   updateSettings,
   type TelegramSettings,
@@ -36,7 +37,24 @@ async function runTick(request: Request): Promise<Response> {
   const sent: string[] = []
   const failed: string[] = []
   const sentChats = new Set<number>()
+  const sentKeys = new Set<string>()
   const now = new Date()
+
+  const cardKey = (chatId: number, cardId: string) => `${chatId}:card:${cardId}`
+  const wordKey = (chatId: number, word: string) => `${chatId}:word:${normalizeWord(word)}`
+  const alreadySent = (chatId: number, card: { id: string; word: string }) =>
+    sentKeys.has(cardKey(chatId, card.id)) || sentKeys.has(wordKey(chatId, card.word))
+  const rememberSent = (chatId: number, card: { id: string; word: string }) => {
+    sentKeys.add(cardKey(chatId, card.id))
+    sentKeys.add(wordKey(chatId, card.word))
+  }
+  const markDelivered = async (chatId: number) => {
+    try {
+      await updateSettings(chatId, { last_sent_at: new Date().toISOString() })
+    } catch (error) {
+      console.error('telegram tick last_sent_at:', error)
+    }
+  }
 
   let settings: TelegramSettings[] = []
   try {
@@ -53,17 +71,10 @@ async function runTick(request: Request): Promise<Response> {
 
   try {
     const due = await listDueReviews(activeChatIds)
-    const seen = new Set<string>()
 
     for (const review of due) {
       const setting = settingsByChat.get(review.chat_id)
-      if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
-
-      if (seen.has(review.card_id)) {
-        await markReviewSent(review.id)
-        continue
-      }
-      seen.add(review.card_id)
+      if (!setting || setting.paused) continue
 
       const card = await getCard(review.card_id)
       if (!card) {
@@ -71,9 +82,17 @@ async function runTick(request: Request): Promise<Response> {
         continue
       }
 
+      if (alreadySent(review.chat_id, card)) {
+        await markReviewSent(review.id)
+        continue
+      }
+
       try {
         await sendCard(review.chat_id, card, 'review', setting)
+        rememberSent(review.chat_id, card)
+        sentChats.add(review.chat_id)
         await markReviewSent(review.id)
+        await markDelivered(review.chat_id)
         sent.push(`review:${card.id}`)
       } catch (error) {
         failed.push(`review:${card.id}`)
@@ -86,24 +105,10 @@ async function runTick(request: Request): Promise<Response> {
 
   try {
     const due = await listDuePending(activeChatIds)
-    const seen = new Set<string>()
 
     for (const pending of due) {
       const setting = settingsByChat.get(pending.chat_id)
-      if (
-        !setting ||
-        setting.paused ||
-        !canSendRegular(setting, now) ||
-        sentChats.has(pending.chat_id)
-      ) {
-        continue
-      }
-
-      if (seen.has(pending.card_id)) {
-        await markPendingSent(pending.id)
-        continue
-      }
-      seen.add(pending.card_id)
+      if (!setting || setting.paused) continue
 
       const card = await getCard(pending.card_id)
       if (!card) {
@@ -111,14 +116,21 @@ async function runTick(request: Request): Promise<Response> {
         continue
       }
 
-      try {
-        await sendCard(pending.chat_id, card, 'repeat', setting)
+      if (alreadySent(pending.chat_id, card)) {
         await markPendingSent(pending.id)
+        continue
+      }
+
+      try {
+        await sendCard(pending.chat_id, card, 'review', setting)
+        rememberSent(pending.chat_id, card)
         sentChats.add(pending.chat_id)
-        sent.push(`repeat:${card.id}`)
+        await markPendingSent(pending.id)
+        await markDelivered(pending.chat_id)
+        sent.push(`review:${card.id}`)
       } catch (error) {
-        failed.push(`repeat:${card.id}`)
-        console.error('telegram tick repeat:', error)
+        failed.push(`review:${card.id}`)
+        console.error('telegram tick pending:', error)
       }
     }
   } catch (error) {
