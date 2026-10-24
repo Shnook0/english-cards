@@ -1,6 +1,5 @@
 import type { TelegramSettings } from './store'
 
-export const ACTIVITY_BONUS_MINUTES = 30
 export const DONT_KNOW_FIRST_MINUTES = 15
 
 export function normalizeTime(value: string): string {
@@ -157,15 +156,8 @@ export function nextWindowStart(settings: TelegramSettings, now = new Date()): D
   return localTimeToUtc(targetDate, settings.window_start, settings.timezone)
 }
 
-export function hasActivityBonus(settings: TelegramSettings, now = new Date()): boolean {
-  if (!settings.last_activity_at) return false
-  const last = new Date(settings.last_activity_at).getTime()
-  if (!Number.isFinite(last)) return false
-  return now.getTime() - last < ACTIVITY_BONUS_MINUTES * 60 * 1000
-}
-
 export function canSendRegular(settings: TelegramSettings, now = new Date()): boolean {
-  return isWithinWindow(settings, now) || hasActivityBonus(settings, now)
+  return isWithinWindow(settings, now)
 }
 
 export function nextScheduledAt(

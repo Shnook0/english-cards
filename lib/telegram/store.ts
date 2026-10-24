@@ -21,7 +21,6 @@ export type TelegramSettings = {
   interval_minutes: number
   paused: boolean
   last_sent_at: string | null
-  last_activity_at: string | null
   awaiting_input: string | null
   linked: boolean
   reveal_mode: RevealMode
@@ -388,7 +387,6 @@ export async function updateSettings(
   if (!isMissingBotSchema(error)) throw error
 
   const fallback = { ...patch }
-  delete fallback.last_activity_at
   delete fallback.awaiting_input
 
   if (Object.keys(fallback).length === 0) return
@@ -398,10 +396,6 @@ export async function updateSettings(
     .update({ ...fallback, updated_at: new Date().toISOString() })
     .eq('chat_id', chatId)
   if (fallbackError) throw fallbackError
-}
-
-export async function touchActivity(chatId: number): Promise<void> {
-  await updateSettings(chatId, { last_activity_at: new Date().toISOString() })
 }
 
 export async function listSettings(): Promise<TelegramSettings[]> {

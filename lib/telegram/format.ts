@@ -1,10 +1,8 @@
 import type { InlineKeyboard, ReplyKeyboard } from './api'
 import {
-  ACTIVITY_BONUS_MINUTES,
   canSendRegular,
   DONT_KNOW_STAGE_LABELS,
   formatInterval,
-  hasActivityBonus,
   isWithinWindow,
   nextScheduledAt,
   normalizeTime,
@@ -140,10 +138,6 @@ function debugReason(
     return 'сейчас вне окна отправки — обычные слова ждут открытия окна, а повторы «Не знаю» приходят по своему времени.'
   }
 
-  if (!isWithinWindow(settings, nowDate) && hasActivityBonus(settings, nowDate)) {
-    return `действует бонус после действия: обычные слова ещё приходят вне окна ${ACTIVITY_BONUS_MINUTES} мин.`
-  }
-
   if (stats.hard === 0) return 'нет сложных слов в твоих папках.'
 
   if (settings.last_sent_at) {
@@ -178,10 +172,6 @@ export function debugText(
             tz
           )})`
 
-  const bonus = hasActivityBonus(settings, new Date(now))
-    ? `да, ещё ${ACTIVITY_BONUS_MINUTES} мин после действия`
-    : 'нет'
-
   const queue = [...pending, ...reviews].sort(
     (a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime()
   )
@@ -198,7 +188,6 @@ export function debugText(
       settings.last_sent_at ? formatDateTime(settings.last_sent_at, tz) : 'ещё не было'
     }</b>`,
     `Следующая отправка: <b>${nextText}</b>`,
-    `Бонус после действия: <b>${bonus}</b>`,
     `В очереди «Не знаю»: <b>${queueCount}</b>${
       queue[0] ? ` (ближайший ${formatDateTime(queue[0].due_at, tz)})` : ''
     }`,
@@ -320,13 +309,7 @@ export function upcomingText(
     '',
     `Сейчас: <b>${formatTime(now.toISOString(), tz)}</b> (${escapeHtml(tz)})`,
     `Режим: <b>${
-      settings.paused
-        ? 'пауза'
-        : isWithinWindow(settings, now)
-          ? 'окно открыто'
-          : hasActivityBonus(settings, now)
-            ? `бонус ${ACTIVITY_BONUS_MINUTES} мин`
-            : 'вне окна'
+      settings.paused ? 'пауза' : isWithinWindow(settings, now) ? 'окно открыто' : 'вне окна'
     }</b>`,
     '',
   ]
@@ -362,7 +345,7 @@ export function upcomingText(
   }
 
   lines.push(
-    '<i>«Не знаю» приходят по своему расписанию в любое время. Обычные отправки — в окне и ещё 30 мин после действия.</i>'
+    '<i>«Не знаю» приходят по своему расписанию в любое время. Обычные отправки — только в окне.</i>'
   )
 
   return lines.join('\n')
@@ -391,7 +374,7 @@ export function settingsText(settings: TelegramSettings): string {
     `Статус: <b>${statusLabel(settings)}</b>`,
     `Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
-    '<i>Обычные слова приходят в окне и ещё 30 мин после любого действия в боте.</i>',
+    '<i>Обычные слова приходят только в окне.</i>',
     '<i>Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Окно на них не влияет.</i>',
   ].join('\n')
 }

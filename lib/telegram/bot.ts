@@ -49,7 +49,6 @@ import {
   pickNextCard,
   recordDelivery,
   replaceDontKnowQueue,
-  touchActivity,
   updateSettings,
   type BotCard,
   type RevealMode,
@@ -254,7 +253,6 @@ async function safeEdit(
 }
 
 async function sendWelcome(chatId: number, settings: TelegramSettings): Promise<void> {
-  await touchActivity(chatId)
   await syncBotMenu()
   await sendMessage(chatId, welcomeText(settings), undefined, mainReplyKeyboard())
 
@@ -487,8 +485,6 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
 
   const { ok, settings } = await isOwner(chatId)
   if (!ok || !settings) return
-
-  await touchActivity(chatId)
 
   if (!parsed) {
     const command = REPLY_BUTTON_COMMANDS[text]
@@ -728,8 +724,6 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
     await answerCallbackQuery(query.id, 'Нет доступа')
     return
   }
-
-  await touchActivity(chatId)
 
   if (action === 'set') {
     await handleSettingsCallback(query, settings)

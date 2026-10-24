@@ -10,14 +10,10 @@ create table if not exists public.telegram_settings (
   interval_minutes integer not null default 60 check (interval_minutes between 5 and 1440),
   paused boolean not null default false,
   last_sent_at timestamptz,
-  last_activity_at timestamptz,
   awaiting_input text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
-alter table public.telegram_settings
-  add column if not exists last_activity_at timestamptz;
 
 alter table public.telegram_settings
   add column if not exists awaiting_input text;
