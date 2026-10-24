@@ -1,6 +1,7 @@
 import { sendCard } from '@/lib/telegram/bot'
 import { canSendRegular, isWithinWindow } from '@/lib/telegram/schedule'
 import {
+  finishDelivery,
   getCard,
   listDuePending,
   listDueReviews,
@@ -10,6 +11,7 @@ import {
   normalizeWord,
   pickNextCard,
   updateSettings,
+  type BotCard,
   type TelegramSettings,
 } from '@/lib/telegram/store'
 
@@ -55,6 +57,19 @@ async function runTick(request: Request): Promise<Response> {
       console.error('telegram tick last_sent_at:', error)
     }
   }
+  const scheduleNext = async (
+    setting: TelegramSettings,
+    card: BotCard,
+    initialIgnore: boolean,
+  ) => {
+    try {
+      await finishDelivery(setting.chat_id, setting.user_id, card, setting, {
+        initialIgnore,
+      })
+    } catch (error) {
+      console.error('telegram tick follow-up:', error)
+    }
+  }
 
   let settings: TelegramSettings[] = []
   try {
@@ -93,6 +108,7 @@ async function runTick(request: Request): Promise<Response> {
         sentChats.add(review.chat_id)
         await markReviewSent(review.id)
         await markDelivered(review.chat_id)
+        await scheduleNext(setting, card, false)
         sent.push(`review:${card.id}`)
       } catch (error) {
         failed.push(`review:${card.id}`)
@@ -127,6 +143,7 @@ async function runTick(request: Request): Promise<Response> {
         sentChats.add(pending.chat_id)
         await markPendingSent(pending.id)
         await markDelivered(pending.chat_id)
+        await scheduleNext(setting, card, false)
         sent.push(`review:${card.id}`)
       } catch (error) {
         failed.push(`review:${card.id}`)
@@ -152,6 +169,7 @@ async function runTick(request: Request): Promise<Response> {
       try {
         await sendCard(setting.chat_id, card, 'scheduled', setting)
         await updateSettings(setting.chat_id, { last_sent_at: new Date().toISOString() })
+        await scheduleNext(setting, card, true)
         sent.push(`scheduled:${card.id}`)
       } catch (error) {
         failed.push(`scheduled:${card.id}`)

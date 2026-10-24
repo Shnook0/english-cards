@@ -3,7 +3,10 @@ import {
   canSendRegular,
   DONT_KNOW_STAGE_LABELS,
   formatInterval,
+  IGNORED_FOLLOW_UP_STAGE,
   isWithinWindow,
+  KNOWN_FOLLOW_UP_STAGE,
+  MUTED_FOLLOW_UP_STAGE,
   nextScheduledAt,
   normalizeTime,
   TIMEZONE_OPTIONS,
@@ -108,13 +111,34 @@ function formatDateWords(iso: string, timezone: string): string {
 function deliveryLabel(kind: string): string {
   if (kind === 'scheduled') return 'по расписанию'
   if (kind === 'repeat') return 'повтор'
-  if (kind === 'review') return 'повтор «Не знаю»'
+  if (kind === 'review') return 'повтор'
   if (kind === 'manual') return 'вручную'
   return kind
 }
 
 function reviewLabel(stage: number): string {
   return DONT_KNOW_STAGE_LABELS[stage] ?? 'повтор'
+}
+
+function followUpLabel(stage: number | null): string {
+  if (stage === null) return 'по расписанию'
+  if (stage >= MUTED_FOLLOW_UP_STAGE) return 'отложенный повтор'
+  if (stage >= IGNORED_FOLLOW_UP_STAGE) return 'после игнора'
+  if (stage >= KNOWN_FOLLOW_UP_STAGE) return 'после «Знаю»'
+  return reviewLabel(stage)
+}
+
+function followUpTitle(stage: number | null, word: string): string {
+  if (stage !== null && stage >= MUTED_FOLLOW_UP_STAGE) {
+    return `Отложенный повтор: ${word}`
+  }
+  if (stage !== null && stage >= IGNORED_FOLLOW_UP_STAGE) {
+    return `Повтор после игнора: ${word}`
+  }
+  if (stage !== null && stage >= KNOWN_FOLLOW_UP_STAGE) {
+    return `Повтор «Знаю»: ${word}`
+  }
+  return `Повтор «Не знаю»: ${word}`
 }
 
 function debugReason(
@@ -133,16 +157,16 @@ function debugReason(
   )
   if (dueReview) {
     if (!inWindow) {
-      return 'есть повтор «Не знаю», но сейчас вне окна — придёт при открытии окна.'
+      return 'есть запланированный повтор, но сейчас вне окна — придёт при открытии окна.'
     }
-    return 'есть повтор «Не знаю», который уже должен был прийти. Если его нет — cron-job.org не запускается или неверный TELEGRAM_TICK_SECRET.'
+    return 'есть повтор, который уже должен был прийти. Если его нет — cron-job.org не запускается или неверный TELEGRAM_TICK_SECRET.'
   }
 
   if (!inWindow) {
-    return 'сейчас вне окна отправки — обычные слова и повторы «Не знаю» ждут открытия окна.'
+    return 'сейчас вне окна отправки — обычные слова и повторы ждут открытия окна.'
   }
 
-  if (stats.hard === 0) return 'нет сложных слов в твоих папках.'
+  if (stats.hard === 0) return 'нет слов для повторения в твоих папках.'
 
   if (settings.last_sent_at) {
     const last = new Date(settings.last_sent_at).getTime()
@@ -182,7 +206,7 @@ export function debugText(
   const queueCount = stats.pending + stats.reviews
 
   const lines = [
-    '<b>Диагностика</b>',
+    '<b>🛠 Диагностика</b>',
     '',
     `Сейчас: <b>${formatTime(new Date().toISOString(), tz)}</b> (${escapeHtml(tz)})`,
     `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
@@ -192,7 +216,7 @@ export function debugText(
       settings.last_sent_at ? formatDateTime(settings.last_sent_at, tz) : 'ещё не было'
     }</b>`,
     `Следующая отправка: <b>${nextText}</b>`,
-    `В очереди «Не знаю»: <b>${queueCount}</b>${
+    `В очереди повторов: <b>${queueCount}</b>${
       queue[0] ? ` (ближайший ${formatDateTime(queue[0].due_at, tz)})` : ''
     }`,
   ]
@@ -295,14 +319,14 @@ export function upcomingText(
   const reviewItems: UpcomingItem[] = [
     ...reviews.map(review => ({
       at: review.due_at,
-      label: `Повтор «Не знаю»: ${review.word}`,
-      detail: reviewLabel(review.stage),
+      label: followUpTitle(review.stage, review.word),
+      detail: followUpLabel(review.stage),
       kind: 'review' as const,
     })),
     ...pending.map(item => ({
       at: item.due_at,
-      label: `Повтор «Не знаю»: ${item.word}`,
-      detail: item.stage === null ? 'по расписанию' : reviewLabel(item.stage),
+      label: followUpTitle(item.stage, item.word),
+      detail: followUpLabel(item.stage),
       kind: 'review' as const,
     })),
   ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
@@ -310,7 +334,7 @@ export function upcomingText(
   const regularItems = regularUpcomingItems(settings, now, 3)
 
   const lines = [
-    '<b>Следующие отправки</b>',
+    '<b>🗓 Следующие отправки</b>',
     '',
     `Сейчас: <b>${formatTime(now.toISOString(), tz)}</b> (${escapeHtml(tz)})`,
     `Режим: <b>${
@@ -336,7 +360,7 @@ export function upcomingText(
     }
   }
 
-  lines.push('<b>«Не знаю»</b>')
+  lines.push('<b>🔁 Повторы</b>')
   if (reviewItems.length === 0) {
     lines.push('пока нет запланированных повторов.')
     lines.push('')
@@ -345,7 +369,7 @@ export function upcomingText(
   }
 
   if (regularItems.length > 0) {
-    lines.push('<b>Обычные отправки</b>')
+    lines.push('<b>📚 Обычные отправки</b>')
     renderItems(regularItems, 3)
   }
 
@@ -371,16 +395,18 @@ export function upcomingKeyboard(): InlineKeyboard {
 
 export function settingsText(settings: TelegramSettings): string {
   return [
-    '<b>Настройки бота</b>',
+    '<b>⚙️ Настройки бота</b>',
     '',
-    `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
-    `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
-    `Формат: <b>${settings.reveal_mode === 'spoiler' ? 'перевод скрыт' : 'перевод виден'}</b>`,
-    `Статус: <b>${statusLabel(settings)}</b>`,
-    `Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
+    `⏰ Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
+    `🔁 Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
+    `👀 Формат: <b>${settings.reveal_mode === 'spoiler' ? 'перевод скрыт' : 'перевод виден'}</b>`,
+    `📌 Статус: <b>${statusLabel(settings)}</b>`,
+    `🌍 Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
     '<i>Обычные слова приходят только в окне.</i>',
-    '<i>Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Если повтор выпадает вне окна, он переносится на следующее открытие окна.</i>',
+    '<i>«Не знаю»: 15 минут, 2 и 5 часов, затем 1, 2, 4, 7, 15 и 30 дней.</i>',
+    '<i>«Знаю»: через 4 дня, затем реже. Без ответа — через 1–2 дня, затем реже.</i>',
+    '<i>Повторы, выпавшие вне окна, переносятся на следующее открытие.</i>',
   ].join('\n')
 }
 
@@ -410,18 +436,27 @@ export function settingsKeyboard(settings: TelegramSettings): InlineKeyboard {
 
 export function welcomeText(settings: TelegramSettings): string {
   return [
-    '<b>Здравствуйте!</b>',
+    '<b>📚 English Cards</b>',
     '',
-    'Я бот для повторения английских слов.',
-    'Присылаю сложные слова из ваших папок и помогаю повторять их в удобное время.',
+    'Здравствуйте! Я бот для повторения английских слов.',
+    'Присылаю слова из ваших папок — новые и те, где были ошибки.',
     '',
-    `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
-    '<i>Окно — время, когда я присылаю слова.</i>',
-    `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
-    '<i>Интервал — пауза между обычными словами.</i>',
-    `Статус: <b>${statusLabel(settings)}</b>`,
+    '<b>Сейчас</b>',
+    `⏰ Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b> — время, когда приходят слова.`,
+    `🔁 Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b> — пауза между обычными словами.`,
+    `📌 Статус: <b>${statusLabel(settings)}</b>`,
     '',
-    '<i>Кнопка «Не знаю» возвращает слово через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Если повтор выпадает вне окна, он переносится на следующее открытие окна.</i>',
+    '<b>Как работают кнопки</b>',
+    '• «Знаю» — верну слово через 4 дня, затем реже.',
+    '• «Не знаю» — верну через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.',
+    '• Если не нажать кнопку, повторю через 1–2 дня, затем реже.',
+    '• «Пропустить» — то же, что не нажать кнопку.',
+    '• «Больше не повторять» — уберу из обычной очереди, но напомню через 30 и 70 дней.',
+    '',
+    'Обычные слова приходят только в окне. Повторы, выпавшие вне окна, переносятся на следующее открытие.',
+    '',
+    'Если нужна помощь, отправьте /help.',
+    '',
     '<i>Настроить всё можно кнопками ниже или командой /settings.</i>',
   ].join('\n')
 }
@@ -609,11 +644,11 @@ export function timezoneKeyboard(settings: TelegramSettings): InlineKeyboard {
 
 export function statsText(stats: BotStats): string {
   return [
-    '<b>Статистика</b>',
+    '<b>📊 Статистика</b>',
     '',
     `Сложных слов: <b>${stats.hard}</b>`,
     `Всего слов: <b>${stats.total}</b>`,
-    `В очереди «Не знаю»: <b>${stats.pending + stats.reviews}</b>`,
+    `В очереди повторов: <b>${stats.pending + stats.reviews}</b>`,
     `Отправлено за 7 дней: <b>${stats.sentWeek}</b>`,
   ].join('\n')
 }

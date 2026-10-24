@@ -8,11 +8,13 @@ import {
 
 export const BOT_COMMANDS: BotCommand[] = [
   { command: 'start', description: 'Открыть меню' },
-  { command: 'settings', description: 'Настройки бота' },
   { command: 'next', description: 'Прислать слово сейчас' },
   { command: 'stats', description: 'Статистика' },
-  { command: 'pause', description: 'Поставить на паузу' },
-  { command: 'resume', description: 'Продолжить' },
+  { command: 'settings', description: 'Настройки бота' },
+  { command: 'time', description: 'Окно отправки' },
+  { command: 'every', description: 'Частота отправки сообщений' },
+  { command: 'pause', description: 'Поставить бота на паузу' },
+  { command: 'resume', description: 'Возобновить отправку' },
   { command: 'debug', description: 'Диагностика' },
   { command: 'help', description: 'Помощь' },
 ]

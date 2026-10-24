@@ -54,9 +54,11 @@ create index if not exists telegram_pending_due_idx
   on public.telegram_pending (chat_id, due_at)
   where sent_at is null;
 
--- Очередь слов «Не знаю»: 15 минут, 2 и 5 часов, затем 1, 2, 4, 7, 15 и 30 дней.
+-- Очередь повторов.
 -- stage: 0 = +15 минут, 1 = +2 часа, 2 = +5 часов, 3 = +1 день,
--- 4 = +2 дня, 5 = +4 дня, 6–7 = +7 дней дважды, 8 = +15 дней, 9 = +30 дней.
+-- 4 = +2 дня, 5 = +4 дня, 6–7 = +7 дней дважды, 8 = +15 дней, 9 = +30 дней;
+-- 100 = повтор после «Знаю», 200 = повтор после игнора,
+-- 300 = отложенный повтор после «Больше не повторять» (+30 и +70 дней).
 alter table public.telegram_pending
   add column if not exists stage integer;
 

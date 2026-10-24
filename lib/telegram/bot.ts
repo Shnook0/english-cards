@@ -34,14 +34,18 @@ import { syncBotMenu } from './menu'
 import {
   applyBotResult,
   bindChatToUser,
-  clearCardQueue,
+  clearCardsQueue,
   consumeLinkCode,
   deleteCard,
   ensureSettings,
+  finishDelivery,
   getCard,
   getCustomFolders,
+  getDeliveryGapDays,
   getSettings,
   getStats,
+  getWordCards,
+  insertFollowUp,
   listPendingForChat,
   listRecentDeliveries,
   listUpcomingReviews,
@@ -56,7 +60,14 @@ import {
 } from './store'
 import {
   buildDontKnowSchedule,
+  followUpDueAt,
   formatInterval,
+  IGNORED_FOLLOW_UP_STAGE,
+  KNOWN_FOLLOW_UP_STAGE,
+  MUTED_FOLLOW_UP_STAGE,
+  MUTED_REPEAT_DAYS,
+  nextIgnoredIntervalDays,
+  nextKnownIntervalDays,
   normalizeTime,
   parseInterval,
   parseTimeRange,
@@ -96,26 +107,36 @@ const REPLY_BUTTON_COMMANDS: Record<string, string> = {
 
 function helpText(): string {
   return [
-    '<b>Что я умею</b>',
+    '<b>❓ Помощь</b>',
     '',
-    '• присылаю сложные слова из ваших папок на сайте',
-    '• слова «Не знаю» повторяю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней — в пределах окна; выпавший вне окна повтор переношу на следующее открытие',
-    '• могу скрыть перевод под спойлером или перестать присылать отдельное слово',
-    '• показываю статистику и следующие отправки',
+    'Я присылаю слова из ваших папок на сайте и помогаю повторять их в Telegram.',
+    'Беру новые слова, слова с ошибками и те, у которых подошёл срок повтора. Папки чередую, чтобы старые тоже не забывались.',
     '',
-    '<b>Понятия</b>',
-    '<b>Окно</b> — время, когда я присылаю слова. Например, 09:00–21:00.',
-    '<b>Интервал</b> — пауза между обычными словами. Например, каждые 60 минут.',
+    '<b>Как приходят слова</b>',
+    'Обычные слова приходят только в окне.',
+    'Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Если повтор выпадает вне окна, он переносится на следующее открытие окна.',
+    'После «Знаю» слово возвращается через 4 дня, затем реже.',
+    'Если кнопку не нажали, повторю через 1–2 дня, затем реже.',
+    '',
+    '<b>Кнопки под словом</b>',
+    '• <b>Знаю</b> — отмечает правильный ответ.',
+    '• <b>Не знаю</b> — записывает ошибку и запускает частые повторы.',
+    '• <b>Пропустить</b> — то же, что не нажать кнопку.',
+    '• <b>Больше не повторять</b> — убирает слово из обычной очереди, но напоминает через 30 и 70 дней.',
+    '• <b>Удалить из папки</b> — удаляет слово с сайта.',
     '',
     '<b>Команды</b>',
-    '/settings — настройки',
+    '/settings — настройки бота',
     '/next — прислать слово сейчас',
     '/stats — статистика',
     '/time 09:00-21:00 — окно отправки',
-    '/every 1h — интервал',
-    '/pause — пауза',
-    '/resume — продолжить',
+    '/every 1h — частота отправки сообщений',
+    '/pause — поставить бота на паузу',
+    '/resume — возобновить отправку',
     '/debug — диагностика',
+    '/help — эта справка',
+    '',
+    '<i>Все отправки приходят только в окне. Повторы, выпавшие вне окна, переносятся на следующее открытие.</i>',
   ].join('\n')
 }
 
@@ -171,6 +192,11 @@ async function requireFolders(chatId: number, userId: string): Promise<boolean> 
   return false
 }
 
+async function cardsByWord(userId: string, card: BotCard): Promise<BotCard[]> {
+  const cards = await getWordCards(userId, card.word)
+  return cards.length > 0 ? cards : [card]
+}
+
 export async function sendCard(
   chatId: number,
   card: BotCard,
@@ -203,6 +229,9 @@ export async function sendNextCard(
     return
   }
   await sendCard(chatId, card, kind, settings)
+  if (settings) {
+    await finishDelivery(chatId, userId, card, settings, { initialIgnore: true })
+  }
 }
 
 async function debugView(
@@ -749,15 +778,35 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
   }
 
   switch (action) {
-    case 'know':
-      await clearCardQueue(chatId, card.id)
-      await applyBotResult(card, true)
-      await safeEdit(chatId, messageId, `${cardText(card)}\n\nОтмечено: знаю.`, [])
+    case 'know': {
+      const cards = await cardsByWord(settings.user_id, card)
+      const ids = cards.map(item => item.id)
+      await clearCardsQueue(chatId, ids)
+      await Promise.all(cards.map(item => applyBotResult(item, true)))
+
+      const gapDays = await getDeliveryGapDays(chatId, ids)
+      const days = nextKnownIntervalDays(gapDays)
+      const dueAt = followUpDueAt(settings, days)
+      await insertFollowUp(chatId, card.id, dueAt.toISOString(), KNOWN_FOLLOW_UP_STAGE)
+
+      await safeEdit(
+        chatId,
+        messageId,
+        `${cardText(card)}\n\nОтмечено: знаю. Следующий повтор запланирован.`,
+        []
+      )
       await answerCallbackQuery(query.id, 'Записал')
       return
+    }
 
     case 'dont': {
-      await applyBotResult(card, false)
+      const cards = await cardsByWord(settings.user_id, card)
+      const ids = cards.map(item => item.id)
+      await clearCardsQueue(
+        chatId,
+        ids.filter(id => id !== card.id),
+      )
+      await Promise.all(cards.map(item => applyBotResult(item, false)))
       await replaceDontKnowQueue(
         chatId,
         card.id,
@@ -780,22 +829,51 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       return
     }
 
-    case 'mute':
-      await muteCard(settings.user_id, card.id)
-      await clearCardQueue(chatId, card.id)
+    case 'mute': {
+      const cards = await cardsByWord(settings.user_id, card)
+      await Promise.all(cards.map(item => muteCard(settings.user_id, item.id)))
+      await clearCardsQueue(chatId, cards.map(item => item.id))
+
+      for (const days of MUTED_REPEAT_DAYS) {
+        const dueAt = followUpDueAt(settings, days)
+        await insertFollowUp(
+          chatId,
+          card.id,
+          dueAt.toISOString(),
+          MUTED_FOLLOW_UP_STAGE,
+        )
+      }
+
       await safeEdit(
         chatId,
         messageId,
-        `${cardText(card)}\n\nБольше не буду присылать это слово. В папке оно останется, прогресс и ошибки не изменятся.`,
+        [
+          cardText(card),
+          '',
+          'Убрал слово из обычной очереди.',
+          'Но через 30 и 70 дней напомню — чтобы совсем не забыть.',
+          'В папке слово останется, прогресс и ошибки не изменятся.',
+        ].join('\n'),
         []
       )
-      await answerCallbackQuery(query.id, 'Больше не повторяю')
+      await answerCallbackQuery(query.id, 'Убрал из обычной очереди')
       return
+    }
 
-    case 'skip':
-      await safeEdit(chatId, messageId, `${cardText(card)}\n\nПропущено.`, [])
+    case 'skip': {
+      const cards = await cardsByWord(settings.user_id, card)
+      const ids = cards.map(item => item.id)
+      await clearCardsQueue(chatId, ids)
+
+      const gapDays = await getDeliveryGapDays(chatId, ids)
+      const days = nextIgnoredIntervalDays(gapDays)
+      const dueAt = followUpDueAt(settings, days)
+      await insertFollowUp(chatId, card.id, dueAt.toISOString(), IGNORED_FOLLOW_UP_STAGE)
+
+      await safeEdit(chatId, messageId, `${cardText(card)}\n\nПропущено. Повторю позже.`, [])
       await answerCallbackQuery(query.id, 'Пропущено')
       return
+    }
 
     case 'del':
       await safeEdit(

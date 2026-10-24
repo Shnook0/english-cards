@@ -165,6 +165,35 @@ export function clampToWindow(settings: TelegramSettings, date: Date): Date {
   return nextWindowStart(settings, date)
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export const KNOWN_FOLLOW_UP_STAGE = 100
+export const IGNORED_FOLLOW_UP_STAGE = 200
+export const MUTED_FOLLOW_UP_STAGE = 300
+export const MUTED_REPEAT_DAYS = [30, 70] as const
+
+export function nextKnownIntervalDays(gapDays: number | null): number {
+  if (gapDays === null || !Number.isFinite(gapDays) || gapDays < 1) return 4
+  if (gapDays < 4) return 6
+  return Math.min(365, Math.max(4, Math.round(gapDays * 2.5)))
+}
+
+export function nextIgnoredIntervalDays(gapDays: number | null): number {
+  if (gapDays === null || !Number.isFinite(gapDays)) {
+    return 1 + Math.floor(Math.random() * 2)
+  }
+  if (gapDays < 4) return 4
+  return Math.min(365, Math.max(4, Math.round(gapDays * 1.5)))
+}
+
+export function followUpDueAt(
+  settings: TelegramSettings,
+  days: number,
+  now = new Date(),
+): Date {
+  return clampToWindow(settings, new Date(now.getTime() + days * DAY_MS))
+}
+
 export function nextScheduledAt(
   settings: TelegramSettings,
   now = new Date(),
