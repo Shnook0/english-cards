@@ -126,16 +126,20 @@ function debugReason(
 ): string {
   if (settings.paused) return 'бот на паузе.'
 
+  const nowDate = new Date(now)
+  const inWindow = canSendRegular(settings, nowDate)
   const dueReview = [...pending, ...reviews].some(
     item => new Date(item.due_at).getTime() <= now
   )
   if (dueReview) {
+    if (!inWindow) {
+      return 'есть повтор «Не знаю», но сейчас вне окна — придёт при открытии окна.'
+    }
     return 'есть повтор «Не знаю», который уже должен был прийти. Если его нет — cron-job.org не запускается или неверный TELEGRAM_TICK_SECRET.'
   }
 
-  const nowDate = new Date(now)
-  if (!canSendRegular(settings, nowDate)) {
-    return 'сейчас вне окна отправки — обычные слова ждут открытия окна, а повторы «Не знаю» приходят по своему времени.'
+  if (!inWindow) {
+    return 'сейчас вне окна отправки — обычные слова и повторы «Не знаю» ждут открытия окна.'
   }
 
   if (stats.hard === 0) return 'нет сложных слов в твоих папках.'
@@ -269,7 +273,8 @@ function upcomingState(
   const overdue = at.getTime() <= now.getTime()
 
   if (item.kind === 'review') {
-    return overdue ? 'готова к отправке' : 'по расписанию, окно не важно'
+    if (!overdue) return 'по расписанию'
+    return isWithinWindow(settings, now) ? 'готова к отправке' : 'ждёт открытия окна'
   }
 
   const allowedAt = canSendRegular(settings, at)
@@ -345,7 +350,7 @@ export function upcomingText(
   }
 
   lines.push(
-    '<i>«Не знаю» приходят по своему расписанию в любое время. Обычные отправки — только в окне.</i>'
+    '<i>Все отправки приходят только в окне. Повторы, выпавшие вне окна, переносятся на следующее открытие.</i>'
   )
 
   return lines.join('\n')
@@ -375,7 +380,7 @@ export function settingsText(settings: TelegramSettings): string {
     `Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
     '<i>Обычные слова приходят только в окне.</i>',
-    '<i>Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Окно на них не влияет.</i>',
+    '<i>Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Если повтор выпадает вне окна, он переносится на следующее открытие окна.</i>',
   ].join('\n')
 }
 
@@ -416,7 +421,7 @@ export function welcomeText(settings: TelegramSettings): string {
     '<i>Интервал — пауза между обычными словами.</i>',
     `Статус: <b>${statusLabel(settings)}</b>`,
     '',
-    '<i>Кнопка «Не знаю» возвращает слово через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней — в любое время, даже вне окна.</i>',
+    '<i>Кнопка «Не знаю» возвращает слово через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Если повтор выпадает вне окна, он переносится на следующее открытие окна.</i>',
     '<i>Настроить всё можно кнопками ниже или командой /settings.</i>',
   ].join('\n')
 }

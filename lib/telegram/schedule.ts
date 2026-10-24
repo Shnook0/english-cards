@@ -160,6 +160,11 @@ export function canSendRegular(settings: TelegramSettings, now = new Date()): bo
   return isWithinWindow(settings, now)
 }
 
+export function clampToWindow(settings: TelegramSettings, date: Date): Date {
+  if (isWithinWindow(settings, date)) return date
+  return nextWindowStart(settings, date)
+}
+
 export function nextScheduledAt(
   settings: TelegramSettings,
   now = new Date(),
@@ -252,7 +257,18 @@ export function buildDontKnowSchedule(
     })
   }
 
-  return result.filter(item => new Date(item.dueAt).getTime() > now.getTime())
+  const seen = new Set<number>()
+  const scheduled: { stage: number; dueAt: string }[] = []
+
+  for (const item of result) {
+    const due = clampToWindow(settings, new Date(item.dueAt))
+    const time = due.getTime()
+    if (time <= now.getTime() || seen.has(time)) continue
+    seen.add(time)
+    scheduled.push({ stage: item.stage, dueAt: due.toISOString() })
+  }
+
+  return scheduled
 }
 
 export function parseTimeRange(input: string): { start: string; end: string } | null {

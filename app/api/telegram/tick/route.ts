@@ -1,5 +1,5 @@
 import { sendCard } from '@/lib/telegram/bot'
-import { canSendRegular } from '@/lib/telegram/schedule'
+import { canSendRegular, isWithinWindow } from '@/lib/telegram/schedule'
 import {
   getCard,
   listDuePending,
@@ -74,7 +74,7 @@ async function runTick(request: Request): Promise<Response> {
 
     for (const review of due) {
       const setting = settingsByChat.get(review.chat_id)
-      if (!setting || setting.paused) continue
+      if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
 
       const card = await getCard(review.card_id)
       if (!card) {
@@ -108,7 +108,7 @@ async function runTick(request: Request): Promise<Response> {
 
     for (const pending of due) {
       const setting = settingsByChat.get(pending.chat_id)
-      if (!setting || setting.paused) continue
+      if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
 
       const card = await getCard(pending.card_id)
       if (!card) {
