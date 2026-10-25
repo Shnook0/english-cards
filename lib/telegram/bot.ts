@@ -46,7 +46,7 @@ import {
   getStats,
   getWordCards,
   insertFollowUp,
-  listPendingForChat,
+  listPendingForUser,
   listRecentDeliveries,
   listUpcomingReviews,
   muteCard,
@@ -223,7 +223,7 @@ export async function sendNextCard(
     return
   }
 
-  const card = await pickNextCard(userId, chatId)
+  const card = await pickNextCard(userId)
   if (!card) {
     await sendMessage(chatId, 'Пока нет сложных слов в ваших папках.')
     return
@@ -238,10 +238,10 @@ async function debugView(
   settings: TelegramSettings
 ): Promise<{ text: string; keyboard: InlineKeyboard }> {
   const [deliveries, pending, reviews, stats] = await Promise.all([
-    listRecentDeliveries(settings.chat_id, 8),
-    listPendingForChat(settings.chat_id),
-    listUpcomingReviews(settings.chat_id, 20),
-    getStats(settings.user_id, settings.chat_id),
+    listRecentDeliveries(settings.user_id, 8),
+    listPendingForUser(settings.user_id),
+    listUpcomingReviews(settings.user_id, 20),
+    getStats(settings.user_id),
   ])
   return {
     text: debugText(settings, deliveries, pending, reviews, stats),
@@ -253,8 +253,8 @@ async function upcomingView(
   settings: TelegramSettings
 ): Promise<{ text: string; keyboard: InlineKeyboard }> {
   const [pending, reviews] = await Promise.all([
-    listPendingForChat(settings.chat_id),
-    listUpcomingReviews(settings.chat_id, 20),
+    listPendingForUser(settings.user_id),
+    listUpcomingReviews(settings.user_id, 20),
   ])
   return {
     text: upcomingText(settings, pending, reviews),
@@ -458,7 +458,7 @@ async function handleCommand(
       return
 
     case '/stats': {
-      const stats = await getStats(settings.user_id, chatId)
+      const stats = await getStats(settings.user_id)
       await sendMessage(chatId, statsText(stats), statsKeyboard())
       return
     }
@@ -683,7 +683,7 @@ async function handleSettingsCallback(
     }
 
     case 'stats': {
-      const stats = await getStats(settings.user_id, chatId)
+      const stats = await getStats(settings.user_id)
       await safeEdit(chatId, messageId, statsText(stats), statsKeyboard())
       await answerCallbackQuery(query.id)
       return
@@ -781,10 +781,10 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
     case 'know': {
       const cards = await cardsByWord(settings.user_id, card)
       const ids = cards.map(item => item.id)
-      await clearCardsQueue(chatId, ids)
+      await clearCardsQueue(ids)
       await Promise.all(cards.map(item => applyBotResult(item, true)))
 
-      const gapDays = await getDeliveryGapDays(chatId, ids)
+      const gapDays = await getDeliveryGapDays(ids)
       const days = nextKnownIntervalDays(gapDays)
       const dueAt = followUpDueAt(settings, days)
       await insertFollowUp(chatId, card.id, dueAt.toISOString(), KNOWN_FOLLOW_UP_STAGE)
@@ -802,10 +802,7 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
     case 'dont': {
       const cards = await cardsByWord(settings.user_id, card)
       const ids = cards.map(item => item.id)
-      await clearCardsQueue(
-        chatId,
-        ids.filter(id => id !== card.id),
-      )
+      await clearCardsQueue(ids.filter(id => id !== card.id))
       await Promise.all(cards.map(item => applyBotResult(item, false)))
       await replaceDontKnowQueue(
         chatId,
@@ -832,7 +829,7 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
     case 'mute': {
       const cards = await cardsByWord(settings.user_id, card)
       await Promise.all(cards.map(item => muteCard(settings.user_id, item.id)))
-      await clearCardsQueue(chatId, cards.map(item => item.id))
+      await clearCardsQueue(cards.map(item => item.id))
 
       for (const days of MUTED_REPEAT_DAYS) {
         const dueAt = followUpDueAt(settings, days)
@@ -863,9 +860,9 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
     case 'skip': {
       const cards = await cardsByWord(settings.user_id, card)
       const ids = cards.map(item => item.id)
-      await clearCardsQueue(chatId, ids)
+      await clearCardsQueue(ids)
 
-      const gapDays = await getDeliveryGapDays(chatId, ids)
+      const gapDays = await getDeliveryGapDays(ids)
       const days = nextIgnoredIntervalDays(gapDays)
       const dueAt = followUpDueAt(settings, days)
       await insertFollowUp(chatId, card.id, dueAt.toISOString(), IGNORED_FOLLOW_UP_STAGE)

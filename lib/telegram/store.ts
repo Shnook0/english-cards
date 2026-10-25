@@ -41,7 +41,7 @@ type CardRow = Card & {
 
 export type PendingRepeat = {
   id: number
-  chat_id: number
+  user_id: string
   card_id: string
   due_at: string
   stage: number | null
@@ -49,7 +49,7 @@ export type PendingRepeat = {
 
 export type DueReview = {
   id: number
-  chat_id: number
+  user_id: string
   card_id: string
   stage: number
   due_at: string
@@ -99,8 +99,14 @@ function isMissingBotSchema(error: unknown): boolean {
   return /does not exist|schema cache/i.test(value.message ?? '')
 }
 
+type Embedded<T> = T | T[] | null
+
+function firstEmbedded<T>(value: Embedded<T>): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value
+}
+
 function normalizeCard(row: CardRow): BotCard {
-  const folder = Array.isArray(row.folders) ? row.folders[0] : row.folders
+  const folder = firstEmbedded(row.folders)
   return { ...row, folder_name: folder?.name ?? 'Без папки' } as BotCard
 }
 
@@ -205,25 +211,6 @@ export async function getUserEmail(userId: string): Promise<string | null> {
   const { data, error } = await db().auth.admin.getUserById(userId)
   if (error) return null
   return data.user?.email ?? null
-}
-
-async function migrateChatHistory(fromChatId: number, toChatId: number): Promise<void> {
-  const admin = db()
-  for (const table of ['telegram_pending', 'telegram_reviews', 'telegram_deliveries']) {
-    const { error } = await admin
-      .from(table)
-      .update({ chat_id: toChatId })
-      .eq('chat_id', fromChatId)
-    if (error && !isMissingBotSchema(error)) throw error
-  }
-}
-
-async function deleteChatHistory(chatId: number): Promise<void> {
-  const admin = db()
-  for (const table of ['telegram_pending', 'telegram_reviews', 'telegram_deliveries']) {
-    const { error } = await admin.from(table).delete().eq('chat_id', chatId)
-    if (error && !isMissingBotSchema(error)) throw error
-  }
 }
 
 export type BindChatResult =
@@ -332,10 +319,6 @@ export async function bindChatToUser(
       }
     }
 
-    if (existing && existing.user_id !== userId) {
-      await deleteChatHistory(chatId)
-    }
-
     if (existing && existing.chat_id === chatId) {
       const { error } = await db()
         .from('telegram_settings')
@@ -343,8 +326,6 @@ export async function bindChatToUser(
         .eq('chat_id', chatId)
       if (error) throw error
     }
-
-    await migrateChatHistory(userSettings.chat_id, chatId)
 
     const { error } = await db()
       .from('telegram_settings')
@@ -370,7 +351,6 @@ export async function bindChatToUser(
   }
 
   if (existing) {
-    await deleteChatHistory(chatId)
     const { error } = await db().from('telegram_settings').delete().eq('chat_id', chatId)
     if (error) throw error
   }
@@ -427,41 +407,42 @@ export type PendingRow = {
 
 type PendingDbRow = {
   id: number
-  chat_id?: number
   card_id: string
   due_at: string
   sent_at?: string | null
   stage?: number | null
+  cards: { user_id: string; word: string } | { user_id: string; word: string }[] | null
 }
 
 let pendingStageSupported: boolean | null = null
 
 export async function listRecentDeliveries(
-  chatId: number,
+  userId: string,
   limit = 8
 ): Promise<DeliveryRow[]> {
   const { data, error } = await db()
     .from('telegram_deliveries')
-    .select('sent_at, kind')
-    .eq('chat_id', chatId)
+    .select('sent_at, kind, cards!inner(user_id)')
+    .eq('cards.user_id', userId)
     .order('sent_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return (data ?? []) as DeliveryRow[]
+  return (data ?? []) as unknown as DeliveryRow[]
 }
 
 function pendingSelect(withStage: boolean): string {
-  return withStage
-    ? 'id, chat_id, card_id, due_at, sent_at, stage'
-    : 'id, chat_id, card_id, due_at, sent_at'
+  const columns = withStage
+    ? 'id, card_id, due_at, sent_at, stage'
+    : 'id, card_id, due_at, sent_at'
+  return `${columns}, cards!inner(user_id, word)`
 }
 
-export async function listPendingForChat(chatId: number): Promise<PendingRow[]> {
+export async function listPendingForUser(userId: string): Promise<PendingRow[]> {
   const build = (withStage: boolean) =>
     db()
       .from('telegram_pending')
       .select(pendingSelect(withStage))
-      .eq('chat_id', chatId)
+      .eq('cards.user_id', userId)
       .is('sent_at', null)
       .order('due_at', { ascending: true })
       .limit(50)
@@ -477,27 +458,12 @@ export async function listPendingForChat(chatId: number): Promise<PendingRow[]> 
   }
   if (error) throw error
 
-  const rows = (data ?? []) as unknown as PendingDbRow[]
-  const cardIds = Array.from(new Set(rows.map(row => row.card_id)))
-  const words = new Map<string, string>()
-
-  if (cardIds.length > 0) {
-    const { data: cardData, error: cardError } = await db()
-      .from('cards')
-      .select('id, word')
-      .in('id', cardIds)
-    if (cardError) throw cardError
-    for (const card of (cardData ?? []) as { id: string; word: string }[]) {
-      words.set(card.id, card.word)
-    }
-  }
-
-  return rows.map(row => ({
+  return ((data ?? []) as unknown as PendingDbRow[]).map(row => ({
     id: row.id,
     due_at: row.due_at,
     sent_at: row.sent_at ?? null,
     stage: row.stage ?? null,
-    word: words.get(row.card_id) ?? 'Слово',
+    word: firstEmbedded(row.cards)?.word ?? 'Слово',
   }))
 }
 
@@ -589,7 +555,7 @@ type DeliveryCardRow = {
 }
 
 function deliveryCard(row: DeliveryCardRow): { word: string; folder_id: string } | null {
-  return Array.isArray(row.cards) ? row.cards[0] ?? null : row.cards
+  return firstEmbedded(row.cards)
 }
 
 type QueuedCardRow = {
@@ -598,15 +564,14 @@ type QueuedCardRow = {
 }
 
 function queuedCardWord(row: QueuedCardRow): string | null {
-  const card = Array.isArray(row.cards) ? row.cards[0] ?? null : row.cards
-  return card?.word ?? null
+  return firstEmbedded(row.cards)?.word ?? null
 }
 
 export function normalizeWord(word: string): string {
   return word.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
-export async function pickNextCard(userId: string, chatId: number): Promise<BotCard | null> {
+export async function pickNextCard(userId: string): Promise<BotCard | null> {
   const admin = db()
   const folders = await getCustomFolders(userId)
   if (folders.length === 0) return null
@@ -617,8 +582,8 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
 
   const { data: recentData, error: recentError } = await admin
     .from('telegram_deliveries')
-    .select('card_id, sent_at, cards(word, folder_id)')
-    .eq('chat_id', chatId)
+    .select('card_id, sent_at, cards!inner(word, folder_id)')
+    .eq('cards.user_id', userId)
     .gte('sent_at', since)
     .order('sent_at', { ascending: false })
   if (recentError) throw recentError
@@ -635,8 +600,8 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
   const folderSince = new Date(Date.now() - 14 * DAY_MS).toISOString()
   const { data: folderData, error: folderError } = await admin
     .from('telegram_deliveries')
-    .select('sent_at, cards(word, folder_id)')
-    .eq('chat_id', chatId)
+    .select('sent_at, cards!inner(word, folder_id)')
+    .eq('cards.user_id', userId)
     .gte('sent_at', folderSince)
     .order('sent_at', { ascending: false })
     .limit(300)
@@ -651,15 +616,15 @@ export async function pickNextCard(userId: string, chatId: number): Promise<BotC
 
   const { data: reviewData, error: reviewError } = await admin
     .from('telegram_reviews')
-    .select('card_id, cards(word)')
-    .eq('chat_id', chatId)
+    .select('card_id, cards!inner(word)')
+    .eq('cards.user_id', userId)
     .is('sent_at', null)
   if (reviewError && !isMissingBotSchema(reviewError)) throw reviewError
 
   const { data: pendingData, error: pendingError } = await admin
     .from('telegram_pending')
-    .select('card_id, cards(word)')
-    .eq('chat_id', chatId)
+    .select('card_id, cards!inner(word)')
+    .eq('cards.user_id', userId)
     .is('sent_at', null)
   if (pendingError && !isMissingBotSchema(pendingError)) throw pendingError
 
@@ -730,7 +695,6 @@ export async function addPendingRepeat(chatId: number, cardId: string): Promise<
   await admin
     .from('telegram_pending')
     .update({ sent_at: now.toISOString() })
-    .eq('chat_id', chatId)
     .eq('card_id', cardId)
     .is('sent_at', null)
 
@@ -743,7 +707,7 @@ export async function addPendingRepeat(chatId: number, cardId: string): Promise<
   return dueAt
 }
 
-export async function clearCardsQueue(chatId: number, cardIds: string[]): Promise<void> {
+export async function clearCardsQueue(cardIds: string[]): Promise<void> {
   if (cardIds.length === 0) return
 
   const admin = db()
@@ -751,7 +715,6 @@ export async function clearCardsQueue(chatId: number, cardIds: string[]): Promis
   const { error: pendingError } = await admin
     .from('telegram_pending')
     .update({ sent_at: now })
-    .eq('chat_id', chatId)
     .in('card_id', cardIds)
     .is('sent_at', null)
   if (pendingError) throw pendingError
@@ -759,14 +722,13 @@ export async function clearCardsQueue(chatId: number, cardIds: string[]): Promis
   const { error: reviewError } = await admin
     .from('telegram_reviews')
     .update({ sent_at: now })
-    .eq('chat_id', chatId)
     .in('card_id', cardIds)
     .is('sent_at', null)
   if (reviewError && !isMissingBotSchema(reviewError)) throw reviewError
 }
 
-export async function clearCardQueue(chatId: number, cardId: string): Promise<void> {
-  await clearCardsQueue(chatId, [cardId])
+export async function clearCardQueue(cardId: string): Promise<void> {
+  await clearCardsQueue([cardId])
 }
 
 export async function getWordCards(userId: string, word: string): Promise<BotCard[]> {
@@ -788,16 +750,12 @@ export async function getWordCards(userId: string, word: string): Promise<BotCar
     .filter(card => normalizeWord(card.word) === target)
 }
 
-export async function getDeliveryGapDays(
-  chatId: number,
-  cardIds: string[],
-): Promise<number | null> {
+export async function getDeliveryGapDays(cardIds: string[]): Promise<number | null> {
   if (cardIds.length === 0) return null
 
   const { data, error } = await db()
     .from('telegram_deliveries')
     .select('sent_at')
-    .eq('chat_id', chatId)
     .in('card_id', cardIds)
     .order('sent_at', { ascending: false })
     .limit(20)
@@ -813,17 +771,13 @@ export async function getDeliveryGapDays(
   return (times[0] - times[1]) / DAY_MS
 }
 
-export async function hasUnsentQueue(
-  chatId: number,
-  cardIds: string[],
-): Promise<boolean> {
+export async function hasUnsentQueue(cardIds: string[]): Promise<boolean> {
   if (cardIds.length === 0) return false
 
   const admin = db()
   const { data, error } = await admin
     .from('telegram_pending')
     .select('id')
-    .eq('chat_id', chatId)
     .in('card_id', cardIds)
     .is('sent_at', null)
     .limit(1)
@@ -833,7 +787,6 @@ export async function hasUnsentQueue(
   const { data: reviewData, error: reviewError } = await admin
     .from('telegram_reviews')
     .select('id')
-    .eq('chat_id', chatId)
     .in('card_id', cardIds)
     .is('sent_at', null)
     .limit(1)
@@ -849,13 +802,12 @@ type UnsentQueueIds = {
   reviews: number[]
 }
 
-async function getUnsentQueueIds(chatId: number, cardId: string): Promise<UnsentQueueIds> {
+async function getUnsentQueueIds(cardId: string): Promise<UnsentQueueIds> {
   const admin = db()
 
   const { data: pendingData, error: pendingError } = await admin
     .from('telegram_pending')
     .select('id')
-    .eq('chat_id', chatId)
     .eq('card_id', cardId)
     .is('sent_at', null)
   if (pendingError) throw pendingError
@@ -863,7 +815,6 @@ async function getUnsentQueueIds(chatId: number, cardId: string): Promise<Unsent
   const { data: reviewData, error: reviewError } = await admin
     .from('telegram_reviews')
     .select('id')
-    .eq('chat_id', chatId)
     .eq('card_id', cardId)
     .is('sent_at', null)
   if (reviewError && !isMissingBotSchema(reviewError)) throw reviewError
@@ -927,11 +878,11 @@ export async function replaceDontKnowQueue(
   schedule: { stage: number; dueAt: string }[],
 ): Promise<void> {
   if (schedule.length === 0) {
-    await clearCardQueue(chatId, cardId)
+    await clearCardQueue(cardId)
     return
   }
 
-  const oldQueue = await getUnsentQueueIds(chatId, cardId)
+  const oldQueue = await getUnsentQueueIds(cardId)
   await insertPendingRows(chatId, cardId, schedule)
 
   const now = new Date().toISOString()
@@ -958,20 +909,15 @@ export async function finishDelivery(
   settings: TelegramSettings,
   options: { initialIgnore?: boolean } = {},
 ): Promise<void> {
-  const wordCards = await getWordCards(userId, card.word)
-  const ids = wordCards.length > 0 ? wordCards.map(item => item.id) : [card.id]
-
-  await clearCardsQueue(
-    chatId,
-    ids.filter(id => id !== card.id),
-  )
-
   const mutedIds = await getMutedCardIds(userId)
   if (mutedIds.has(card.id)) return
 
-  if (await hasUnsentQueue(chatId, ids)) return
+  const wordCards = await getWordCards(userId, card.word)
+  const ids = wordCards.length > 0 ? wordCards.map(item => item.id) : [card.id]
 
-  const gapDays = await getDeliveryGapDays(chatId, ids)
+  if (await hasUnsentQueue(ids)) return
+
+  const gapDays = await getDeliveryGapDays(ids)
   const days = options.initialIgnore
     ? nextIgnoredIntervalDays(null)
     : nextIgnoredIntervalDays(gapDays)
@@ -980,23 +926,44 @@ export async function finishDelivery(
   await insertFollowUp(chatId, card.id, dueAt.toISOString(), IGNORED_FOLLOW_UP_STAGE)
 }
 
-export async function listDueReviews(chatIds?: number[]): Promise<DueReview[]> {
-  if (chatIds && chatIds.length === 0) return []
+type DueReviewRow = {
+  id: number
+  card_id: string
+  stage: number
+  due_at: string
+  cards: { user_id: string } | { user_id: string }[] | null
+}
+
+export async function listDueReviews(userIds?: string[]): Promise<DueReview[]> {
+  if (userIds && userIds.length === 0) return []
 
   const base = db()
     .from('telegram_reviews')
-    .select('id, chat_id, card_id, stage, due_at')
+    .select('id, card_id, stage, due_at, cards!inner(user_id)')
     .is('sent_at', null)
     .lte('due_at', new Date().toISOString())
 
-  const { data, error } = await (chatIds ? base.in('chat_id', chatIds) : base)
+  const { data, error } = await (userIds ? base.in('cards.user_id', userIds) : base)
     .order('due_at', { ascending: true })
     .limit(20)
   if (error) {
     if (isMissingBotSchema(error)) return []
     throw error
   }
-  return (data ?? []) as DueReview[]
+
+  return ((data ?? []) as unknown as DueReviewRow[]).flatMap(row => {
+    const userId = firstEmbedded(row.cards)?.user_id
+    if (!userId) return []
+    return [
+      {
+        id: row.id,
+        user_id: userId,
+        card_id: row.card_id,
+        stage: row.stage,
+        due_at: row.due_at,
+      },
+    ]
+  })
 }
 
 export async function markReviewSent(id: number): Promise<void> {
@@ -1008,13 +975,13 @@ export async function markReviewSent(id: number): Promise<void> {
 }
 
 export async function listUpcomingReviews(
-  chatId: number,
+  userId: string,
   limit = 10,
 ): Promise<UpcomingReview[]> {
   const { data, error } = await db()
     .from('telegram_reviews')
-    .select('id, due_at, stage, cards(word, translation)')
-    .eq('chat_id', chatId)
+    .select('id, due_at, stage, cards!inner(word, translation)')
+    .eq('cards.user_id', userId)
     .is('sent_at', null)
     .order('due_at', { ascending: true })
     .limit(limit)
@@ -1024,7 +991,7 @@ export async function listUpcomingReviews(
   }
 
   return ((data ?? []) as unknown as UpcomingReviewRow[]).map(row => {
-    const card = Array.isArray(row.cards) ? row.cards[0] : row.cards
+    const card = firstEmbedded(row.cards)
     return {
       id: row.id,
       due_at: row.due_at,
@@ -1035,18 +1002,18 @@ export async function listUpcomingReviews(
   })
 }
 
-export async function countUpcomingReviews(chatId: number): Promise<number> {
+export async function countUpcomingReviews(userId: string): Promise<number> {
   const { count, error } = await db()
     .from('telegram_reviews')
-    .select('id', { count: 'exact', head: true })
-    .eq('chat_id', chatId)
+    .select('id, cards!inner(user_id)', { count: 'exact', head: true })
+    .eq('cards.user_id', userId)
     .is('sent_at', null)
   if (error) throw error
   return count ?? 0
 }
 
-export async function listDuePending(chatIds?: number[]): Promise<PendingRepeat[]> {
-  if (chatIds && chatIds.length === 0) return []
+export async function listDuePending(userIds?: string[]): Promise<PendingRepeat[]> {
+  if (userIds && userIds.length === 0) return []
 
   const build = (withStage: boolean) => {
     const base = db()
@@ -1055,7 +1022,7 @@ export async function listDuePending(chatIds?: number[]): Promise<PendingRepeat[
       .is('sent_at', null)
       .lte('due_at', new Date().toISOString())
 
-    return (chatIds ? base.in('chat_id', chatIds) : base)
+    return (userIds ? base.in('cards.user_id', userIds) : base)
       .order('due_at', { ascending: true })
       .limit(50)
   }
@@ -1071,13 +1038,19 @@ export async function listDuePending(chatIds?: number[]): Promise<PendingRepeat[
   }
   if (error) throw error
 
-  return ((data ?? []) as unknown as PendingDbRow[]).map(row => ({
-    id: row.id,
-    chat_id: row.chat_id ?? 0,
-    card_id: row.card_id,
-    due_at: row.due_at,
-    stage: row.stage ?? null,
-  }))
+  return ((data ?? []) as unknown as PendingDbRow[]).flatMap(row => {
+    const userId = firstEmbedded(row.cards)?.user_id
+    if (!userId) return []
+    return [
+      {
+        id: row.id,
+        user_id: userId,
+        card_id: row.card_id,
+        due_at: row.due_at,
+        stage: row.stage ?? null,
+      },
+    ]
+  })
 }
 
 export async function markPendingSent(id: number): Promise<void> {
@@ -1122,7 +1095,7 @@ export type BotStats = {
   sentWeek: number
 }
 
-export async function getStats(userId: string, chatId: number): Promise<BotStats> {
+export async function getStats(userId: string): Promise<BotStats> {
   const admin = db()
   const folders = await getCustomFolders(userId)
   const folderIds = folders.map(f => f.id)
@@ -1142,23 +1115,23 @@ export async function getStats(userId: string, chatId: number): Promise<BotStats
 
   const { count: pending, error: pendingError } = await admin
     .from('telegram_pending')
-    .select('id', { count: 'exact', head: true })
-    .eq('chat_id', chatId)
+    .select('id, cards!inner(user_id)', { count: 'exact', head: true })
+    .eq('cards.user_id', userId)
     .is('sent_at', null)
   if (pendingError) throw pendingError
 
   const { count: reviews, error: reviewsError } = await admin
     .from('telegram_reviews')
-    .select('id', { count: 'exact', head: true })
-    .eq('chat_id', chatId)
+    .select('id, cards!inner(user_id)', { count: 'exact', head: true })
+    .eq('cards.user_id', userId)
     .is('sent_at', null)
   if (reviewsError && !isMissingBotSchema(reviewsError)) throw reviewsError
 
   const since = new Date(Date.now() - 7 * DAY_MS).toISOString()
   const { count: sentWeek, error: sentError } = await admin
     .from('telegram_deliveries')
-    .select('id', { count: 'exact', head: true })
-    .eq('chat_id', chatId)
+    .select('id, cards!inner(user_id)', { count: 'exact', head: true })
+    .eq('cards.user_id', userId)
     .gte('sent_at', since)
   if (sentError) throw sentError
 

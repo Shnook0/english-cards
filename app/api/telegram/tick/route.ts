@@ -79,35 +79,35 @@ async function runTick(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: 'settings' }, { status: 500 })
   }
 
-  const settingsByChat = new Map(settings.map(setting => [setting.chat_id, setting]))
-  const activeChatIds = settings
+  const settingsByUser = new Map(settings.map(setting => [setting.user_id, setting]))
+  const activeUserIds = settings
     .filter(setting => !setting.paused)
-    .map(setting => setting.chat_id)
+    .map(setting => setting.user_id)
 
   try {
-    const due = await listDueReviews(activeChatIds)
+    const due = await listDueReviews(activeUserIds)
 
     for (const review of due) {
-      const setting = settingsByChat.get(review.chat_id)
+      const setting = settingsByUser.get(review.user_id)
       if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
 
       const card = await getCard(review.card_id)
-      if (!card) {
+      if (!card || card.user_id !== setting.user_id) {
         await markReviewSent(review.id)
         continue
       }
 
-      if (alreadySent(review.chat_id, card)) {
+      if (alreadySent(setting.chat_id, card)) {
         await markReviewSent(review.id)
         continue
       }
 
       try {
-        await sendCard(review.chat_id, card, 'review', setting)
-        rememberSent(review.chat_id, card)
-        sentChats.add(review.chat_id)
+        await sendCard(setting.chat_id, card, 'review', setting)
+        rememberSent(setting.chat_id, card)
+        sentChats.add(setting.chat_id)
         await markReviewSent(review.id)
-        await markDelivered(review.chat_id)
+        await markDelivered(setting.chat_id)
         await scheduleNext(setting, card, false)
         sent.push(`review:${card.id}`)
       } catch (error) {
@@ -120,29 +120,29 @@ async function runTick(request: Request): Promise<Response> {
   }
 
   try {
-    const due = await listDuePending(activeChatIds)
+    const due = await listDuePending(activeUserIds)
 
     for (const pending of due) {
-      const setting = settingsByChat.get(pending.chat_id)
+      const setting = settingsByUser.get(pending.user_id)
       if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
 
       const card = await getCard(pending.card_id)
-      if (!card) {
+      if (!card || card.user_id !== setting.user_id) {
         await markPendingSent(pending.id)
         continue
       }
 
-      if (alreadySent(pending.chat_id, card)) {
+      if (alreadySent(setting.chat_id, card)) {
         await markPendingSent(pending.id)
         continue
       }
 
       try {
-        await sendCard(pending.chat_id, card, 'review', setting)
-        rememberSent(pending.chat_id, card)
-        sentChats.add(pending.chat_id)
+        await sendCard(setting.chat_id, card, 'review', setting)
+        rememberSent(setting.chat_id, card)
+        sentChats.add(setting.chat_id)
         await markPendingSent(pending.id)
-        await markDelivered(pending.chat_id)
+        await markDelivered(setting.chat_id)
         await scheduleNext(setting, card, false)
         sent.push(`review:${card.id}`)
       } catch (error) {
@@ -163,7 +163,7 @@ async function runTick(request: Request): Promise<Response> {
       const last = setting.last_sent_at ? new Date(setting.last_sent_at).getTime() : 0
       if (last > 0 && now.getTime() - last < setting.interval_minutes * 60 * 1000) continue
 
-      const card = await pickNextCard(setting.user_id, setting.chat_id)
+      const card = await pickNextCard(setting.user_id)
       if (!card) continue
 
       try {
