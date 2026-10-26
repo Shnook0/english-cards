@@ -4,11 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Card } from '@/types/database'
 import {
+  BOT_REPEAT_MISTAKE_THRESHOLD,
   STUDY_REINSERT_OFFSETS,
   StudyGameProps,
   insertAt,
   isSpellingCorrect,
   normalizeRu,
+  queueBotRepeat,
   shuffle,
   speak,
   warmUpVoices,
@@ -145,6 +147,7 @@ export default function LearnGame({
 
   const pendingRef = useRef<Pending>(null)
   const autoAdvanceRef = useRef(false)
+  const botQueuedRef = useRef<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
 
   const current = queue[0]
@@ -203,6 +206,14 @@ export default function LearnGame({
       const wrongNow = (wrongSession[card.id] || 0) + 1
       setWrongSession(prev => ({ ...prev, [card.id]: wrongNow }))
       setStages(prev => ({ ...prev, [card.id]: Math.max(0, cardStage - 1) }))
+
+      if (
+        wrongNow >= BOT_REPEAT_MISTAKE_THRESHOLD &&
+        !botQueuedRef.current.has(card.id)
+      ) {
+        botQueuedRef.current.add(card.id)
+        void queueBotRepeat(card.id)
+      }
 
       if (wrongNow <= STUDY_REINSERT_OFFSETS.length) {
         setQueue(insertAt(rest, card, STUDY_REINSERT_OFFSETS[wrongNow - 1]))

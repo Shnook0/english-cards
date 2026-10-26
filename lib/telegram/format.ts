@@ -7,6 +7,7 @@ import {
   isWithinWindow,
   KNOWN_FOLLOW_UP_STAGE,
   MUTED_FOLLOW_UP_STAGE,
+  SITE_FOLLOW_UP_STAGE,
   nextScheduledAt,
   normalizeTime,
   TIMEZONE_OPTIONS,
@@ -124,6 +125,7 @@ function followUpLabel(stage: number | null): string {
   if (stage === null) return 'по расписанию'
   if (stage >= MUTED_FOLLOW_UP_STAGE) return 'отложенный повтор'
   if (stage >= IGNORED_FOLLOW_UP_STAGE) return 'после игнора'
+  if (stage === SITE_FOLLOW_UP_STAGE) return 'обычный повтор'
   if (stage >= KNOWN_FOLLOW_UP_STAGE) return 'после «Знаю»'
   return reviewLabel(stage)
 }
@@ -134,6 +136,9 @@ function followUpTitle(stage: number | null, word: string): string {
   }
   if (stage !== null && stage >= IGNORED_FOLLOW_UP_STAGE) {
     return `Повтор после игнора: ${word}`
+  }
+  if (stage === SITE_FOLLOW_UP_STAGE) {
+    return `Обычный повтор: ${word}`
   }
   if (stage !== null && stage >= KNOWN_FOLLOW_UP_STAGE) {
     return `Повтор «Знаю»: ${word}`

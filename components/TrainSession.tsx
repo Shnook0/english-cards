@@ -5,10 +5,10 @@ import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
 import {
+  BOT_REPEAT_MISTAKE_THRESHOLD,
   SRS_INTERVALS_DAYS,
   STUDY_REINSERT_OFFSETS,
-  insertAt,
-  knowRecheckOffset,
+  queueBotRepeat,
   shuffle,
   speak,
   warmUpVoices,
@@ -53,6 +53,7 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
   const [showAnswer, setShowAnswer] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [botNotice, setBotNotice] = useState<string | null>(null)
   const [wrongSession, setWrongSession] = useState<Record<string, number>>(
     restored ? restored.saved.wrong : {}
   )
@@ -60,6 +61,8 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
 
   // Слова, которые уже получили повторную проверку после «Знаю» в этой сессии
   const knownRef = useRef<Set<string>>(new Set(restored ? restored.saved.known : []))
+  // Слова, которые уже отправили в обычные повторы бота
+  const botQueuedRef = useRef<Set<string>>(new Set())
 
   const currentCard = queue[0]
 
@@ -77,6 +80,12 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
       known: Array.from(knownRef.current),
     })
   }, [queue, doneCount, wrongSession, isFinished, sessionKey, totalCards])
+
+  useEffect(() => {
+    if (!botNotice) return
+    const timer = setTimeout(() => setBotNotice(null), 5000)
+    return () => clearTimeout(timer)
+  }, [botNotice])
 
   const handleExit = () => {
     clearSession(sessionKey)
@@ -154,11 +163,18 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
     const updated = { ...currentCard, ...patch } as Card
     const rest = queue.slice(1)
     const id = currentCard.id
+    const hadMistakes = (wrongSession[id] || 0) > 0
 
-    // Первое «Знаю» в сессии: слово вернётся ещё раз через 7–10 слов
-    if (mode !== 'learned' && !knownRef.current.has(id) && rest.length > 0) {
+    // Первое «Знаю» без ошибок: слово вернётся ещё раз в конце круга.
+    // Так следующие слова папки идут подряд, а не перемешиваются с повтором.
+    if (
+      mode !== 'learned' &&
+      !knownRef.current.has(id) &&
+      !hadMistakes &&
+      rest.length > 0
+    ) {
       knownRef.current.add(id)
-      setQueue(insertAt(rest, updated, knowRecheckOffset()))
+      setQueue([...rest, updated])
       setShowAnswer(false)
       return
     }
@@ -198,11 +214,28 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
     setWrongSession(prev => ({ ...prev, [id]: wrongNow }))
 
     const updated = { ...currentCard, ...patch } as Card
-    const rest = queue.slice(1)
+    const rest = queue.slice(1).filter(c => c.id !== id)
+
+    // Если слово не даётся много раз — убираем его из этой тренировки
+    // и ставим в обычные запланированные повторы бота.
+    const tooManyMistakes =
+      wrongNow >= BOT_REPEAT_MISTAKE_THRESHOLD || wrongCount >= BOT_REPEAT_MISTAKE_THRESHOLD
+    if (tooManyMistakes && !botQueuedRef.current.has(id)) {
+      botQueuedRef.current.add(id)
+      setIsSaving(true)
+      const queued = await queueBotRepeat(id)
+      setIsSaving(false)
+      if (queued) {
+        setBotNotice(`Слово «${currentCard.word}» ушло в обычные повторы бота`)
+        completeWord(rest)
+        return
+      }
+      botQueuedRef.current.delete(id)
+    }
 
     if (wrongNow <= STUDY_REINSERT_OFFSETS.length) {
-      // Слово вернётся через 2 / 5 / 10 / 15 слов
-      setQueue(insertAt(rest, updated, STUDY_REINSERT_OFFSETS[wrongNow - 1]))
+      // Возвращаем слово в конец текущего круга, не сдвигая следующие слова папки
+      setQueue([...rest, updated])
       setShowAnswer(false)
       return
     }
@@ -216,6 +249,11 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
         <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Сессия завершена</h2>
           <p className="text-sm text-[#948e82] mb-6">Пройдено слов: {doneCount}</p>
+          {botNotice && (
+            <p className="mb-6 rounded-lg border border-[#6f8a72]/40 bg-[#6f8a72]/10 p-3 text-sm text-[#9fb59f]">
+              {botNotice}
+            </p>
+          )}
           <button
             onClick={handleExit}
             className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
@@ -235,6 +273,11 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
       {saveError && (
         <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
           {saveError}
+        </div>
+      )}
+      {botNotice && (
+        <div className="mb-4 rounded-lg border border-[#6f8a72]/40 bg-[#6f8a72]/10 p-3 text-sm text-center text-[#9fb59f]">
+          {botNotice}
         </div>
       )}
 

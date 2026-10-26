@@ -63,6 +63,7 @@ export default function TrainFolderPage() {
         .from('cards')
         .select('*')
         .eq('folder_id', folderId)
+        .order('created_at', { ascending: true })
       if (cErr) {
         setError('Ошибка загрузки карточек')
         setLoading(false)
@@ -95,7 +96,7 @@ export default function TrainFolderPage() {
         setCards((data ?? []) as Card[])
       } else {
         // Обычные папки: вся папка в умном порядке
-        // (ошибки → новые вперемешку со словами на повтор → остальные невыученные → выученные)
+        // (новые строго по порядку папки → повтор → ошибки → остальные невыученные → выученные)
         setCards(buildStudyQueue(list))
       }
     } catch {

@@ -10,6 +10,8 @@ export const STUDY_REINSERT_OFFSETS = [2, 5, 10, 15]
 // Через сколько слов слово вернётся после правильного ответа (один раз, случайно 7–10)
 export const KNOW_RECHECK_MIN = 7
 export const KNOW_RECHECK_MAX = 10
+// После стольких ошибок слово уходит в обычные повторы бота
+export const BOT_REPEAT_MISTAKE_THRESHOLD = 3
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -52,57 +54,51 @@ function addedAt(c: Card): number {
   return time((c as unknown as { created_at?: string }).created_at)
 }
 
-// Чередует два списка: perA слов из a, затем одно слово из b
-function interleave(a: Card[], b: Card[], perA = 2): Card[] {
-  const out: Card[] = []
-  let i = 0
-  let j = 0
-  while (i < a.length || j < b.length) {
-    for (let k = 0; k < perA && i < a.length; k++) out.push(a[i++])
-    if (j < b.length) out.push(b[j++])
-  }
-  return out
-}
-
 // Очередь для любого режима — вся папка в таком порядке:
-// 1) слова с ошибками (больше ошибок = раньше)
-// 2) новые слова по порядку папки, вперемешку со словами, у которых пришёл срок повтора (2 новых : 1 повтор)
-// 3) остальные невыученные слова (срок повтора ещё не пришёл)
-// 4) выученные слова
-// Внутри групп слова идут от «давно не повторяли» к «только что повторили».
+// 1) новые слова строго по порядку папки — сначала прогоняем их друг за другом
+// 2) слова, у которых пришёл срок повторения
+// 3) слова с ошибками (больше ошибок = раньше)
+// 4) остальные невыученные слова (срок повтора ещё не пришёл)
+// 5) выученные слова
+// Повторы не вклиниваются между новыми словами: следующим всегда идёт
+// ещё не виденное слово из этой папки.
 export function buildStudyQueue(cards: Card[]): Card[] {
   const now = Date.now()
-  const errors: Card[] = []
   const fresh: Card[] = []
   const dueProgress: Card[] = []
+  const errors: Card[] = []
   const waitingProgress: Card[] = []
   const learned: Card[] = []
 
   for (const c of cards) {
-    if ((c.wrong_count || 0) > 0) {
-      errors.push(c)
-    } else if ((c.srs_level || 0) === 0 && (c.known_streak || 0) === 0 && !c.learned_at) {
+    if ((c.srs_level || 0) === 0 && (c.known_streak || 0) === 0 && !c.learned_at) {
       fresh.push(c)
     } else if (c.learned_at) {
       learned.push(c)
     } else if (time(c.next_review_at) <= now) {
       dueProgress.push(c)
+    } else if ((c.wrong_count || 0) > 0) {
+      errors.push(c)
     } else {
       waitingProgress.push(c)
     }
   }
 
   const byReview = (a: Card, b: Card) => time(a.next_review_at) - time(b.next_review_at)
+  const byFolder = (a: Card, b: Card) => addedAt(a) - addedAt(b)
 
-  const sortedErrors = shuffle(errors).sort((a, b) => (b.wrong_count || 0) - (a.wrong_count || 0))
-  const sortedFresh = [...fresh].sort((a, b) => addedAt(a) - addedAt(b))
-  const sortedDue = shuffle(dueProgress).sort(byReview)
-  const sortedWaiting = shuffle(waitingProgress).sort(byReview)
-  const sortedLearned = shuffle(learned).sort(byReview)
+  const sortedFresh = [...fresh].sort(byFolder)
+  const sortedDue = [...dueProgress].sort(byReview)
+  const sortedErrors = [...errors].sort(
+    (a, b) => (b.wrong_count || 0) - (a.wrong_count || 0) || byFolder(a, b)
+  )
+  const sortedWaiting = [...waitingProgress].sort(byReview)
+  const sortedLearned = [...learned].sort(byReview)
 
   return [
+    ...sortedFresh,
+    ...sortedDue,
     ...sortedErrors,
-    ...interleave(sortedFresh, sortedDue, 2),
     ...sortedWaiting,
     ...sortedLearned,
   ]
@@ -151,6 +147,31 @@ export function patchWrong(card: Card, isLevel: boolean): Partial<Card> {
 export async function saveCardPatch(cardId: string, patch: Partial<Card>): Promise<boolean> {
   const { error } = await supabase.from('cards').update(patch).eq('id', cardId)
   return !error
+}
+
+// Ставит слово в обычные запланированные повторы Telegram-бота.
+// Это не ветка «Не знаю» внутри бота, а очередь, которую бот присылает по расписанию.
+export async function queueBotRepeat(cardId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) return false
+
+    const response = await fetch('/api/telegram/repeat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ cardId }),
+    })
+    if (!response.ok) return false
+
+    const result = (await response.json()) as { ok?: boolean; queued?: boolean }
+    return Boolean(result.ok && result.queued)
+  } catch {
+    return false
+  }
 }
 
 // ---------- Проверка ответов ----------

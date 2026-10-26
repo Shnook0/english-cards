@@ -6,6 +6,7 @@ import {
   followUpDueAt,
   IGNORED_FOLLOW_UP_STAGE,
   nextIgnoredIntervalDays,
+  SITE_FOLLOW_UP_STAGE,
 } from './schedule'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -924,6 +925,31 @@ export async function finishDelivery(
   const dueAt = followUpDueAt(settings, days)
 
   await insertFollowUp(chatId, card.id, dueAt.toISOString(), IGNORED_FOLLOW_UP_STAGE)
+}
+
+// Ставит слово в обычную очередь повторов бота (вне ветки «Не знаю» из Telegram).
+export async function queueRegularRepeat(userId: string, cardId: string): Promise<boolean> {
+  const settings = await getSettingsForUser(userId)
+  if (!settings || !settings.linked) return false
+
+  const card = await getCard(cardId)
+  if (!card || card.user_id !== userId) return false
+
+  const mutedIds = await getMutedCardIds(userId)
+  if (mutedIds.has(card.id)) return false
+
+  const wordCards = await getWordCards(userId, card.word)
+  const ids = wordCards.length > 0 ? wordCards.map(item => item.id) : [card.id]
+
+  // Если у бота уже есть неотправленный повтор этого слова — не дублируем
+  if (await hasUnsentQueue(ids)) return false
+
+  const gapDays = await getDeliveryGapDays(ids)
+  const days = nextIgnoredIntervalDays(gapDays)
+  const dueAt = followUpDueAt(settings, days)
+
+  await insertFollowUp(settings.chat_id, card.id, dueAt.toISOString(), SITE_FOLLOW_UP_STAGE)
+  return true
 }
 
 type DueReviewRow = {

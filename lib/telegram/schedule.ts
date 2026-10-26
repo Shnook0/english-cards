@@ -168,6 +168,8 @@ export function clampToWindow(settings: TelegramSettings, date: Date): Date {
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export const KNOWN_FOLLOW_UP_STAGE = 100
+// Обычный повтор, поставленный с сайта после частых «Не знаю»
+export const SITE_FOLLOW_UP_STAGE = 150
 export const IGNORED_FOLLOW_UP_STAGE = 200
 export const MUTED_FOLLOW_UP_STAGE = 300
 export const MUTED_REPEAT_DAYS = [30, 70] as const
