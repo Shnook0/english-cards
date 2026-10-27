@@ -31,6 +31,14 @@ export default function FolderPage() {
   const [cardToEdit, setCardToEdit] = useState<Card | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [wordSort, setWordSort] = useState<WordSort>(readWordSort)
+
+  const changeWordSort = (value: WordSort) => {
+    setWordSort(value)
+    try {
+      localStorage.setItem(WORD_SORT_KEY, value)
+    } catch {}
+  }
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -301,6 +309,31 @@ export default function FolderPage() {
         <span className="font-normal text-[#6b6b76]">{cards.length}</span>
       </h2>
 
+      {cards.length > 1 && (
+        <div
+          role="radiogroup"
+          aria-label="Сортировка слов"
+          className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-[#15151a] p-1"
+        >
+          {WORD_SORTS.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={wordSort === option.value}
+              onClick={() => changeWordSort(option.value)}
+              className={`h-9 rounded-lg text-[13px] font-medium transition ${
+                wordSort === option.value
+                  ? 'bg-[#24242b] text-[#ececf1]'
+                  : 'text-[#8a8a96] hover:text-[#ececf1]'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {cards.length === 0 ? (
         <div className="card flex flex-col items-center px-6 py-10 text-center">
           <p className="text-sm text-[#8a8a96]">
@@ -315,7 +348,7 @@ export default function FolderPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {cards.map(card => (
+          {sortWords(cards, wordSort, isLearnedFolder).map(card => (
             <article key={card.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -396,5 +429,44 @@ export default function FolderPage() {
         cardToEdit={cardToEdit}
       />
     </div>
+  )
+}
+
+// Порядок слов в списке папки. Выбор общий для всех папок и хранится на устройстве.
+type WordSort = 'recent' | 'alpha' | 'mistakes'
+
+const WORD_SORT_KEY = 'english-cards:word-sort'
+
+const WORD_SORTS: { value: WordSort; label: string }[] = [
+  { value: 'recent', label: 'Новые' },
+  { value: 'alpha', label: 'A–Z' },
+  { value: 'mistakes', label: 'Ошибки' },
+]
+
+function readWordSort(): WordSort {
+  if (typeof window === 'undefined') return 'recent'
+  try {
+    const value = localStorage.getItem(WORD_SORT_KEY)
+    return WORD_SORTS.some(option => option.value === value) ? (value as WordSort) : 'recent'
+  } catch {
+    return 'recent'
+  }
+}
+
+const byWord = (a: Card, b: Card) =>
+  a.word.localeCompare(b.word, 'en', { sensitivity: 'base' })
+
+const time = (value: string | null | undefined) => (value ? new Date(value).getTime() : 0)
+
+function sortWords(cards: Card[], sort: WordSort, byLearnedDate: boolean): Card[] {
+  if (sort === 'alpha') return [...cards].sort(byWord)
+  if (sort === 'mistakes') {
+    return [...cards].sort((a, b) => (b.wrong_count ?? 0) - (a.wrong_count ?? 0) || byWord(a, b))
+  }
+  // «Новые»: сверху недавно добавленные, а в папке «Выученные» — недавно выученные
+  return [...cards].sort((a, b) =>
+    byLearnedDate
+      ? time(b.learned_at) - time(a.learned_at)
+      : time(b.created_at) - time(a.created_at)
   )
 }
