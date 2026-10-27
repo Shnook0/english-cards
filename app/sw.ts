@@ -32,7 +32,8 @@ const appShellEntries: PrecacheEntry[] = [
   '/reset-password',
 ].map(url => ({ url, revision: buildId ?? 'app-shell' }))
 
-const appPagesCache = `app-pages-${buildId ?? 'app-shell'}`
+const RSC_TIMEOUT_MS = 2000
+const appPagesCache =`app-pages-${buildId ?? 'app-shell'}`
 const networkOnly = new NetworkOnly()
 
 const serwist = new Serwist({
@@ -41,6 +42,23 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    {
+      // Клиентские переходы Next запрашивают RSC. Встроенное правило ждёт сеть 10 с,
+      // а iOS в авиарежиме не сразу отдаёт ошибку. После сбоя Next сам делает полную
+      // загрузку страницы, которую отдаёт кэш.
+      matcher: ({ request, url, sameOrigin }) =>
+        sameOrigin &&
+        !url.pathname.startsWith('/api/') &&
+        request.mode !== 'navigate' &&
+        (request.headers.get('RSC') === '1' || url.searchParams.has('_rsc')),
+      handler: async ({ request }: { request: Request }) => {
+        try {
+          return await fetch(request, { signal: AbortSignal.timeout(RSC_TIMEOUT_MS) })
+        } catch {
+          return Response.error()
+        }
+      },
+    },
     {
       matcher: ({ request, url, sameOrigin }) =>
         sameOrigin &&
