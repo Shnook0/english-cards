@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Folder } from '@/types/database'
 import { createFolder as createFolderLocal, fetchFolders } from '@/lib/offline/repo'
+import PageHeader from '@/components/ui/PageHeader'
+import Icon from '@/components/ui/Icon'
 
 export default function FoldersPage() {
   const { user, loading: authLoading } = useAuth()
@@ -69,90 +71,74 @@ export default function FoldersPage() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#8a8a96]">
-        <span className="eyebrow">Загрузка папок</span>
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Загружаем папки…</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-7 lg:p-10">
-      <div className="page-in mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs">
-            ← На главную
-          </Link>
-          <span className="eyebrow">Библиотека</span>
+    <div className="page page-in">
+      <PageHeader
+        back={{ href: '/', label: 'Главная' }}
+        title="Мои папки"
+        description="Собирайте слова по темам: создайте папку, откройте её и добавьте слова."
+      />
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
+          {error}
         </div>
+      )}
 
-        <header className="border-b border-[#24242b] pb-6">
-          <p className="eyebrow mb-3">Личные коллекции</p>
-          <h1 className="display text-4xl md:text-5xl">Мои папки</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#8a8a96]">
-            Собирайте слова по темам, ситуациям или собственным правилам.
-          </p>
-        </header>
+      <form onSubmit={createFolder} className="card flex gap-2 p-3">
+        <input
+          type="text"
+          placeholder="Название новой папки"
+          value={newFolderName}
+          onChange={e => setNewFolderName(e.target.value)}
+          className="field min-w-0 flex-1"
+          aria-label="Название новой папки"
+        />
+        <button
+          type="submit"
+          disabled={!newFolderName.trim() || creating}
+          className="btn btn-primary shrink-0"
+        >
+          <Icon name="plus" size={18} />
+          {creating ? 'Создаём…' : 'Создать'}
+        </button>
+      </form>
 
-        {error && (
-          <div className="mt-5 border border-[#e5786f]/50 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
-            {error}
-          </div>
-        )}
+      <h2 className="section-label flex items-center justify-between">
+        <span>Все папки</span>
+        <span className="font-normal text-[#6b6b76]">{folders.length}</span>
+      </h2>
 
-        <form onSubmit={createFolder} className="mt-5 flex flex-col gap-2 sm:flex-row">
-          <input
-            type="text"
-            placeholder="Название новой папки"
-            value={newFolderName}
-            onChange={e => setNewFolderName(e.target.value)}
-            className="field flex-1"
-          />
-          <button
-            type="submit"
-            disabled={!newFolderName.trim() || creating}
-            className="btn btn-primary"
-          >
-            {creating ? 'Создаём...' : 'Создать папку'}
-          </button>
-        </form>
-
-        <section className="py-6">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="eyebrow">Все папки</p>
-            <span className="text-xs text-[#6b6b76]">
-              {folders.length}
-            </span>
-          </div>
-
-          {folders.length === 0 ? (
-            <div className="panel px-6 py-10 text-center">
-              <p className="text-sm text-[#8a8a96]">
-                Пока нет папок. Создайте первую — и добавляйте в неё слова.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {folders.map((folder, index) => (
-                <Link
-                  key={folder.id}
-                  href={`/folder/${folder.id}`}
-                  className="panel panel-hover group flex items-center justify-between gap-4 px-4 py-3.5"
-                >
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-mono text-xs text-[#6b6b76]">
-                      {index + 1}
-                    </span>
-                    <span className="text-lg text-[#ececf1] transition group-hover:text-[#8ea2ff]">
-                      {folder.name}
-                    </span>
-                  </div>
-                  <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+      {folders.length === 0 ? (
+        <div className="hint">
+          <Icon name="info" size={18} />
+          <p>Пока нет папок. Введите название выше — например, «Путешествия» — и нажмите «Создать».</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {folders.map(folder => (
+            <Link
+              key={folder.id}
+              href={`/folder/${folder.id}`}
+              className="card card-link flex items-center gap-3 px-4 py-3.5"
+            >
+              <span className="tile-icon">
+                <Icon name="folder" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-base font-semibold text-[#ececf1]">
+                {folder.name}
+              </span>
+              <Icon name="arrowRight" size={18} className="shrink-0 text-[#6b6b76]" />
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

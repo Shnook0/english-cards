@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
+import Icon from '@/components/ui/Icon'
 
 export default function LoginPage() {
   const router = useOfflineRouter()
@@ -76,139 +77,153 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="page-in w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="eyebrow mb-4">English Cards</p>
-          <h1 className="display text-5xl">
+    <div className="flex min-h-[100dvh] items-center justify-center px-4 py-10">
+      <div className="page-in w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <span className="tile-icon" style={{ width: 56, height: 56, borderRadius: 16 }}>
+            <Icon name="book" size={26} />
+          </span>
+          <p className="mt-4 text-[15px] font-semibold text-[#b0b0bb]">English Cards</p>
+          <h1 className="page-title mt-1">
             {isResetMode
               ? 'Восстановление'
               : isSignUp
               ? 'Регистрация'
               : 'Вход в аккаунт'}
           </h1>
-          <p className="mt-4 text-sm leading-6 text-[#8a8a96]">
+          <p className="mt-2 text-[15px] leading-6 text-[#8a8a96]">
             {isResetMode
-              ? 'Пришлём ссылку для нового пароля.'
-              : 'Личный лексикон, который остаётся с вами.'}
+              ? 'Пришлём на почту ссылку для нового пароля.'
+              : 'Карточки для английских слов: собирайте, тренируйте, запоминайте.'}
           </p>
         </div>
 
-        <div className="panel p-7 md:p-9">
+        <div className="card p-5 sm:p-6">
           {error && (
-            <div className="mb-5 border border-[#e5786f]/50 bg-[#e5786f]/10 p-4 text-sm text-[#f4b8b1]">
+            <div className="mb-4 rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 px-4 py-3 text-sm leading-5 text-[#f0a39b]">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="mb-5 border border-[#7fc8a0]/40 bg-[#7fc8a0]/10 p-4 text-sm text-[#a9ddc0]">
+            <div className="mb-4 rounded-xl border border-[#7fc8a0]/40 bg-[#7fc8a0]/10 px-4 py-3 text-sm leading-5 text-[#a9ddc0]">
               {message}
             </div>
           )}
 
           {!online && (
-            <div className="mb-5 border border-[#8ea2ff]/40 bg-[#8ea2ff]/10 p-4 text-sm text-[#a8b8ff]">
-              Нет интернета. Если вы уже входили на этом устройстве, откройте главную —
-              сохранённые слова и тренировки доступны офлайн.
+            <div className="hint mb-4">
+              <Icon name="info" size={18} />
+              <p>
+                Нет интернета. Если вы уже входили на этом устройстве, откройте главную —
+                сохранённые слова и тренировки доступны офлайн.
+              </p>
             </div>
           )}
 
-          <form onSubmit={handleAuth} className="space-y-5">
-          <div>
-            <label className="eyebrow mb-2 block">Email</label>
-            <input
-              type="email"
-              required
-              autoFocus
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="field"
-            />
-          </div>
-
-          {!isResetMode && (
+          <form onSubmit={handleAuth} className="space-y-4">
             <div>
-              <label className="eyebrow mb-2 block">Пароль</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Минимум 6 символов"
-                  className="field pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8a8a96] hover:text-[#ececf1] transition"
-                >
-                  {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.274 4.057 5.065 7 9.964 7 4.899 0 8.69-2.943 9.964-7-1.274-4.057-5.065-7-9.964-7-4.899 0-8.69 2.943-9.964 7z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                Email
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="field"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading || !online}
-            className="btn btn-primary w-full"
-          >
-            {loading
-              ? 'Загрузка...'
-              : isResetMode
-              ? 'Отправить ссылку'
-              : isSignUp
-              ? 'Зарегистрироваться'
-              : 'Войти'}
-          </button>
-          </form>
-
-          <div className="mt-7 flex flex-col items-center gap-3 border-t border-[#24242b] pt-5 text-sm text-[#8a8a96]">
             {!isResetMode && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsResetMode(true)
-                  setError(null)
-                  setMessage(null)
-                }}
-                className="link-muted"
-              >
-                Забыли пароль?
-              </button>
+              <div>
+                <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                  Пароль
+                </label>
+                <div className="relative">
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Минимум 6 символов"
+                    className="field pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                    className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-[#8a8a96] hover:text-[#ececf1]"
+                  >
+                    {showPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.274 4.057 5.065 7 9.964 7 4.899 0 8.69-2.943 9.964-7-1.274-4.057-5.065-7-9.964-7-4.899 0-8.69 2.943-9.964 7z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
             )}
 
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading || !online}
+                className="btn btn-primary btn-lg btn-block"
+              >
+                {loading
+                  ? 'Загрузка…'
+                  : isResetMode
+                  ? 'Отправить ссылку'
+                  : isSignUp
+                  ? 'Зарегистрироваться'
+                  : 'Войти'}
+              </button>
+            </div>
+          </form>
+
+          {!isResetMode && (
             <button
               type="button"
               onClick={() => {
-                setIsSignUp(!isSignUp)
-                setIsResetMode(false)
+                setIsResetMode(true)
                 setError(null)
                 setMessage(null)
               }}
-              className="text-[#8ea2ff] hover:text-[#a8b8ff]"
+              className="btn btn-ghost btn-sm btn-block mt-2"
             >
-              {isResetMode
-                ? 'Вернуться ко входу'
-                : isSignUp
-                ? 'Уже есть аккаунт? Войти'
-                : 'Нет аккаунта? Зарегистрироваться'}
+              Забыли пароль?
             </button>
-          </div>
+          )}
+        </div>
+
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp)
+              setIsResetMode(false)
+              setError(null)
+              setMessage(null)
+            }}
+            className="btn btn-block text-[#8ea2ff] hover:bg-[#1b1b21] hover:text-[#a8b8ff]"
+          >
+            {isResetMode
+              ? 'Вернуться ко входу'
+              : isSignUp
+              ? 'Уже есть аккаунт? Войти'
+              : 'Нет аккаунта? Зарегистрироваться'}
+          </button>
         </div>
       </div>
     </div>

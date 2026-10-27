@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import PageHeader from '@/components/ui/PageHeader'
+import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Folder } from '@/types/database'
@@ -97,70 +98,64 @@ export default function LevelsPage() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#8a8a96]">
-        <span className="eyebrow">Загрузка уровней</span>
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Загружаем уровни…</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-7 lg:p-10">
-      <div className="page-in mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs">
-            ← На главную
-          </Link>
-          <span className="eyebrow">CEFR</span>
-        </div>
+    <div className="page page-in">
+      <PageHeader
+        back={{ href: '/', label: 'Главная' }}
+        title="Уровни A1–C2"
+        description="Готовые наборы слов по уровням владения языком — с переводом и примерами. Выберите свой уровень и начните учить."
+      />
 
-        <header className="border-b border-[#24242b] pb-6">
-          <p className="eyebrow mb-3">Готовые наборы</p>
-          <h1 className="display text-4xl md:text-5xl">Подборки по уровням</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#8a8a96]">
-            Начните с подходящего уровня — слова и примеры уже собраны.
-          </p>
-        </header>
-
-        {error && (
-          <div className="mt-5 border border-[#e5786f]/50 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
-            {error}
-          </div>
-        )}
-
-        <section className="grid grid-cols-2 gap-2 py-6 md:grid-cols-3">
-          {CEFR_LEVELS.map(level => {
-            const exists = Boolean(levelFolders[level])
-            const busy = creatingLevel === level
-
-            return (
-              <button
-                key={level}
-                type="button"
-                onClick={() => openLevel(level)}
-                disabled={Boolean(creatingLevel)}
-                className={`group flex min-h-28 flex-col justify-between border p-4 text-left transition disabled:opacity-50 ${
-                  exists
-                    ? 'border-[#8ea2ff]/45 bg-[#8ea2ff]/[0.06] hover:border-[#8ea2ff]'
-                    : 'border-[#24242b] bg-[#15151a] hover:border-[#8ea2ff]/60'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <span className="display text-2xl">{level}</span>
-                  <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-                </div>
-                <div>
-                  <p className="text-sm">
-                    {busy ? 'Создаём...' : exists ? 'Открыть набор' : 'Создать набор'}
-                  </p>
-                  <p className="mt-1 text-xs text-[#8a8a96]">
-                    {CEFR_WORDS[level].length} слов
-                  </p>
-                </div>
-              </button>
-            )
-          })}
-        </section>
+      <div className="hint mb-5">
+        <Icon name="info" size={18} />
+        <p>A1–A2 — начальный, B1–B2 — средний, C1–C2 — продвинутый. При первом открытии создаётся ваша копия набора — в ней сохраняется прогресс.</p>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
+          {error}
+        </div>
+      )}
+
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        {CEFR_LEVELS.map(level => {
+          const exists = Boolean(levelFolders[level])
+          const busy = creatingLevel === level
+
+          return (
+            <button
+              key={level}
+              type="button"
+              onClick={() => openLevel(level)}
+              disabled={Boolean(creatingLevel)}
+              className="tile text-left disabled:cursor-not-allowed disabled:opacity-50"
+              style={exists ? { borderColor: 'rgba(142, 162, 255, 0.45)' } : undefined}
+            >
+              <div className="flex items-center justify-between">
+                <span className="display text-[1.75rem] text-[#ececf1]">{level}</span>
+                {exists && (
+                  <span className="chip chip-accent">
+                    <Icon name="check" size={14} />
+                    добавлен
+                  </span>
+                )}
+              </div>
+              <div className="mt-auto">
+                <p className="tile-title">
+                  {busy ? 'Создаём…' : exists ? 'Открыть набор' : 'Добавить набор'}
+                </p>
+                <p className="tile-text">{CEFR_WORDS[level].length} слов</p>
+              </div>
+            </button>
+          )
+        })}
+      </section>
     </div>
   )
 }

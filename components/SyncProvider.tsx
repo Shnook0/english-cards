@@ -155,8 +155,7 @@ export default function SyncProvider() {
   return (
     <Link
       href="/settings"
-      className={`fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] rounded-full border bg-[#15151a]/95 px-3.5 py-2 text-xs shadow-xl backdrop-blur transition hover:border-[#8ea2ff] ${accent}`}
-      style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
+      className={`sync-pill fixed right-3 z-40 max-w-[calc(100vw-1.5rem)] rounded-full border bg-[#15151a]/95 px-3.5 py-2 text-xs shadow-xl backdrop-blur transition hover:border-[#8ea2ff] ${accent}`}
     >
       <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />
       {text}

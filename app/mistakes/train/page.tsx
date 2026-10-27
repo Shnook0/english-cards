@@ -34,7 +34,11 @@ export default function TrainMistakesPage() {
   }, [user, load])
 
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">Загрузка тренировки...</div>
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Готовим тренировку…</span>
+      </div>
+    )
   }
 
   return (

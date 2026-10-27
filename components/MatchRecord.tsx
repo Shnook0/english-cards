@@ -12,5 +12,5 @@ export default function MatchRecord({ scope }: { scope: string }) {
 
   if (best === null) return null
 
-  return <span className="ml-2 text-xs text-[#8a8a96]">🏆 {formatTime(best)} с</span>
+  return <span className="chip chip-accent ml-2 tabular-nums">Рекорд {formatTime(best)} с</span>
 }

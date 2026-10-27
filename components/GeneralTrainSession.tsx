@@ -5,6 +5,7 @@ import { Card } from '@/types/database'
 import { GeneralProgress } from '@/types/general'
 import { REINSERT_OFFSETS, wordKey } from '@/lib/general'
 import { saveGeneralAnswer, setFavorite } from '@/lib/offline/repo'
+import Icon from '@/components/ui/Icon'
 
 type Props = {
   trainingId: string
@@ -136,19 +137,18 @@ export default function GeneralTrainSession({
 
   if (isFinished || !currentCard) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
-          <h2 className="text-2xl font-bold mb-2">
-            {totalCards === 0 ? 'Сейчас нет слов для тренировки' : 'Сессия завершена'}
+      <div className={`${SCREEN} justify-center py-8`}>
+        <div className="card page-in p-6 text-center sm:p-8">
+          <h2 className="text-xl">
+            {totalCards === 0 ? 'Сейчас нет слов для тренировки' : 'Тренировка завершена'}
           </h2>
           {totalCards > 0 && (
-            <p className="text-sm text-[#8a8a96] mb-6">Обработано карточек: {doneCount}</p>
+            <>
+              <p className="mt-5 text-5xl font-bold leading-none text-[#8ea2ff]">{doneCount}</p>
+              <p className="mt-2 text-sm text-[#8a8a96]">карточек обработано</p>
+            </>
           )}
-          {totalCards === 0 && <div className="mb-6" />}
-          <button
-            onClick={onExit}
-            className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
-          >
+          <button onClick={onExit} className="btn btn-primary btn-lg btn-block mt-7">
             Готово
           </button>
         </div>
@@ -160,100 +160,138 @@ export default function GeneralTrainSession({
     totalCards > 0 ? Math.min(100, Math.round((doneCount / totalCards) * 100)) : 0
 
   return (
-    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] p-4 md:p-8 flex flex-col justify-between max-w-2xl mx-auto">
+    <div className={`${SCREEN} pb-4`}>
+      <header className="pt-2">
+        <div className="flex items-center justify-between gap-3">
+          <button onClick={onExit} className="btn btn-ghost btn-sm -ml-3">
+            <Icon name="arrowLeft" size={16} />
+            Выйти
+          </button>
+          <span className="text-sm font-medium tabular-nums text-[#b0b0bb]">
+            {doneCount} из {totalCards}
+          </span>
+        </div>
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#1b1b21]">
+          <div
+            className="h-full rounded-full bg-[#8ea2ff] transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </header>
+
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm text-center">
+        <div className="mt-4 rounded-xl border border-[#e5786f]/35 bg-[#e5786f]/10 px-4 py-3 text-center text-sm text-[#e5786f]">
           {saveError}
         </div>
       )}
 
-      <div>
-        <div className="flex items-center justify-between mb-3 text-sm text-[#8a8a96]">
-          <span>{doneCount} / {totalCards}</span>
-          <button onClick={onExit} className="hover:text-[#ececf1] transition font-medium">
-            Выйти
-          </button>
-        </div>
-        <div className="w-full h-1.5 bg-[#1b1b21] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#8ea2ff] transition-all duration-300"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-      </div>
+      <main className="flex flex-1 flex-col justify-center py-6">
+        <p className="mb-3 text-center text-sm text-[#8a8a96]">
+          {showAnswer
+            ? 'Отметьте честно: знали вы это слово или нет'
+            : 'Вспомните перевод, затем откройте карточку'}
+        </p>
 
-      <div
-        onClick={() => !showAnswer && setShowAnswer(true)}
-        className="my-auto cursor-pointer min-h-[360px] rounded-2xl border border-[#24242b] bg-[#15151a] p-6 md:p-8 shadow-2xl flex flex-col justify-between transition hover:border-[#2c2c34] select-none"
-      >
-        <div className="flex justify-between items-start">
-          <button
-            onClick={handleSpeak}
-            className="p-2 rounded-lg bg-[#0d0d10] text-[#8ea2ff] hover:bg-[#1b1b21] transition"
-            title="Озвучить"
-          >
-            🔊
-          </button>
-          <button
-            onClick={handleToggleFavorite}
-            className={`text-xl transition ${currentCard.is_favorite ? 'text-[#8ea2ff]' : 'text-[#4c4c57] hover:text-[#8a8a96]'}`}
-            title="Избранное"
-          >
-            ★
-          </button>
-        </div>
+        <div
+          onClick={() => !showAnswer && setShowAnswer(true)}
+          className={`card flex min-h-[340px] select-none flex-col p-5 sm:p-7 ${
+            showAnswer ? '' : 'cursor-pointer card-link'
+          }`}
+        >
+          <div className="flex items-start justify-between">
+            <button
+              onClick={handleSpeak}
+              className="icon-btn text-[#8ea2ff]!"
+              title="Озвучить"
+              aria-label="Озвучить"
+            >
+              <SpeakerIcon />
+            </button>
+            <button
+              onClick={handleToggleFavorite}
+              className={`icon-btn ${currentCard.is_favorite ? 'text-[#8ea2ff]!' : ''}`}
+              title="Избранное"
+              aria-label="Избранное"
+              aria-pressed={!!currentCard.is_favorite}
+            >
+              <Icon
+                name="star"
+                size={20}
+                className={currentCard.is_favorite ? 'fill-current' : undefined}
+              />
+            </button>
+          </div>
 
-        <div className="text-center my-4">
-          <h2 className="text-3xl md:text-4xl font-bold mb-2">{currentCard.word}</h2>
-          {currentCard.transcription && (
-            <p className="text-sm text-[#8a8a96]">{currentCard.transcription}</p>
+          <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+            <h2 className="break-words text-3xl font-bold sm:text-4xl">{currentCard.word}</h2>
+            {currentCard.transcription && (
+              <p className="mt-2 text-base text-[#8a8a96]">{currentCard.transcription}</p>
+            )}
+            <div className="mt-5 flex min-h-[2.5rem] items-center justify-center">
+              {showAnswer ? (
+                <p className="text-2xl font-semibold text-[#8ea2ff]">{currentCard.translation}</p>
+              ) : (
+                <p className="text-sm text-[#6b6b76]">Нажмите, чтобы увидеть перевод</p>
+              )}
+            </div>
+          </div>
+
+          {currentCard.sentences && currentCard.sentences.length > 0 && (
+            <div className="space-y-2 rounded-xl bg-[#1b1b21] p-4 text-sm leading-relaxed text-[#b0b0bb]">
+              {currentCard.sentences.map((s, i) => <p key={i}>{s}</p>)}
+            </div>
           )}
         </div>
+      </main>
 
-        {currentCard.sentences && currentCard.sentences.length > 0 && (
-          <div className="space-y-1.5 bg-[#0d0d10] p-3 rounded-xl text-xs text-[#8a8a96] mb-4">
-            {currentCard.sentences.map((s, i) => <p key={i}>• {s}</p>)}
-          </div>
-        )}
-
+      <footer className="min-h-[3.25rem]">
         {showAnswer ? (
-          <div className="pt-4 border-t border-[#24242b] text-center">
-            <p className="text-2xl font-bold text-[#8ea2ff]">{currentCard.translation}</p>
-          </div>
-        ) : (
-          <div className="text-center text-xs text-[#8a8a96] pt-2 border-t border-[#24242b]/50 tracking-wider">
-            Нажмите, чтобы показать перевод
-          </div>
-        )}
-      </div>
-
-      <div className="py-4">
-        {showAnswer ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <button
               onClick={handleDontKnow}
               disabled={isSaving}
-              className="rounded-xl border border-[#e5786f] bg-[#e5786f]/10 py-3.5 font-semibold text-[#e5786f] hover:bg-[#e5786f]/20 transition disabled:opacity-50"
+              className="btn btn-lg btn-danger"
             >
-              {isSaving ? 'Сохранение...' : 'Не знаю'}
+              {isSaving ? 'Сохраняем…' : 'Не знаю'}
             </button>
             <button
               onClick={handleKnow}
               disabled={isSaving}
-              className="rounded-xl bg-[#8ea2ff] py-3.5 font-semibold text-[#0d0d10] hover:bg-[#7186e8] transition disabled:opacity-50"
+              className="btn btn-lg btn-primary"
             >
-              {isSaving ? 'Сохранение...' : 'Знаю'}
+              {isSaving ? 'Сохраняем…' : 'Знаю'}
             </button>
           </div>
         ) : (
           <button
             onClick={() => setShowAnswer(true)}
-            className="w-full rounded-xl border border-[#2c2c34] bg-[#15151a] py-3.5 font-semibold text-[#ececf1] hover:border-[#8ea2ff] transition"
+            className="btn btn-lg btn-block btn-secondary"
           >
-            Показать ответ
+            Показать перевод
           </button>
         )}
-      </div>
+      </footer>
     </div>
+  )
+}
+
+const SCREEN =
+  'mx-auto flex w-full max-w-xl flex-col px-4 min-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))]'
+
+function SpeakerIcon() {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 5 6 9H3v6h3l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+    </svg>
   )
 }

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Folder } from '@/types/database'
 import TelegramBanner from '@/components/TelegramBanner'
+import Icon from '@/components/ui/Icon'
 import { fetchCards, fetchFolders, getPendingCount } from '@/lib/offline/repo'
 import { clearLocalData } from '@/lib/offline/db'
 
@@ -98,8 +99,8 @@ export default function HomePage() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#8a8a96]">
-        <span className="eyebrow">Загрузка лексикона</span>
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Загружаем ваш словарь…</span>
       </div>
     )
   }
@@ -108,155 +109,180 @@ export default function HomePage() {
   const levelFolders = folders.filter(folder => folder.type === 'level')
 
   return (
-    <div className="min-h-screen p-4 md:p-7 lg:p-10">
-      <div className="page-in mx-auto max-w-6xl">
-        <header className="flex flex-wrap items-start justify-between gap-5 border-b border-[#24242b] pb-5">
-          <Link href="/" className="group flex flex-col">
-            <span className="eyebrow">Personal lexicon</span>
-            <span className="display mt-1 text-2xl text-[#ececf1] transition group-hover:text-[#8ea2ff]">
-              English Cards
-            </span>
-          </Link>
+    <div className="page page-in">
+      <header className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="eyebrow">English Cards</p>
+          <h1 className="page-title mt-1">Ваш словарь</h1>
+        </div>
+        <Link href="/settings" className="icon-btn" aria-label="Настройки">
+          <Icon name="settings" />
+        </Link>
+      </header>
 
-          <div className="flex items-start gap-5">
-            <div className="max-w-[190px] text-right sm:max-w-[260px]">
-              <p className="eyebrow">Словарный запас</p>
-              <p className="mt-1 flex items-baseline justify-end gap-1.5">
-                <span className="display text-2xl text-[#ececf1]">{learnedCount}</span>
-                <span className="text-xs text-[#8a8a96]">
-                  слов
-                </span>
-              </p>
-              <p className="mt-1 text-xs leading-4 text-[#8a8a96]">
-                {vocabularyPhrase(learnedCount)}
-              </p>
-            </div>
+      {error && (
+        <div className="mt-5 rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
+          {error}
+        </div>
+      )}
 
-            <div className="flex flex-col items-end gap-2">
-              <span className="hidden text-xs text-[#8a8a96] md:block">{user?.email}</span>
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/settings"
-                  className="text-xs text-[#8a8a96] transition hover:text-[#8ea2ff]"
-                >
-                  Настройки
-                </Link>
-                <button onClick={logout} className="btn btn-ghost !px-0 !py-0 text-xs">
-                  Выйти
-                </button>
-              </div>
-            </div>
+      <section className="card mt-5 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow">Словарный запас</p>
+            <p className="mt-2 flex items-baseline gap-2">
+              <span className="stat-number text-[2.75rem]">{learnedCount}</span>
+              <span className="text-[15px] text-[#8a8a96]">{wordsLabel(learnedCount)} выучено</span>
+            </p>
+            <p className="mt-2 text-sm leading-5 text-[#b0b0bb]">{vocabularyPhrase(learnedCount)}</p>
           </div>
-        </header>
+          <span className="tile-icon tile-icon-success">
+            <Icon name="check" />
+          </span>
+        </div>
 
-        {error && (
-          <div className="mt-5 border border-[#e5786f]/50 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
-            {error}
+        <Link
+          href={mistakesCount > 0 ? '/mistakes' : '/general'}
+          className="btn btn-primary btn-lg btn-block mt-5"
+        >
+          {mistakesCount > 0 ? `Разобрать ошибки · ${mistakesCount}` : 'Начать тренировку'}
+          <Icon name="arrowRight" size={18} />
+        </Link>
+        <p className="mt-2.5 text-center text-xs text-[#6b6b76]">
+          {mistakesCount > 0
+            ? 'Начните со слов, в которых вы чаще всего ошибаетесь'
+            : 'Повторение слов из всех ваших папок'}
+        </p>
+      </section>
+
+      <h2 className="section-label">Разделы</h2>
+      <section className="grid grid-cols-2 gap-3">
+        <Link href="/folders" className="tile">
+          <span className="tile-icon">
+            <Icon name="folder" />
+          </span>
+          <div>
+            <p className="tile-title">Мои папки</p>
+            <p className="tile-text">Слова по темам · {customFolders.length}</p>
+          </div>
+        </Link>
+
+        <Link href="/general" className="tile">
+          <span className="tile-icon">
+            <Icon name="spark" />
+          </span>
+          <div>
+            <p className="tile-title">Тренировка</p>
+            <p className="tile-text">Слова из всех папок вперемешку</p>
+          </div>
+        </Link>
+
+        <Link href="/mistakes" className="tile">
+          <span className="tile-icon tile-icon-danger">
+            <Icon name="target" />
+          </span>
+          <div>
+            <p className="tile-title">Частые ошибки</p>
+            <p className="tile-text">Ошибались 2+ раза · {mistakesCount}</p>
+          </div>
+        </Link>
+
+        <Link href="/favorites" className="tile">
+          <span className="tile-icon tile-icon-warning">
+            <Icon name="star" />
+          </span>
+          <div>
+            <p className="tile-title">Избранное</p>
+            <p className="tile-text">Слова со звёздочкой · {favoritesCount}</p>
+          </div>
+        </Link>
+
+        <Link href="/levels" className="tile">
+          <span className="tile-icon">
+            <Icon name="layers" />
+          </span>
+          <div>
+            <p className="tile-title">Уровни A1–C2</p>
+            <p className="tile-text">Готовые наборы · {levelFolders.length}</p>
+          </div>
+        </Link>
+
+        {learnedFolder ? (
+          <Link href={`/folder/${learnedFolder.id}`} className="tile">
+            <span className="tile-icon tile-icon-success">
+              <Icon name="book" />
+            </span>
+            <div>
+              <p className="tile-title">Выученные</p>
+              <p className="tile-text">Архив знакомых слов · {learnedCount}</p>
+            </div>
+          </Link>
+        ) : (
+          <div className="tile opacity-60">
+            <span className="tile-icon tile-icon-success">
+              <Icon name="book" />
+            </span>
+            <div>
+              <p className="tile-title">Выученные</p>
+              <p className="tile-text">Появятся после первых тренировок</p>
+            </div>
           </div>
         )}
+      </section>
 
-        <section className="grid gap-2 py-5 sm:grid-cols-2">
-          <Link
-            href="/favorites"
-            className="panel panel-hover group flex items-center justify-between gap-4 px-5 py-4"
-          >
+      <h2 className="section-label">Как это работает</h2>
+      <ol className="card divide-y divide-[#24242b]">
+        {HOW_IT_WORKS.map((step, index) => (
+          <li key={step.title} className="flex gap-4 px-5 py-4">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#8ea2ff]/12 text-[13px] font-semibold text-[#8ea2ff]">
+              {index + 1}
+            </span>
             <div>
-              <p className="eyebrow">Быстрый доступ</p>
-              <h2 className="mt-1.5 text-xl">Избранные слова</h2>
-              <p className="mt-1.5 text-sm leading-5 text-[#b0b0bb]">
-                Слова, отмеченные звёздочкой · {favoritesCount}
-              </p>
+              <p className="text-[15px] font-semibold">{step.title}</p>
+              <p className="mt-1 text-sm leading-5 text-[#8a8a96]">{step.text}</p>
             </div>
-            <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-          </Link>
+          </li>
+        ))}
+      </ol>
 
-          <Link
-            href="/mistakes"
-            className="panel panel-hover group flex items-center justify-between gap-4 px-5 py-4"
-          >
-            <div>
-              <p className="eyebrow">Точки роста</p>
-              <h2 className="mt-1.5 text-xl">Частые ошибки</h2>
-              <p className="mt-1.5 text-sm leading-5 text-[#b0b0bb]">
-                Слова, которые стоит повторить · {mistakesCount}
-              </p>
-            </div>
-            <span className="text-[#e5786f] transition group-hover:translate-x-0.5">→</span>
-          </Link>
-        </section>
-
-        <section className="grid gap-3 pb-2 md:grid-cols-3">
-          <Link
-            href="/folders"
-            className="panel panel-hover group flex min-h-36 flex-col justify-between p-5"
-          >
-            <div className="flex items-start justify-between">
-              <span className="font-mono text-xs text-[#8ea2ff]">1</span>
-              <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-            </div>
-            <div>
-              <h2 className="text-2xl">Мои папки</h2>
-              <p className="mt-2.5 text-sm leading-6 text-[#b0b0bb]">
-                Личные подборки слов по темам · {customFolders.length}
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/general"
-            className="panel panel-hover group flex min-h-36 flex-col justify-between p-5"
-          >
-            <div className="flex items-start justify-between">
-              <span className="font-mono text-xs text-[#8ea2ff]">2</span>
-              <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-            </div>
-            <div>
-              <h2 className="text-2xl">Общая тренировка</h2>
-              <p className="mt-2.5 text-sm leading-6 text-[#b0b0bb]">
-                Умное повторение слов из всех папок.
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/levels"
-            className="panel panel-hover group flex min-h-36 flex-col justify-between p-5"
-          >
-            <div className="flex items-start justify-between">
-              <span className="font-mono text-xs text-[#8ea2ff]">3</span>
-              <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-            </div>
-            <div>
-              <h2 className="text-2xl">Подборки по уровням</h2>
-              <p className="mt-2.5 text-sm leading-6 text-[#b0b0bb]">
-                Готовые наборы от A1 до C2 · {levelFolders.length}
-              </p>
-            </div>
-          </Link>
-        </section>
-
-        <footer className="mt-6 border-t border-[#24242b] pt-4">
-          {learnedFolder ? (
-            <Link
-              href={`/folder/${learnedFolder.id}`}
-              className="group flex items-center justify-between gap-4 py-2 text-sm"
-            >
-              <span className="eyebrow">Архив</span>
-              <span className="flex items-center gap-3 text-[#8a8a96] transition group-hover:text-[#ececf1]">
-                Выученные слова · {learnedCount}
-                <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
-              </span>
-            </Link>
-          ) : (
-            <div className="flex items-center justify-between gap-4 py-2 text-sm">
-              <span className="eyebrow">Архив</span>
-              <span className="text-[#6b6b76]">Выученные слова появятся здесь</span>
-            </div>
-          )}
-        </footer>
-
+      <div className="mt-3">
         <TelegramBanner />
       </div>
+
+      <footer className="mt-8 flex flex-col items-center gap-2 text-center">
+        {user?.email && <p className="text-xs text-[#6b6b76]">Вы вошли как {user.email}</p>}
+        <button onClick={logout} className="btn btn-ghost btn-sm">
+          <Icon name="logout" size={16} />
+          Выйти из аккаунта
+        </button>
+      </footer>
     </div>
   )
+}
+
+const HOW_IT_WORKS = [
+  {
+    title: 'Соберите слова в папки',
+    text: 'Создайте папку по теме и добавьте слова — перевод подскажем сами.',
+  },
+  {
+    title: 'Тренируйтесь',
+    text: '«Знаю» — слово вернётся реже. «Не знаю» — чаще. Три «Знаю» подряд — и слово выучено.',
+  },
+  {
+    title: 'Повторяйте в Telegram',
+    text: 'Бот присылает сложные слова в удобное время — без открытия сайта.',
+  },
+  {
+    title: 'Работает без интернета',
+    text: 'Ответы сохраняются на телефоне и отправятся сами, когда появится сеть.',
+  },
+]
+
+function wordsLabel(count: number): string {
+  const mod10 = count % 10
+  const mod100 = count % 100
+  if (mod10 === 1 && mod100 !== 11) return 'слово'
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'слова'
+  return 'слов'
 }

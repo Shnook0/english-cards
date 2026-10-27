@@ -11,6 +11,7 @@ import MatchGame from '@/components/MatchGame'
 import DictationGame from '@/components/DictationGame'
 import BlocksGame from '@/components/BlocksGame'
 import LearnGame from '@/components/LearnGame'
+import Icon from '@/components/ui/Icon'
 
 type Props = {
   kind: 'folder' | 'favorites' | 'mistakes'
@@ -103,27 +104,36 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
-        Загрузка...
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Загружаем слова…</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#e5786f]">{error}</p>
-        <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center px-4 text-center">
+        <p className="text-base text-[#e5786f]">{error}</p>
+        <Link href={exitHref} className="btn btn-secondary mt-5">
+          <Icon name="arrowLeft" size={16} />
+          Назад
+        </Link>
       </div>
     )
   }
 
   if (queue.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4 text-center">
-        <p className="mb-2 text-lg font-semibold">В этой папке нет слов</p>
-        <p className="mb-6 text-sm text-[#8a8a96]">Добавьте карточки и возвращайтесь.</p>
-        <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center px-4 text-center">
+        <span className="tile-icon">
+          <Icon name="layers" />
+        </span>
+        <p className="mt-4 text-lg font-semibold">В этой папке нет слов</p>
+        <p className="mt-1 text-sm text-[#8a8a96]">Добавьте карточки и возвращайтесь.</p>
+        <Link href={exitHref} className="btn btn-secondary mt-6">
+          <Icon name="arrowLeft" size={16} />
+          Назад
+        </Link>
       </div>
     )
   }
@@ -182,9 +192,12 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
-      <p className="mb-4 text-[#e5786f]">Неизвестный режим</p>
-      <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center px-4 text-center">
+      <p className="text-base text-[#e5786f]">Неизвестный режим</p>
+      <Link href={exitHref} className="btn btn-secondary mt-5">
+        <Icon name="arrowLeft" size={16} />
+        Назад
+      </Link>
     </div>
   )
 }

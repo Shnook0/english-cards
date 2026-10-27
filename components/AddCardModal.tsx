@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Card } from '@/types/database'
+import Icon from '@/components/ui/Icon'
 import {
   createCards,
   deleteCard,
@@ -503,47 +504,60 @@ function AddCardModalContent({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-[#15151a] border border-[#24242b] p-6 shadow-2xl text-[#ececf1]">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold">
-            {cardToEdit ? 'Редактировать карточку' : 'Добавить карточки'}
-          </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 py-4">
+      <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-2xl border border-[#24242b] bg-[#15151a] p-5 text-[#ececf1] shadow-2xl sm:p-6">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold">
+              {cardToEdit ? 'Изменить слово' : 'Добавить слова'}
+            </h3>
+            {!cardToEdit && !showConflictScreen && (
+              <p className="mt-1 text-sm text-[#8a8a96]">
+                {activeTab === 'manual'
+                  ? 'Введите слово — перевод подскажем сами.'
+                  : 'Вставьте сразу много слов, по одному на строку.'}
+              </p>
+            )}
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[#8a8a96] hover:text-[#ececf1] text-lg font-bold"
+            className="icon-btn shrink-0"
+            aria-label="Закрыть"
           >
-            ✕
+            <Icon name="plus" size={20} className="rotate-45" />
           </button>
         </div>
 
         {!cardToEdit && !showConflictScreen && (
-          <div className="flex border-b border-[#24242b] mb-4">
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-[#0d0d10] p-1">
             <button
+              type="button"
               onClick={() => setActiveTab('manual')}
-              className={`pb-2 px-4 text-sm font-medium transition border-b-2 ${
+              className={`rounded-lg py-2 text-sm font-semibold transition ${
                 activeTab === 'manual'
-                  ? 'border-[#8ea2ff] text-[#8ea2ff]'
-                  : 'border-transparent text-[#8a8a96] hover:text-[#ececf1]'
+                  ? 'bg-[#24242b] text-[#ececf1]'
+                  : 'text-[#8a8a96] hover:text-[#ececf1]'
               }`}
             >
-              Вручную
+              По одному
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('import')}
-              className={`pb-2 px-4 text-sm font-medium transition border-b-2 ${
+              className={`rounded-lg py-2 text-sm font-semibold transition ${
                 activeTab === 'import'
-                  ? 'border-[#8ea2ff] text-[#8ea2ff]'
-                  : 'border-transparent text-[#8a8a96] hover:text-[#ececf1]'
+                  ? 'bg-[#24242b] text-[#ececf1]'
+                  : 'text-[#8a8a96] hover:text-[#ececf1]'
               }`}
             >
-              Текстовый импорт
+              Списком
             </button>
           </div>
         )}
 
         {error && (
-          <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm">
+          <div className="mb-4 rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
             {error}
           </div>
         )}
@@ -569,39 +583,40 @@ function AddCardModalContent({
               </div>
 
               {conflictCards.length > 1 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-xs text-[#8a8a96]">Для всех:</span>
                   <button
                     type="button"
                     onClick={() => setAllConflictChoices('new')}
-                    className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                    className={`flex-1 whitespace-nowrap rounded-lg border px-3 py-2 text-[13px] font-medium transition ${
                       allNew
                         ? 'border-[#8ea2ff] bg-[#8ea2ff]/20 text-[#8ea2ff]'
                         : 'border-[#24242b] bg-[#15151a] text-[#8a8a96] hover:border-[#44444e] hover:text-[#ececf1]'
                     }`}
                   >
-                    Для всех: новая
+                    новые
                   </button>
                   <button
                     type="button"
                     onClick={() => setAllConflictChoices('old')}
-                    className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                    className={`flex-1 whitespace-nowrap rounded-lg border px-3 py-2 text-[13px] font-medium transition ${
                       allOld
                         ? 'border-[#8ea2ff] bg-[#8ea2ff]/20 text-[#8ea2ff]'
                         : 'border-[#24242b] bg-[#15151a] text-[#8a8a96] hover:border-[#44444e] hover:text-[#ececf1]'
                     }`}
                   >
-                    Для всех: старая
+                    старые
                   </button>
                   <button
                     type="button"
                     onClick={() => setAllConflictChoices('both')}
-                    className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                    className={`flex-1 whitespace-nowrap rounded-lg border px-3 py-2 text-[13px] font-medium transition ${
                       allBoth
                         ? 'border-[#8ea2ff] bg-[#8ea2ff]/20 text-[#8ea2ff]'
                         : 'border-[#24242b] bg-[#15151a] text-[#8a8a96] hover:border-[#44444e] hover:text-[#ececf1]'
                     }`}
                   >
-                    Для всех: обе
+                    обе
                   </button>
                 </div>
               )}
@@ -707,14 +722,14 @@ function AddCardModalContent({
                   : `Добавим: ${addCount} · Обновим: ${updateCount} · Пропустим: ${skipCount}`}
               </p>
 
-              <div className="flex space-x-3">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   disabled={loading}
                   onClick={() =>
                     void saveCards(pendingCards, conflictIntent, cardToEdit?.id)
                   }
-                  className="flex-1 rounded-lg bg-[#8ea2ff] py-2.5 font-medium text-[#0d0d10] transition hover:bg-[#7186e8] disabled:opacity-50"
+                  className="btn btn-primary flex-1"
                 >
                   {loading
                     ? 'Сохраняю...'
@@ -728,7 +743,7 @@ function AddCardModalContent({
                     setPendingCards([])
                     setShowConflictScreen(false)
                   }}
-                  className="rounded-lg border border-[#2c2c34] bg-transparent px-4 text-[#8a8a96] transition hover:border-[#44444e] hover:text-[#ececf1]"
+                  className="btn btn-secondary"
                 >
                   Назад
                 </button>
@@ -738,8 +753,8 @@ function AddCardModalContent({
         ) : activeTab === 'manual' || cardToEdit ? (
           <form onSubmit={handleManualSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
-                Слово (англ) *
+              <label className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                Слово на английском
               </label>
               <div className="relative">
                 <input
@@ -753,7 +768,8 @@ function AddCardModalContent({
                   onBlur={() => {
                     setTimeout(() => setSuggestionsOpen(false), 120)
                   }}
-                  className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 pr-20 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none"
+                  className="field"
+                  style={{ paddingRight: '5rem' }}
                   placeholder="apple"
                 />
                 {suggesting && (
@@ -794,21 +810,21 @@ function AddCardModalContent({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
-                Транскрипция
+              <label className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                Транскрипция <span className="font-normal text-[#6b6b76]">— необязательно</span>
               </label>
               <input
                 type="text"
                 value={transcription}
                 onChange={e => setTranscription(e.target.value)}
-                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none"
+                className="field font-mono"
                 placeholder="[ˈæp.əl]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
-                Перевод *
+              <label className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                Перевод
               </label>
               <input
                 ref={translationRef}
@@ -816,29 +832,29 @@ function AddCardModalContent({
                 required
                 value={translation}
                 onChange={e => setTranslation(e.target.value)}
-                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none"
+                className="field"
                 placeholder="яблоко"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
-                Примеры (каждый с новой строки)
+              <label className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                Примеры <span className="font-normal text-[#6b6b76]">— каждый с новой строки</span>
               </label>
               <textarea
                 rows={3}
                 value={sentencesText}
                 onChange={e => setSentencesText(e.target.value)}
-                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none resize-none"
+                className="field resize-none"
                 placeholder="I like to eat a red apple."
               />
             </div>
 
-            <div className="flex space-x-3 pt-2">
+            <div className="flex gap-2 pt-1">
               <button
                 type="submit"
                 disabled={loading || checkingDuplicates}
-                className="flex-1 rounded-lg bg-[#8ea2ff] py-2.5 text-[#0d0d10] font-medium hover:bg-[#7186e8] transition disabled:opacity-50"
+                className="btn btn-primary flex-1"
               >
                 {checkingDuplicates
                   ? 'Проверяю повторы...'
@@ -846,12 +862,12 @@ function AddCardModalContent({
                   ? 'Сохранение...'
                   : cardToEdit
                   ? 'Сохранить изменения'
-                  : 'Добавить карточку'}
+                  : 'Добавить слово'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 rounded-lg border border-[#2c2c34] bg-transparent text-[#8a8a96] hover:text-[#ececf1] hover:border-[#44444e] transition"
+                className="btn btn-secondary"
               >
                 Отмена
               </button>
@@ -860,21 +876,30 @@ function AddCardModalContent({
         ) : (
           <form onSubmit={handleImport} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
-                Импорт через разделитель «|» (слово | транскрипция | перевод | пример 1 | пример 2)
-              </label>
+              <div className="hint mb-3">
+                <Icon name="info" size={18} />
+                <p>
+                  Одна строка — одно слово. Части разделяйте знаком «|»:
+                  <br />
+                  <span className="text-[#ececf1]">слово | транскрипция | перевод | примеры</span>
+                  <br />
+                  Транскрипцию и примеры можно не писать.
+                </p>
+              </div>
               <textarea
                 rows={7}
                 required
                 value={importText}
                 onChange={e => setImportText(e.target.value)}
-                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] font-mono text-sm focus:border-[#8ea2ff] focus:outline-none resize-none"
+                aria-label="Список слов для импорта"
+                className="field resize-none font-mono"
+                style={{ fontSize: '0.875rem' }}
                 placeholder={`apple | /ˈæp.əl/ | яблоко | I eat an apple every day. | She bought two apples.\nbook | /bʊk/ | книга | This book is interesting. |`}
               />
             </div>
 
             {importText.trim() && (
-              <div className="rounded-lg bg-[#0d0d10] p-3 text-xs space-y-1 border border-[#24242b]">
+              <div className="space-y-1 rounded-xl border border-[#24242b] bg-[#0d0d10] px-4 py-3 text-sm">
                 <p className="text-[#ececf1]">Уникальных слов: {validCount}</p>
                 {duplicateCount > 0 && (
                   <p className="text-[#8ea2ff]">
@@ -887,22 +912,22 @@ function AddCardModalContent({
               </div>
             )}
 
-            <div className="flex space-x-3 pt-2">
+            <div className="flex gap-2 pt-1">
               <button
                 type="submit"
                 disabled={loading || checkingDuplicates || validCount === 0}
-                className="flex-1 rounded-lg bg-[#8ea2ff] py-2.5 text-[#0d0d10] font-medium hover:bg-[#7186e8] transition disabled:opacity-50"
+                className="btn btn-primary flex-1"
               >
                 {checkingDuplicates
                   ? 'Проверяю повторы...'
                   : loading
                   ? 'Импорт...'
-                  : 'Импортировать слова'}
+                  : 'Добавить все слова'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 rounded-lg border border-[#2c2c34] bg-transparent text-[#8a8a96] hover:text-[#ececf1] hover:border-[#44444e] transition"
+                className="btn btn-secondary"
               >
                 Отмена
               </button>

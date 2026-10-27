@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from 'next'
 import { SerwistProvider } from '@serwist/turbopack/react'
 import './globals.css'
+import AppNav from '@/components/AppNav'
 import OfflineNavigationGuard from '@/components/OfflineNavigationGuard'
 import OfflineRouteCache from '@/components/OfflineRouteCache'
 import ScrollRestorer from '@/components/ScrollRestorer'
 import SyncProvider from '@/components/SyncProvider'
 
 export const metadata: Metadata = {
-  title: 'English Cards — личный лексикон',
-  description: 'Тихий, продуманный тренажёр английских слов',
+  title: 'English Cards',
+  description: 'Личный словарь английских слов: папки, тренировки и повторы в Telegram',
   applicationName: 'English Cards',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
@@ -53,6 +54,7 @@ export default function RootLayout({
           <ScrollRestorer />
           <SyncProvider />
           {children}
+          <AppNav />
         </SerwistProvider>
       </body>
     </html>

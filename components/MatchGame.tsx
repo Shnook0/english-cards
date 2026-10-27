@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card } from '@/types/database'
 import { StudyGameProps, shuffle } from '@/lib/study'
 import { fetchBestTime, formatTime, saveBestTime } from '@/lib/records'
+import Icon from '@/components/ui/Icon'
 
 const ROUND_SIZE = 6
 
@@ -174,28 +175,24 @@ export default function MatchGame({
 
   if (phase === 'finished') {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
-          <h2 className="text-2xl font-bold mb-2">
-            {cards.length === 0 ? 'Нет слов для подбора' : 'Сессия завершена'}
+      <div className={`${SCREEN} justify-center py-8`}>
+        <div className="card page-in mx-auto w-full max-w-xl p-6 text-center sm:p-8">
+          <h2 className="text-xl">
+            {cards.length === 0 ? 'Нет слов для подбора' : 'Подбор завершён'}
           </h2>
           {cards.length > 0 && (
-            <p className="text-sm text-[#8a8a96] mb-6">Раундов сыграно: {roundNo}</p>
+            <>
+              <p className="mt-5 text-5xl font-bold leading-none text-[#8ea2ff]">{roundNo}</p>
+              <p className="mt-2 text-sm text-[#8a8a96]">раундов сыграно</p>
+            </>
           )}
-          {cards.length === 0 && <div className="mb-6" />}
-          <div className="flex flex-col gap-3">
+          <div className="mt-7 flex flex-col gap-3">
             {cards.length > 0 && (
-              <button
-                onClick={onNextRound}
-                className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
-              >
+              <button onClick={onNextRound} className="btn btn-primary btn-lg btn-block">
                 Ещё раунд
               </button>
             )}
-            <button
-              onClick={onExit}
-              className="w-full rounded-lg border border-[#2c2c34] py-3 font-medium hover:border-[#8ea2ff] transition"
-            >
+            <button onClick={onExit} className="btn btn-secondary btn-lg btn-block">
               Выйти
             </button>
           </div>
@@ -206,30 +203,34 @@ export default function MatchGame({
 
   if (phase === 'roundDone') {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
-          <h2 className="text-2xl font-bold mb-2">Раунд {roundNo} завершён</h2>
-          <p className="text-3xl font-bold text-[#8ea2ff] mb-2">{formatTime(lastTime)} с</p>
+      <div className={`${SCREEN} justify-center py-8`}>
+        <div className="card page-in mx-auto w-full max-w-xl p-6 text-center sm:p-8">
+          <h2 className="text-xl">Раунд {roundNo} завершён</h2>
+          <p className="mt-5 text-5xl font-bold leading-none tabular-nums text-[#8ea2ff]">
+            {formatTime(lastTime)}
+            <span className="text-2xl font-semibold text-[#6b6b76]"> с</span>
+          </p>
 
-          {fullRound ? (
-            isRecord ? (
-              <p className="text-[#7fc8a0] font-semibold mb-2">Новый рекорд! 🏆</p>
-            ) : (
-              best !== null && (
-                <p className="text-sm text-[#8a8a96] mb-2">Рекорд: {formatTime(best)} с</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            {fullRound ? (
+              isRecord ? (
+                <span className="chip chip-success">Новый рекорд!</span>
+              ) : (
+                best !== null && <span className="chip">Рекорд: {formatTime(best)} с</span>
               )
-            )
-          ) : (
-            <p className="text-xs text-[#8a8a96] mb-2">
+            ) : null}
+            <span className={`chip ${roundMisses > 0 ? 'chip-danger' : ''}`}>
+              Ошибок: {roundMisses}
+            </span>
+          </div>
+
+          {!fullRound && (
+            <p className="mt-3 text-sm text-[#8a8a96]">
               Рекорд считается только за полный раунд из 6 пар
             </p>
           )}
 
-          <p className="text-sm text-[#8a8a96] mb-6">Ошибок: {roundMisses}</p>
-          <button
-            onClick={startNextRound}
-            className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
-          >
+          <button onClick={startNextRound} className="btn btn-primary btn-lg btn-block mt-7">
             {hasMore ? 'Следующий раунд' : 'Завершить'}
           </button>
         </div>
@@ -238,49 +239,59 @@ export default function MatchGame({
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] p-4 md:p-8 max-w-5xl mx-auto">
+    <div className={`${SCREEN} pb-4`}>
+      <header className="grid grid-cols-3 items-center gap-2 pt-2">
+        <button onClick={onExit} className="btn btn-ghost btn-sm -ml-3 justify-self-start">
+          <Icon name="arrowLeft" size={16} />
+          Выйти
+        </button>
+        <div className="text-center">
+          <div className="text-xl font-bold tabular-nums text-[#ececf1]">{formatTime(elapsed)}</div>
+          {best !== null && (
+            <div className="text-xs tabular-nums text-[#8a8a96]">рекорд {formatTime(best)}</div>
+          )}
+        </div>
+        <span className="text-right text-sm font-medium text-[#b0b0bb]">Раунд {roundNo}</span>
+      </header>
+
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm text-center">
+        <div className="mt-4 rounded-xl border border-[#e5786f]/35 bg-[#e5786f]/10 px-4 py-3 text-center text-sm text-[#e5786f]">
           Не удалось сохранить часть результатов. Проверьте интернет.
         </div>
       )}
 
-      <div className="grid grid-cols-3 items-center mb-6 text-sm text-[#8a8a96]">
-        <span className="font-medium text-[#ececf1]">Подбор · раунд {roundNo}</span>
-        <div className="text-center">
-          <div className="text-lg font-bold text-[#ececf1]">{formatTime(elapsed)}</div>
-          {best !== null && (
-            <div className="text-xs text-[#8a8a96]">🏆 {formatTime(best)}</div>
-          )}
+      <main className="flex flex-1 flex-col justify-center py-6">
+        <p className="mb-4 text-center text-sm text-[#8a8a96]">
+          Нажмите на слово, затем на его перевод — пара исчезнет
+        </p>
+
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+          {tiles.map(t => {
+            const isMatched = matched.includes(t.id)
+            const isWrong = wrongPair.includes(t.id)
+            const isSelected = selected === t.id
+
+            let state = 'border-[#2c2c34] bg-[#15151a] text-[#ececf1] hover:border-[#44444e]'
+            if (isWrong) state = 'border-[#e5786f] bg-[#e5786f]/15 text-[#e5786f]'
+            else if (isSelected) state = 'border-[#8ea2ff] bg-[#8ea2ff]/15 text-[#ececf1]'
+
+            return (
+              <button
+                key={t.id}
+                onClick={() => handleTile(t)}
+                className={`flex min-h-[92px] select-none items-center justify-center break-words rounded-[14px] border p-3 text-center text-sm font-medium leading-snug transition active:scale-[0.97] md:min-h-[112px] md:text-base ${state} ${
+                  isMatched ? 'invisible' : ''
+                }`}
+              >
+                {t.text}
+              </button>
+            )
+          })}
         </div>
-        <button onClick={onExit} className="text-right hover:text-[#ececf1] transition font-medium">
-          Выйти
-        </button>
-      </div>
-
-      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-        {tiles.map(t => {
-          const isMatched = matched.includes(t.id)
-          const isWrong = wrongPair.includes(t.id)
-          const isSelected = selected === t.id
-
-          let state = 'border-[#2c2c34] bg-[#15151a] hover:border-[#44444e]'
-          if (isWrong) state = 'border-[#e5786f] bg-[#e5786f]/20'
-          else if (isSelected) state = 'border-[#8ea2ff] bg-[#8ea2ff]/20'
-
-          return (
-            <button
-              key={t.id}
-              onClick={() => handleTile(t)}
-              className={`min-h-[96px] md:min-h-[120px] rounded-xl border p-3 text-center text-sm md:text-base font-medium transition select-none ${state} ${
-                isMatched ? 'invisible' : ''
-              }`}
-            >
-              {t.text}
-            </button>
-          )
-        })}
-      </div>
+      </main>
     </div>
   )
 }
+
+const SCREEN =
+  'mx-auto flex w-full max-w-2xl flex-col px-4 min-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))]'

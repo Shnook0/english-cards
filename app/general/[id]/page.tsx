@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
+import PageHeader from '@/components/ui/PageHeader'
+import Icon from '@/components/ui/Icon'
 import { GeneralTraining } from '@/types/general'
 import { getStats } from '@/lib/general'
 import { fetchProgress, fetchTraining, fetchTrainingCards } from '@/lib/offline/repo'
@@ -56,78 +58,79 @@ export default function GeneralTrainingPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
-        Загрузка...
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Загружаем…</span>
       </div>
     )
   }
 
   if (error || !training) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#e5786f]">{error || 'Тренировка не найдена'}</p>
-        <Link href="/general" className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
+      <div className="page page-in">
+        <div className="card mt-10 flex flex-col items-center px-6 py-10 text-center">
+          <span className="tile-icon tile-icon-danger">
+            <Icon name="info" />
+          </span>
+          <p className="mt-4 text-[15px] text-[#b0b0bb]">{error || 'Тренировка не найдена'}</p>
+          <Link href="/general" className="btn btn-secondary mt-5">
+            <Icon name="arrowLeft" size={18} />
+            К тренировкам
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
-      <div className="page-in mx-auto max-w-4xl">
-        <div className="mb-10 flex items-center justify-between">
-          <Link href="/general" className="link-muted text-xs">
-            ← К общим тренировкам
-          </Link>
-          <span className="eyebrow">Набор</span>
-        </div>
+    <div className="page page-in">
+      <PageHeader
+        back={{ href: '/general', label: 'Тренировки' }}
+        title={training.name}
+        description={`Всего слов: ${stats.total}. Сначала идут ошибки, потом слова, которые пора повторить, затем новые.`}
+      />
 
-        <div className="mb-10 border-b border-[#24242b] pb-8">
-          <p className="eyebrow mb-3">Общая практика</p>
-          <h1 className="display text-5xl md:text-6xl">{training.name}</h1>
-          <p className="mt-4 text-sm text-[#8a8a96]">Всего слов: {stats.total}</p>
-        </div>
-
-        <div className="mb-8 grid grid-cols-3 gap-3">
-          {[
-            { value: stats.fresh, label: 'Новых', accent: false },
-            { value: stats.due, label: 'К повторению', accent: false },
-            { value: stats.mistakes, label: 'В ошибках', accent: true },
-          ].map(item => (
-            <div key={item.label} className="panel p-5 text-center">
-              <div className={`stat-number ${item.accent ? 'text-[#e5786f]' : 'text-[#ececf1]'}`}>
-                {item.value}
-              </div>
-              <div className="eyebrow mt-3">{item.label}</div>
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { value: stats.fresh, label: 'Новые', accent: false },
+          { value: stats.due, label: 'Повторить', accent: false },
+          { value: stats.mistakes, label: 'В ошибках', accent: true },
+        ].map(item => (
+          <div key={item.label} className="card px-3 py-4 text-center">
+            <div className={`stat-number${item.accent ? 'text-[#e5786f]' : 'text-[#ececf1]'}`}>
+              {item.value}
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Link
-            href={`/general/${trainingId}/train`}
-            className="panel panel-hover border-[#8ea2ff]/30 bg-[#8ea2ff]/[0.06] p-7"
-          >
-            <p className="eyebrow mb-3 text-[#8ea2ff]">Сессия</p>
-            <h3 className="text-2xl">Начать тренировку</h3>
-            <p className="mt-3 text-sm leading-6 text-[#8a8a96]">
-              {stats.session > 0
-                ? `В этой сессии: ${stats.session} слов`
-                : 'Сейчас нет слов для тренировки'}
-            </p>
-          </Link>
-
-          <Link
-            href={`/general/${trainingId}/mistakes`}
-            className="panel panel-hover p-7"
-          >
-            <p className="eyebrow mb-3">Работа над ошибками</p>
-            <h3 className="text-2xl">Общие ошибки</h3>
-            <p className="mt-3 text-sm leading-6 text-[#8a8a96]">
-              Слов в ошибках: {stats.mistakes}
-            </p>
-          </Link>
-        </div>
+            <div className="mt-2 text-[13px] text-[#8a8a96]">{item.label}</div>
+          </div>
+        ))}
       </div>
+
+      <Link
+        href={`/general/${trainingId}/train`}
+        className="btn btn-primary btn-lg btn-block mt-5"
+      >
+        Начать тренировку
+        <Icon name="arrowRight" size={18} />
+      </Link>
+      <p className="mt-2.5 text-center text-xs text-[#6b6b76]">
+        {stats.session > 0
+          ? `В этой сессии: ${stats.session} слов`
+          : 'Сейчас нет слов для тренировки'}
+      </p>
+
+      <h2 className="section-label">Работа над ошибками</h2>
+      <Link
+        href={`/general/${trainingId}/mistakes`}
+        className="card card-link flex items-center gap-4 p-4"
+      >
+        <span className="tile-icon tile-icon-danger">
+          <Icon name="target" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold">Ошибки этой тренировки</p>
+          <p className="mt-0.5 text-[13px] text-[#8a8a96]">Слов в ошибках: {stats.mistakes}</p>
+        </div>
+        <Icon name="arrowRight" size={18} className="shrink-0 text-[#6b6b76]" />
+      </Link>
     </div>
   )
 }

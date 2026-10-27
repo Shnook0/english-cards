@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
+import PageHeader from '@/components/ui/PageHeader'
+import Icon from '@/components/ui/Icon'
 import { Folder } from '@/types/database'
 import { GeneralTraining } from '@/types/general'
 import {
@@ -102,160 +104,179 @@ export default function GeneralPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
-        Загрузка...
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Загружаем тренировки…</span>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
-      <div className="page-in mx-auto max-w-5xl">
-        <div className="mb-10 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs">
-            ← На главную
-          </Link>
-          <span className="eyebrow">Общая практика</span>
-        </div>
+    <div className="page page-in">
+      <PageHeader
+        back={{ href: '/', label: 'Главная' }}
+        title="Тренировки"
+        description="Набор слов из нескольких папок, который вы повторяете вместе. Приложение само решает, какие слова показать сегодня."
+        actions={
+          !showForm && (
+            <button onClick={() => setShowForm(true)} className="btn btn-secondary btn-sm">
+              <Icon name="plus" size={16} />
+              Создать
+            </button>
+          )
+        }
+      />
 
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24242b] pb-8">
-          <div>
-            <p className="eyebrow mb-3">Единый словарь</p>
-            <h1 className="display text-5xl md:text-6xl">Общая тренировка</h1>
-            <p className="mt-4 text-sm text-[#8a8a96]">
-              Слова из папок с умным повторением
-            </p>
+      <div className="hint">
+        <Icon name="info" size={18} />
+        <p>
+          «Знаю» — слово вернётся позже: через 1, 2, 3 дня и дальше, до 30 дней.
+          «Не знаю» — слово на 2 дня попадёт в ошибки и будет показываться первым.
+        </p>
+      </div>
+
+      {error && (
+        <div className="mt-4 rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
+          {error}
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={createTraining} className="card mt-4 space-y-4 p-5">
+          <h2 className="text-lg">Новая тренировка</h2>
+
+          <input
+            type="text"
+            placeholder="Название (необязательно)"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            className="field"
+          />
+
+          <div className="space-y-2 text-[15px]">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#24242b] px-4 py-3">
+              <input
+                type="radio"
+                name="scope"
+                checked={scope === 'all'}
+                onChange={() => setScope('all')}
+                className="mt-1 accent-[#8ea2ff]"
+              />
+              <span>
+                Все папки
+                <span className="mt-0.5 block text-[13px] text-[#8a8a96]">
+                  Новые папки и слова добавятся сами
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#24242b] px-4 py-3">
+              <input
+                type="radio"
+                name="scope"
+                checked={scope === 'custom'}
+                onChange={() => setScope('custom')}
+                className="mt-1 accent-[#8ea2ff]"
+              />
+              <span>
+                Выбрать папки
+                <span className="mt-0.5 block text-[13px] text-[#8a8a96]">
+                  Только отмеченные ниже
+                </span>
+              </span>
+            </label>
           </div>
+
+          {scope === 'custom' && (
+            <div className="space-y-1 rounded-xl bg-[#1b1b21] p-3">
+              {folders.length === 0 ? (
+                <p className="px-1 text-sm text-[#8a8a96]">У вас пока нет своих папок.</p>
+              ) : (
+                folders.map(f => (
+                  <label
+                    key={f.id}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg px-1 py-2 text-[15px]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(f.id)}
+                      onChange={() => toggleSelected(f.id)}
+                      className="accent-[#8ea2ff]"
+                    />
+                    <span className="min-w-0 truncate">{f.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="btn btn-secondary"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={creating || (scope === 'custom' && selected.length === 0)}
+              className="btn btn-primary"
+            >
+              {creating ? 'Создаём…' : 'Создать'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      <h2 className="section-label">Ваши тренировки</h2>
+      {trainings.length === 0 ? (
+        <div className="card flex flex-col items-center px-6 py-10 text-center">
+          <span className="tile-icon">
+            <Icon name="spark" />
+          </span>
+          <p className="mt-4 text-[15px] text-[#b0b0bb]">
+            Тренировок пока нет. Создайте первую — например, по всем папкам.
+          </p>
           {!showForm && (
-            <button onClick={() => setShowForm(true)} className="btn btn-primary">
-              + Создать
+            <button onClick={() => setShowForm(true)} className="btn btn-primary mt-5">
+              <Icon name="plus" size={18} />
+              Создать тренировку
             </button>
           )}
         </div>
-
-        {error && (
-          <div className="mb-6 border border-[#e5786f]/50 bg-[#e5786f]/10 p-4 text-sm text-[#f4b8b1]">
-            {error}
-          </div>
-        )}
-
-        {showForm && (
-          <form onSubmit={createTraining} className="panel mb-8 space-y-5 p-6 md:p-8">
-            <div>
-              <p className="eyebrow mb-2">Новый набор</p>
-              <h3 className="text-2xl">Новая общая тренировка</h3>
-            </div>
-
-            <input
-              type="text"
-              placeholder="Название (необязательно)"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="field"
-            />
-
-            <div className="space-y-3 text-sm">
-              <label className="flex cursor-pointer items-center gap-3">
-                <input
-                  type="radio"
-                  name="scope"
-                  checked={scope === 'all'}
-                  onChange={() => setScope('all')}
-                />
-                <span>По всем папкам — новые папки и слова добавятся сами</span>
-              </label>
-              <label className="flex cursor-pointer items-center gap-3">
-                <input
-                  type="radio"
-                  name="scope"
-                  checked={scope === 'custom'}
-                  onChange={() => setScope('custom')}
-                />
-                <span>Выбрать папки</span>
-              </label>
-            </div>
-
-            {scope === 'custom' && (
-              <div className="space-y-3 border border-[#24242b] bg-black/20 p-4">
-                {folders.length === 0 ? (
-                  <p className="text-sm text-[#8a8a96]">У вас пока нет своих папок.</p>
-                ) : (
-                  folders.map(f => (
-                    <label key={f.id} className="flex cursor-pointer items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(f.id)}
-                        onChange={() => toggleSelected(f.id)}
-                      />
-                      <span>{f.name}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={creating || (scope === 'custom' && selected.length === 0)}
-                className="btn btn-primary"
-              >
-                {creating ? 'Создаём...' : 'Создать'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="btn btn-secondary"
-              >
-                Отмена
-              </button>
-            </div>
-          </form>
-        )}
-
-        {trainings.length === 0 ? (
-          <div className="panel p-14 text-center">
-            <p className="display mb-3 text-3xl">Пока пусто</p>
-            <p className="text-sm text-[#8a8a96]">
-              Общих тренировок нет. Создайте первую.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {trainings.map(t => {
-              const folderNames = (trainingFolders[t.id] ?? [])
-                .map(id => folders.find(f => f.id === id)?.name)
-                .filter(Boolean)
-                .join(', ')
-              return (
-                <div
-                  key={t.id}
-                  className="panel panel-hover flex flex-col justify-between gap-6 p-6"
-                >
-                  <div>
-                    <p className="eyebrow mb-3">Набор</p>
-                    <h3 className="text-2xl">{t.name}</h3>
-                    <p className="mt-2 text-xs leading-5 text-[#8a8a96]">
+      ) : (
+        <div className="flex flex-col gap-3">
+          {trainings.map(t => {
+            const folderNames = (trainingFolders[t.id] ?? [])
+              .map(id => folders.find(f => f.id === id)?.name)
+              .filter(Boolean)
+              .join(', ')
+            return (
+              <div key={t.id} className="card p-4">
+                <Link href={`/general/${t.id}`} className="flex min-w-0 items-center gap-3">
+                  <span className="tile-icon">
+                    <Icon name="spark" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold">{t.name}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-[#8a8a96]">
                       {t.scope === 'all' ? 'Все папки' : `Папки: ${folderNames || '—'}`}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Link href={`/general/${t.id}`} className="btn btn-primary">
-                      Открыть
-                    </Link>
-                    <button
-                      onClick={() => deleteTraining(t)}
-                      className="text-xs text-[#e5786f] transition hover:opacity-75"
-                    >
-                      Удалить
-                    </button>
-                  </div>
+                </Link>
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <button onClick={() => deleteTraining(t)} className="btn btn-ghost btn-sm">
+                    Удалить
+                  </button>
+                  <Link href={`/general/${t.id}`} className="btn btn-primary btn-sm">
+                    Открыть
+                    <Icon name="arrowRight" size={16} />
+                  </Link>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

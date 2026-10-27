@@ -9,6 +9,7 @@ import { GeneralProgress } from '@/types/general'
 import { buildQueue } from '@/lib/general'
 import { fetchProgress, fetchTraining, fetchTrainingCards } from '@/lib/offline/repo'
 import GeneralTrainSession from '@/components/GeneralTrainSession'
+import Icon from '@/components/ui/Icon'
 
 type Props = {
   trainingId: string
@@ -61,17 +62,20 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
-        Загрузка тренировки...
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Готовим тренировку…</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#e5786f]">{error}</p>
-        <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center px-4 text-center">
+        <p className="text-base text-[#e5786f]">{error}</p>
+        <Link href={exitHref} className="btn btn-secondary mt-5">
+          <Icon name="arrowLeft" size={16} />
+          Назад
+        </Link>
       </div>
     )
   }

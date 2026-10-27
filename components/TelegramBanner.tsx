@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getAccessToken } from '@/lib/offline/authCache'
 import { isOnline } from '@/lib/offline/connectivity'
+import Icon from '@/components/ui/Icon'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 
@@ -156,117 +157,93 @@ export default function TelegramBanner() {
   }
 
   return (
-    <section className="panel mt-3 p-6 md:p-8">
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-2xl">
-          <p className="eyebrow">Telegram</p>
-          <h2 className="mt-2 text-2xl md:text-3xl">Повторяйте слова в мессенджере</h2>
-          <p className="mt-3 text-sm leading-6 text-[#b0b0bb]">
-            Бот присылает сложные слова из ваших папок, помогает повторять их и
-            увеличивать ваш словарный запас. Прогресс сохраняется после каждого
-            ответа. Подключение занимает пару секунд — регистрация не нужна.
-          </p>
-        </div>
-
-        <div className="shrink-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={connect}
-              disabled={connecting || checking || disconnecting}
-              className="btn btn-primary"
-            >
-              {connecting
-                ? 'Готовим ссылку...'
-                : info.connected
-                  ? 'Открыть бота'
-                  : 'Подключить бота'}
-            </button>
-            {info.connected && (
-              <>
-                <span className="text-xs text-[#7fc8a0]">
-                  уже подключён
-                </span>
-                <button
-                  type="button"
-                  onClick={disconnect}
-                  disabled={disconnecting || connecting}
-                  className="btn btn-ghost !px-0 !py-0 text-xs text-[#e5786f] hover:text-[#f0a39b]"
-                >
-                  {disconnecting ? 'Отвязываем...' : 'Отвязать Telegram'}
-                </button>
-              </>
-            )}
+    <section className="card p-5">
+      <div className="flex items-start gap-4">
+        <span className="tile-icon">
+          <Icon name="send" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-[17px]">Telegram-бот</h2>
+            {info.connected && <span className="chip chip-success">подключён</span>}
           </div>
-
-          {notice && (
-            <p className="mt-3 border border-[#7fc8a0]/40 bg-[#7fc8a0]/10 px-3 py-2 text-xs text-[#a9ddc0]">
-              {notice}
-            </p>
-          )}
-
-          {error && (
-            <p className="mt-3 border border-[#e5786f]/50 bg-[#e5786f]/10 px-3 py-2 text-xs text-[#f0a39b]">
-              {error}
-            </p>
-          )}
-
-          <p className="mt-3 max-w-[260px] text-xs leading-4 text-[#6b6b76]">
-            Откроется Telegram и привяжет бота к вашему аккаунту на сайте.
+          <p className="mt-1 text-sm leading-5 text-[#8a8a96]">
+            Присылает сложные слова из ваших папок в удобное время. Ответы сохраняются
+            в прогресс на сайте.
           </p>
         </div>
       </div>
 
-      <div className="mt-7 border-t border-[#24242b] pt-6">
-        <p className="eyebrow">Как это работает</p>
-        <div className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
-          <div>
-            <p className="text-sm font-medium text-[#ececf1]">Слова из ваших папок</p>
-            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
-              Бот берёт слова с сайта и присылает их в удобное для вас время.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#ececf1]">Окно и интервал</p>
-            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
-              Настройте, когда и как часто приходят слова. Например, с 09:00 до
-              21:00 каждые 60 минут.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#ececf1]">Кнопка «Не знаю»</p>
-            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
-              Слово начнёт приходить чаще: через 15 минут, 2 и 5 часов, затем через
-              1, 2, 4, 7, 15 и 30 дней.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#ececf1]">Кнопка «Знаю»</p>
-            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
-              Бот отметит слово как знакомое и будет повторять его реже. Прогресс
-              сохраняется автоматически.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#ececf1]">Перевод и лишние слова</p>
-            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
-              Перевод можно скрыть под спойлером, а ненужное слово — отключить
-              кнопкой «Больше не повторять». В папке оно останется.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-[#ececf1]">Настройки в боте</p>
-            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
-              Окно, интервал и часовой пояс меняются кнопкой «Настройки» прямо в
-              Telegram.
-            </p>
-          </div>
-        </div>
-        <p className="mt-5 text-xs leading-5 text-[#6b6b76]">
-          Нажмите «Подключить бота» — Telegram откроется автоматически, и бот
-          привяжется к вашему аккаунту.
-        </p>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={connect}
+          disabled={connecting || checking || disconnecting}
+          className="btn btn-primary flex-1 sm:flex-none"
+        >
+          {connecting
+            ? 'Готовим ссылку...'
+            : info.connected
+              ? 'Открыть бота'
+              : 'Подключить бота'}
+        </button>
+        {info.connected && (
+          <button
+            type="button"
+            onClick={disconnect}
+            disabled={disconnecting || connecting}
+            className="btn btn-ghost"
+          >
+            {disconnecting ? 'Отвязываем...' : 'Отвязать'}
+          </button>
+        )}
       </div>
+
+      {notice && (
+        <p className="mt-3 rounded-xl bg-[#7fc8a0]/10 px-3 py-2 text-sm text-[#a9ddc0]">{notice}</p>
+      )}
+
+      {error && (
+        <p className="mt-3 rounded-xl bg-[#e5786f]/10 px-3 py-2 text-sm text-[#f0a39b]">{error}</p>
+      )}
+
+      <details className="group mt-4 border-t border-[#24242b] pt-3">
+        <summary className="flex cursor-pointer list-none items-center justify-between py-1 text-sm font-medium text-[#b0b0bb] [&::-webkit-details-marker]:hidden">
+          Как работает бот
+          <Icon name="arrowRight" size={16} className="transition group-open:rotate-90" />
+        </summary>
+        <dl className="mt-3 space-y-3">
+          {BOT_FAQ.map(item => (
+            <div key={item.title}>
+              <dt className="text-sm font-medium">{item.title}</dt>
+              <dd className="mt-0.5 text-sm leading-5 text-[#8a8a96]">{item.text}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </section>
   )
 }
+
+const BOT_FAQ = [
+  {
+    title: 'Подключение',
+    text: 'Нажмите «Подключить бота» — откроется Telegram и привяжет бота к вашему аккаунту. Регистрация не нужна.',
+  },
+  {
+    title: 'Когда приходят слова',
+    text: 'Окно и интервал настраиваются в боте кнопкой «Настройки». Например, с 09:00 до 21:00 каждые 60 минут.',
+  },
+  {
+    title: 'Кнопка «Не знаю»',
+    text: 'Слово придёт чаще: через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.',
+  },
+  {
+    title: 'Кнопка «Знаю»',
+    text: 'Слово станет знакомым и будет приходить реже.',
+  },
+  {
+    title: 'Лишние слова',
+    text: 'Кнопка «Больше не повторять» отключит слово в боте, в папке оно останется.',
+  },
+]

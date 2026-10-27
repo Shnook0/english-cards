@@ -16,6 +16,7 @@ import {
   warmUpVoices,
 } from '@/lib/study'
 import { clearSession, loadSession, restoreQueue, saveSession } from '@/lib/session'
+import Icon from '@/components/ui/Icon'
 
 const MAX_STAGE = 3
 const BATCH_SIZE = 10
@@ -424,9 +425,9 @@ export default function LearnGame({
     const folderComplete = carryover.length === 0 && availableNew.length === 0
 
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
-          <h2 className="text-2xl font-bold mb-2">
+      <div className={`${SCREEN} justify-center py-8`}>
+        <div className="card page-in p-6 text-center sm:p-8">
+          <h2 className="text-xl">
             {totalCards === 0
               ? 'Нет слов для заучивания'
               : folderComplete
@@ -434,48 +435,40 @@ export default function LearnGame({
               : `Партия ${batchNo} завершена`}
           </h2>
           {totalCards > 0 && (
-            <div className="mb-6 space-y-1 text-sm text-[#8a8a96]">
-              <p>
-                Пройдено слов: <b className="text-[#ececf1]">{mastered}</b> из {totalCards}
+            <>
+              <p className="mt-5 text-5xl font-bold leading-none text-[#8ea2ff]">
+                {mastered}
+                <span className="text-2xl font-semibold text-[#6b6b76]"> / {totalCards}</span>
               </p>
-              <p>С первой попытки: {firstTryCount}</p>
-              <p>Ошибок: {mistakeCount}</p>
-              {failedCount > 0 && <p>Не осилено: {failedCount}</p>}
-              <p>Точность: {accuracy}%</p>
-              {carryover.length > 0 && (
-                <p>
-                  Перенесено в следующую партию:{' '}
-                  <b className="text-[#ececf1]">{carryover.length}</b>
-                </p>
-              )}
-              {availableNew.length > 0 && (
-                <p>Осталось новых слов в папке: {availableNew.length}</p>
-              )}
-            </div>
+              <p className="mt-2 text-sm text-[#8a8a96]">слов пройдено</p>
+
+              <dl className="mt-6 divide-y divide-[#24242b] rounded-xl bg-[#1b1b21] px-4 text-left text-sm">
+                <StatRow label="С первой попытки" value={firstTryCount} />
+                <StatRow label="Ошибок" value={mistakeCount} />
+                {failedCount > 0 && <StatRow label="Не осилено" value={failedCount} />}
+                <StatRow label="Точность" value={`${accuracy}%`} />
+                {carryover.length > 0 && (
+                  <StatRow label="Перенесено в следующую партию" value={carryover.length} />
+                )}
+                {availableNew.length > 0 && (
+                  <StatRow label="Осталось новых слов в папке" value={availableNew.length} />
+                )}
+              </dl>
+            </>
           )}
-          {totalCards === 0 && <div className="mb-6" />}
-          <div className="flex flex-col gap-3">
+          <div className="mt-7 flex flex-col gap-3">
             {folderComplete ? (
               totalCards > 0 && (
-                <button
-                  onClick={restartFolder}
-                  className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
-                >
+                <button onClick={restartFolder} className="btn btn-primary btn-lg btn-block">
                   Начать заново
                 </button>
               )
             ) : (
-              <button
-                onClick={startNextBatch}
-                className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
-              >
+              <button onClick={startNextBatch} className="btn btn-primary btn-lg btn-block">
                 Следующее заучивание
               </button>
             )}
-            <button
-              onClick={handleExit}
-              className="w-full rounded-lg border border-[#2c2c34] py-3 font-medium hover:border-[#8ea2ff] transition"
-            >
+            <button onClick={handleExit} className="btn btn-secondary btn-lg btn-block">
               Выйти
             </button>
           </div>
@@ -497,96 +490,108 @@ export default function LearnGame({
   const inputDisabled = feedback === 'correct' || feedback === 'revealed'
   const wrongBorder = feedback === 'wrongOnce' || feedback === 'revealed'
 
-  return (
-    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] p-4 md:p-8 max-w-2xl mx-auto flex flex-col">
-      {saveError && (
-        <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm text-center">
-          Не удалось сохранить часть результатов. Проверьте интернет.
-        </div>
-      )}
+  const sentences =
+    current.sentences && current.sentences.length > 0 ? (
+      <div className="mt-5 space-y-2 rounded-xl bg-[#1b1b21] p-4 text-left text-sm leading-relaxed text-[#b0b0bb]">
+        {current.sentences.map((s, i) => (
+          <p key={i}>{s}</p>
+        ))}
+      </div>
+    ) : null
 
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3 text-sm text-[#8a8a96]">
-          <span>
-            Партия {batchNo} · пройдено {doneCount} / {totalCards} · ошибок: {mistakeCount}
-          </span>
-          <button onClick={handleExit} className="hover:text-[#ececf1] transition font-medium">
+  return (
+    <div className={`${SCREEN} pb-4`}>
+      <header className="pt-2">
+        <div className="flex items-center justify-between gap-3">
+          <button onClick={handleExit} className="btn btn-ghost btn-sm -ml-3">
+            <Icon name="arrowLeft" size={16} />
             Выйти
           </button>
+          <span className="text-right text-sm font-medium tabular-nums text-[#b0b0bb]">
+            Партия {batchNo} · {doneCount} из {totalCards}
+            {mistakeCount > 0 && <span className="text-[#e5786f]"> · ошибок {mistakeCount}</span>}
+          </span>
         </div>
-        <div className="w-full h-1.5 bg-[#1b1b21] rounded-full overflow-hidden">
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#1b1b21]">
           <div
-            className="h-full bg-[#8ea2ff] transition-all duration-300"
+            className="h-full rounded-full bg-[#8ea2ff] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+        <ol className="mt-4 grid grid-cols-4 gap-2">
           {STAGE_LABELS.map((label, i) => {
             const active = i === stage
             const passed = i < stage
             return (
-              <span
-                key={label}
-                className={`rounded-full border px-3 py-1 transition ${
-                  active
-                    ? 'border-[#8ea2ff] bg-[#8ea2ff]/15 text-[#ececf1]'
-                    : passed
-                    ? 'border-[#5fae84]/40 text-[#7fc8a0]'
-                    : 'border-[#24242b] text-[#8a8a96]'
-                }`}
-              >
-                {i + 1}. {label}
-              </span>
+              <li key={label} className="min-w-0">
+                <div
+                  className={`h-1 rounded-full transition-colors ${
+                    active ? 'bg-[#8ea2ff]' : passed ? 'bg-[#7fc8a0]' : 'bg-[#24242b]'
+                  }`}
+                />
+                <p
+                  className={`mt-1.5 truncate text-center text-xs ${
+                    active
+                      ? 'font-semibold text-[#ececf1]'
+                      : passed
+                      ? 'text-[#7fc8a0]'
+                      : 'text-[#6b6b76]'
+                  }`}
+                >
+                  {label}
+                </p>
+              </li>
             )
           })}
-        </div>
-        <p className="mt-2 text-center text-xs text-[#8a8a96]">{STAGE_HINTS[stage]}</p>
-      </div>
+        </ol>
+      </header>
 
-      <div className="rounded-2xl border border-[#24242b] bg-[#15151a] p-6 md:p-8 shadow-2xl">
-        {stage === 0 && (
-          <div>
-            <div className="flex justify-end">
+      {saveError && (
+        <div className="mt-4 rounded-xl border border-[#e5786f]/35 bg-[#e5786f]/10 px-4 py-3 text-center text-sm text-[#e5786f]">
+          Не удалось сохранить часть результатов. Проверьте интернет.
+        </div>
+      )}
+
+      {stage === 0 && (
+        <>
+          <main className="flex flex-1 flex-col justify-center py-6">
+            <p className="mb-3 text-center text-sm text-[#8a8a96]">{STAGE_HINTS[0]}, затем откройте карточку</p>
+            <div className="card relative p-5 sm:p-7">
               <button
                 type="button"
                 onClick={() => speak(current.word)}
-                className="rounded-lg bg-[#0d0d10] px-2.5 py-1.5 text-[#8ea2ff] hover:bg-[#1b1b21] transition"
+                className="icon-btn absolute right-4 top-4 text-[#8ea2ff]!"
                 title="Озвучить"
+                aria-label="Озвучить"
               >
-                🔊
+                <SpeakerIcon />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowTranslation(true)}
+                className="block w-full select-none pt-10 text-center"
+              >
+                <h2 className="break-words text-3xl font-bold sm:text-4xl">{current.word}</h2>
+                {current.transcription && (
+                  <p className="mt-2 text-base text-[#8a8a96]">{current.transcription}</p>
+                )}
+                <div className="my-6 flex min-h-[3rem] items-center justify-center">
+                  {showTranslation ? (
+                    <p className="text-2xl font-semibold text-[#8ea2ff]">{current.translation}</p>
+                  ) : (
+                    <span className="text-sm text-[#6b6b76]">Нажмите, чтобы увидеть перевод</span>
+                  )}
+                </div>
+                {sentences}
               </button>
             </div>
+          </main>
 
-            <button
-              type="button"
-              onClick={() => setShowTranslation(true)}
-              className="w-full text-center"
-            >
-              <h2 className="text-3xl md:text-4xl font-bold mb-2">{current.word}</h2>
-              {current.transcription && (
-                <p className="text-sm text-[#8a8a96]">{current.transcription}</p>
-              )}
-              {current.sentences && current.sentences.length > 0 && (
-                <div className="mx-auto mt-6 max-w-xl space-y-1.5 rounded-xl border border-[#24242b] bg-[#0d0d10] p-3 text-left text-xs leading-relaxed text-[#8a8a96]">
-                  {current.sentences.map((s, i) => (
-                    <p key={i}>• {s}</p>
-                  ))}
-                </div>
-              )}
-              <div className="my-8 flex min-h-[72px] items-center justify-center">
-                {showTranslation ? (
-                  <p className="text-2xl font-bold text-[#8ea2ff]">{current.translation}</p>
-                ) : (
-                  <span className="text-xs tracking-wider text-[#8a8a96]">
-                    Нажмите, чтобы показать перевод
-                  </span>
-                )}
-              </div>
-            </button>
-
+          <footer className="min-h-[3.25rem]">
             {feedback === 'revealed' ? (
-              <div className="rounded-xl border border-[#e5786f]/40 bg-[#e5786f]/10 py-3 text-center text-xs font-medium text-[#8a8a96]">
+              <div className="flex min-h-[3.25rem] items-center justify-center rounded-[14px] bg-[#e5786f]/10 text-sm font-medium text-[#e5786f]">
                 Следующая карточка…
               </div>
             ) : showTranslation ? (
@@ -595,7 +600,7 @@ export default function LearnGame({
                   type="button"
                   onClick={handleFlashcardDontKnow}
                   disabled={feedback !== 'idle'}
-                  className="rounded-xl border border-[#e5786f] bg-[#e5786f]/10 py-3 font-semibold text-[#e5786f] hover:bg-[#e5786f]/20 transition disabled:opacity-50"
+                  className="btn btn-lg btn-danger"
                 >
                   Не знаю
                 </button>
@@ -603,7 +608,7 @@ export default function LearnGame({
                   type="button"
                   onClick={handleFlashcardKnow}
                   disabled={feedback !== 'idle'}
-                  className="rounded-xl bg-[#8ea2ff] py-3 font-semibold text-[#0d0d10] hover:bg-[#7186e8] transition disabled:opacity-50"
+                  className="btn btn-lg btn-primary"
                 >
                   Знаю
                 </button>
@@ -612,48 +617,51 @@ export default function LearnGame({
               <button
                 type="button"
                 onClick={() => setShowTranslation(true)}
-                className="w-full rounded-xl border border-[#2c2c34] py-3 font-semibold hover:border-[#8ea2ff] transition"
+                className="btn btn-lg btn-block btn-secondary"
               >
                 Показать перевод
               </button>
             )}
-          </div>
-        )}
+          </footer>
+        </>
+      )}
 
-        {stage === 1 && (
-          <div>
-            <div className="mb-6 text-center">
-              <p className="text-2xl md:text-3xl font-bold">{current.word}</p>
-              {current.transcription && (
-                <p className="mt-1 text-sm text-[#8a8a96]">{current.transcription}</p>
-              )}
-              <button
-                type="button"
-                onClick={() => speak(current.word)}
-                className="mt-2 rounded-lg bg-[#0d0d10] px-2.5 py-1.5 text-[#8ea2ff] hover:bg-[#1b1b21] transition"
-                title="Озвучить"
-              >
-                🔊
-              </button>
-              {current.sentences && current.sentences.length > 0 && (
-                <div className="mx-auto mt-5 max-w-xl space-y-1.5 rounded-xl border border-[#24242b] bg-[#0d0d10] p-3 text-left text-xs leading-relaxed text-[#8a8a96]">
-                  {current.sentences.map((s, i) => (
-                    <p key={i}>• {s}</p>
-                  ))}
-                </div>
-              )}
+      {stage === 1 && (
+        <>
+          <main className="flex flex-1 flex-col justify-center py-6">
+            <p className="mb-3 text-center text-sm text-[#8a8a96]">{STAGE_HINTS[1]}</p>
+            <div className="card p-5 text-center sm:p-7">
+              <p className="break-words text-3xl font-bold sm:text-4xl">{current.word}</p>
+              <div className="mt-2 flex items-center justify-center gap-3">
+                {current.transcription && (
+                  <p className="text-base text-[#8a8a96]">{current.transcription}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => speak(current.word)}
+                  className="icon-btn h-9! w-9! text-[#8ea2ff]!"
+                  title="Озвучить"
+                  aria-label="Озвучить"
+                >
+                  <SpeakerIcon size={18} />
+                </button>
+              </div>
+              {sentences}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-2 gap-3">
               {options.map(option => {
                 const isCorrect = normalizeRu(option) === normalizeRu(current.translation)
                 const isChosen = selected === option
 
-                let state = 'border-[#2c2c34] bg-[#0d0d10] hover:border-[#8ea2ff]'
-                if (feedback === 'correct' && isCorrect) state = 'border-[#5fae84] bg-[#5fae84]/10'
+                let state =
+                  'border-[#2c2c34] bg-[#15151a] text-[#ececf1] hover:border-[#8ea2ff]'
+                if (feedback === 'correct' && isCorrect)
+                  state = 'border-[#7fc8a0] bg-[#7fc8a0]/10 text-[#7fc8a0]'
                 else if (feedback === 'revealed') {
-                  if (isCorrect) state = 'border-[#5fae84] bg-[#5fae84]/10'
-                  else if (isChosen) state = 'border-[#e5786f] bg-[#e5786f]/15'
+                  if (isCorrect) state = 'border-[#7fc8a0] bg-[#7fc8a0]/10 text-[#7fc8a0]'
+                  else if (isChosen) state = 'border-[#e5786f] bg-[#e5786f]/10 text-[#e5786f]'
+                  else state = 'border-[#24242b] bg-[#15151a] text-[#6b6b76]'
                 }
 
                 return (
@@ -662,148 +670,187 @@ export default function LearnGame({
                     type="button"
                     onClick={() => handleOption(option)}
                     disabled={feedback !== 'idle'}
-                    className={`rounded-xl border p-4 text-left text-sm font-medium transition disabled:cursor-default ${state}`}
+                    className={`flex min-h-[3.25rem] items-center justify-center rounded-[14px] border px-4 py-3 text-center text-base font-medium transition disabled:cursor-default ${state}`}
                   >
                     {option}
                   </button>
                 )
               })}
             </div>
+          </main>
 
+          <footer className="min-h-[3.25rem]">
             {feedback === 'correct' && (
-              <p className="mt-4 text-center text-sm text-[#7fc8a0]">Верно!</p>
+              <p className="flex min-h-[3.25rem] items-center justify-center text-base font-semibold text-[#7fc8a0]">
+                Верно!
+              </p>
             )}
             {feedback === 'revealed' && (
-              <div className="mt-4 text-center">
-                <p className="mb-3 text-sm text-[#e5786f]">
-                  Неверно. Правильный перевод: <b className="text-[#ececf1]">{current.translation}</b>
+              <div>
+                <p className="mb-3 text-center text-sm text-[#e5786f]">
+                  Неверно. Правильный перевод:{' '}
+                  <b className="font-semibold text-[#ececf1]">{current.translation}</b>
                 </p>
                 <button
                   type="button"
                   onClick={finishPending}
                   autoFocus
-                  className="w-full rounded-xl bg-[#8ea2ff] py-3 font-semibold text-[#0d0d10] hover:bg-[#7186e8] transition"
+                  className="btn btn-lg btn-block btn-primary"
                 >
                   Дальше
                 </button>
               </div>
             )}
-          </div>
-        )}
+          </footer>
+        </>
+      )}
 
-        {(stage === 2 || stage === 3) && (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6 text-center">
-              <p className="mb-2 text-sm text-[#8a8a96]">
-                {stage === 2 ? 'Вставьте пропущенные буквы' : 'Напишите слово по-английски'}
-              </p>
-              <p className="text-xl font-semibold">{current.translation}</p>
+      {(stage === 2 || stage === 3) && (
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col py-6">
+          <p className="mb-3 text-center text-sm text-[#8a8a96]">
+            {stage === 2
+              ? 'Вставьте пропущенные буквы и нажмите «Проверить»'
+              : 'Напишите слово по-английски и нажмите «Проверить»'}
+          </p>
 
-              {stage === 2 && (
-                <p className="mt-6 whitespace-pre-wrap break-all font-mono text-3xl text-[#ececf1]">
-                  {maskedWord}
-                </p>
-              )}
-            </div>
-
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={e =>
-                setInput(
-                  stage === 2
-                    ? e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, gaps.length)
-                    : e.target.value
-                )
-              }
-              disabled={inputDisabled}
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              autoComplete="off"
-              placeholder={
-                stage === 2 ? 'Введите пропущенные буквы' : 'Введите слово по-английски'
-              }
-              className={`w-full rounded-lg border bg-[#0d0d10] p-3 text-center text-lg text-[#ececf1] outline-none disabled:opacity-70 ${
-                feedback === 'correct'
-                  ? 'border-[#5fae84]'
-                  : wrongBorder
-                  ? 'border-[#e5786f]'
-                  : 'border-[#2c2c34] focus:border-[#8ea2ff]'
-              }`}
-            />
+          <div className="card p-5 text-center sm:p-7">
+            <p className="text-sm text-[#8a8a96]">Перевод</p>
+            <p className="mt-1 text-2xl font-semibold text-[#8ea2ff]">{current.translation}</p>
 
             {stage === 2 && (
-              <p className="mt-2 text-center text-xs text-[#8a8a96]">
-                {input.length} / {gaps.length}
+              <p className="mt-5 whitespace-pre-wrap break-all font-mono text-3xl text-[#ececf1]">
+                {maskedWord}
               </p>
             )}
 
-            {feedback === 'wrongOnce' && (
-              <p className="mt-3 text-center text-sm text-[#e5786f]">
-                Неверно. Попробуйте ещё раз.
-              </p>
-            )}
-            {feedback === 'correct' && (
-              <p className="mt-3 text-center text-sm text-[#7fc8a0]">
-                {attempt === 1 ? 'Верно!' : 'Верно, но со второй попытки'}
-              </p>
-            )}
             {feedback === 'revealed' && (
-              <div className="mt-3 rounded-xl bg-[#0d0d10] p-4 text-center">
-                <p className="mb-1 text-sm text-[#8a8a96]">Правильно:</p>
-                <p className="text-2xl font-bold text-[#8ea2ff]">{current.word}</p>
+              <div className="mt-5 rounded-xl bg-[#1b1b21] p-4">
+                <p className="text-sm text-[#8a8a96]">Правильно:</p>
+                <p className="mt-1 text-2xl font-bold text-[#ececf1]">{current.word}</p>
                 {current.transcription && (
                   <p className="mt-1 text-sm text-[#8a8a96]">{current.transcription}</p>
                 )}
               </div>
             )}
+          </div>
 
-            {showHint && stage === 3 && feedback !== 'revealed' && (
-              <p className="mt-3 text-center text-sm text-[#8a8a96]">
-                Начинается на «{current.word[0]}», букв: {current.word.replace(/[^a-zA-Z]/g, '').length}
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={e =>
+              setInput(
+                stage === 2
+                  ? e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, gaps.length)
+                  : e.target.value
+              )
+            }
+            disabled={inputDisabled}
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            autoComplete="off"
+            placeholder={
+              stage === 2 ? 'Введите пропущенные буквы' : 'Введите слово по-английски'
+            }
+            className={`field mt-4 min-h-[3.25rem]! text-center text-base disabled:opacity-70 ${
+              feedback === 'correct'
+                ? 'border-[#7fc8a0]!'
+                : wrongBorder
+                ? 'border-[#e5786f]!'
+                : ''
+            }`}
+          />
+
+          <div className="mt-2 min-h-[1.25rem] space-y-1 text-center text-sm">
+            {stage === 2 && (
+              <p className="tabular-nums text-[#6b6b76]">
+                {input.length} / {gaps.length}
               </p>
             )}
+            {feedback === 'wrongOnce' && (
+              <p className="text-[#e5786f]">Неверно. Попробуйте ещё раз.</p>
+            )}
+            {feedback === 'correct' && (
+              <p className="text-[#7fc8a0]">
+                {attempt === 1 ? 'Верно!' : 'Верно, но со второй попытки'}
+              </p>
+            )}
+            {showHint && stage === 3 && feedback !== 'revealed' && (
+              <p className="text-[#b0b0bb]">
+                Начинается на «{current.word[0]}», букв:{' '}
+                {current.word.replace(/[^a-zA-Z]/g, '').length}
+              </p>
+            )}
+          </div>
 
-            <div className="mt-5 flex gap-3">
-              {feedback !== 'revealed' && feedback !== 'correct' && stage === 3 && (
-                <button
-                  type="button"
-                  onClick={() => setShowHint(true)}
-                  className="rounded-xl border border-[#2c2c34] px-4 py-3 text-sm font-medium hover:border-[#8ea2ff] transition"
-                >
-                  Подсказка
-                </button>
-              )}
-              {feedback === 'revealed' ? (
-                <button
-                  type="submit"
-                  autoFocus
-                  className="flex-1 rounded-xl bg-[#8ea2ff] py-3 font-semibold text-[#0d0d10] hover:bg-[#7186e8] transition"
-                >
-                  Дальше
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={
-                    feedback === 'correct' ||
-                    !input.trim() ||
-                    (stage === 2 && input.length !== gaps.length)
-                  }
-                  className="flex-1 rounded-xl bg-[#8ea2ff] py-3 font-semibold text-[#0d0d10] hover:bg-[#7186e8] transition disabled:opacity-50"
-                >
-                  Проверить
-                </button>
-              )}
-            </div>
-          </form>
-        )}
-      </div>
+          <div
+            className={`mt-3 grid gap-3 ${
+              feedback !== 'revealed' && feedback !== 'correct' && stage === 3
+                ? 'grid-cols-2'
+                : 'grid-cols-1'
+            }`}
+          >
+            {feedback !== 'revealed' && feedback !== 'correct' && stage === 3 && (
+              <button
+                type="button"
+                onClick={() => setShowHint(true)}
+                className="btn btn-lg btn-secondary"
+              >
+                Подсказка
+              </button>
+            )}
+            {feedback === 'revealed' ? (
+              <button type="submit" autoFocus className="btn btn-lg btn-primary">
+                Дальше
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={
+                  feedback === 'correct' ||
+                  !input.trim() ||
+                  (stage === 2 && input.length !== gaps.length)
+                }
+                className="btn btn-lg btn-primary"
+              >
+                Проверить
+              </button>
+            )}
+          </div>
+        </form>
+      )}
     </div>
   )
 }
 
-// конец файла
+const SCREEN =
+  'mx-auto flex w-full max-w-xl flex-col px-4 min-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))]'
+
+function StatRow({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <dt className="text-[#8a8a96]">{label}</dt>
+      <dd className="font-semibold tabular-nums text-[#ececf1]">{value}</dd>
+    </div>
+  )
+}
+
+function SpeakerIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 5 6 9H3v6h3l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+    </svg>
+  )
+}

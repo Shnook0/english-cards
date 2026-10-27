@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card, Folder } from '@/types/database'
 import TrainSession from '@/components/TrainSession'
+import Icon from '@/components/ui/Icon'
 import { buildStudyQueue } from '@/lib/study'
 import { fetchCards, fetchFolder, fetchFolders } from '@/lib/offline/repo'
 
@@ -93,18 +94,19 @@ export default function TrainFolderPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
-        Загрузка тренировки...
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <span className="eyebrow">Готовим тренировку…</span>
       </div>
     )
   }
 
   if (error || !folder) {
     return (
-      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#e5786f]">{error || 'Ошибка'}</p>
-        <button onClick={handleExit} className="text-sm text-[#8ea2ff] hover:underline">
-          ← Вернуться в папку
+      <div className="mx-auto flex min-h-[70vh] w-full max-w-xl flex-col items-center justify-center px-4 text-center">
+        <p className="text-base text-[#e5786f]">{error || 'Ошибка'}</p>
+        <button onClick={handleExit} className="btn btn-secondary mt-5">
+          <Icon name="arrowLeft" size={16} />
+          Вернуться в папку
         </button>
       </div>
     )
