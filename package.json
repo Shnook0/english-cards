@@ -10,10 +10,15 @@
     "telegram:setup": "node --env-file=.env.local scripts/telegram-setup.mjs"
   },
   "dependencies": {
+    "@serwist/turbopack": "^9.5.13",
     "@supabase/supabase-js": "^2.116.0",
+    "dexie": "^4.4.7",
+    "dexie-react-hooks": "^4.4.0",
+    "esbuild": "^0.28.2",
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "serwist": "^9.5.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

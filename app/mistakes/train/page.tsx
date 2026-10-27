@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
 import TrainSession from '@/components/TrainSession'
+import { fetchCards, fetchFolders } from '@/lib/offline/repo'
 
 export default function TrainMistakesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -22,16 +22,10 @@ export default function TrainMistakesPage() {
     if (!user) return
 
     setLoading(true)
-    const { data: lf } = await supabase
-      .from('folders').select('id').eq('user_id', user.id).eq('type', 'learned').single()
-    if (lf) setLearnedFolderId(lf.id)
+    const learnedFolders = await fetchFolders(user.id, 'learned')
+    if (learnedFolders[0]) setLearnedFolderId(learnedFolders[0].id)
 
-    const { data } = await supabase
-      .from('cards')
-      .select('*')
-      .gte('wrong_count', 2)
-      .order('wrong_count', { ascending: false })
-    setCards((data ?? []) as Card[])
+    setCards(await fetchCards({ userId: user.id, mistakes: true, order: 'wrong_desc' }))
     setLoading(false)
   }, [user])
 

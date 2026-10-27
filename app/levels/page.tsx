@@ -3,10 +3,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Folder } from '@/types/database'
 import { CEFR_LEVELS, CEFR_WORDS, type CefrLevel } from '@/data/cefr'
+import {
+  createCards,
+  createFolder,
+  deleteFolder,
+  fetchFolders,
+} from '@/lib/offline/repo'
 
 export default function LevelsPage() {
   const { user, loading: authLoading } = useAuth()
@@ -30,23 +35,15 @@ export default function LevelsPage() {
       setLoadingData(true)
       setError(null)
 
-      const { data, error: loadError } = await supabase
-        .from('folders')
-        .select('*')
-        .eq('type', 'level')
-        .order('created_at', { ascending: true })
+      const data = await fetchFolders(user.id, 'level')
 
       if (cancelled) return
 
-      if (loadError) {
-        setError('Не удалось загрузить уровни')
-      } else {
-        const map: Record<string, Folder> = {}
-        for (const folder of (data ?? []) as Folder[]) {
-          map[folder.name] = folder
-        }
-        setLevelFolders(map)
+      const map: Record<string, Folder> = {}
+      for (const folder of data) {
+        map[folder.name] = folder
       }
+      setLevelFolders(map)
       setLoadingData(false)
     }
 
@@ -69,31 +66,26 @@ export default function LevelsPage() {
     setCreatingLevel(level)
     setError(null)
 
-    const { data: folder, error: folderError } = await supabase
-      .from('folders')
-      .insert({ user_id: user.id, name: level, type: 'level' })
-      .select()
-      .single()
-
-    if (folderError || !folder) {
+    let folder: Folder
+    try {
+      folder = await createFolder(user.id, level, 'level')
+    } catch {
       setError('Не удалось создать папку уровня')
       setCreatingLevel(null)
       return
     }
 
     const rows = CEFR_WORDS[level].map(word => ({
-      user_id: user.id,
-      folder_id: folder.id,
       word: word.word,
       transcription: word.transcription || null,
       translation: word.translation,
       sentences: word.sentences || [],
     }))
 
-    const { error: cardsError } = await supabase.from('cards').insert(rows)
-
-    if (cardsError) {
-      await supabase.from('folders').delete().eq('id', folder.id)
+    try {
+      await createCards(user.id, folder.id, rows)
+    } catch {
+      await deleteFolder(folder.id).catch(() => {})
       setError('Не удалось заполнить уровень словами')
       setCreatingLevel(null)
       return

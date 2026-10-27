@@ -1,6 +1,5 @@
-import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
-import { GeneralProgress, GeneralTraining } from '@/types/general'
+import { GeneralProgress } from '@/types/general'
 
 // Интервалы повторения (дни)
 export const INTERVALS_DAYS = [1, 2, 3, 5, 7, 12, 15, 20, 25, 27, 30]
@@ -31,73 +30,6 @@ export function shuffle<T>(arr: T[]): T[] {
 
 export function isMistakeActive(p: GeneralProgress | undefined, now: number = Date.now()): boolean {
   return !!p && !!p.mistake_until && new Date(p.mistake_until).getTime() > now
-}
-
-// Все карточки тренировки (без дублей). Новые слова из папок подхватываются автоматически.
-export async function fetchTrainingCards(training: GeneralTraining, userId: string): Promise<Card[]> {
-  let folderIds: string[] = []
-
-  if (training.scope === 'all') {
-    const { data, error } = await supabase
-      .from('folders')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('type', 'custom')
-    if (error) throw error
-    folderIds = (data ?? []).map((f: { id: string }) => f.id)
-  } else {
-    const { data, error } = await supabase
-      .from('general_training_folders')
-      .select('folder_id')
-      .eq('training_id', training.id)
-    if (error) throw error
-    folderIds = (data ?? []).map((f: { folder_id: string }) => f.folder_id)
-  }
-
-  if (folderIds.length === 0) return []
-
-  const all: Card[] = []
-  const PAGE = 1000
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .in('folder_id', folderIds)
-      .order('created_at', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (error) throw error
-    const chunk = (data ?? []) as Card[]
-    all.push(...chunk)
-    if (chunk.length < PAGE) break
-  }
-
-  const seen = new Set<string>()
-  const unique: Card[] = []
-  for (const c of all) {
-    const key = wordKey(c)
-    if (seen.has(key)) continue
-    seen.add(key)
-    unique.push(c)
-  }
-  return unique
-}
-
-export async function fetchProgress(trainingId: string): Promise<Record<string, GeneralProgress>> {
-  const map: Record<string, GeneralProgress> = {}
-  const PAGE = 1000
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('general_progress')
-      .select('*')
-      .eq('training_id', trainingId)
-      .order('word_key', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (error) throw error
-    const chunk = (data ?? []) as GeneralProgress[]
-    for (const p of chunk) map[p.word_key] = p
-    if (chunk.length < PAGE) break
-  }
-  return map
 }
 
 // Очередь сессии: 1) ошибки, 2) слова по расписанию, 3) новые

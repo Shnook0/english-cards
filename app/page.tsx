@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Folder } from '@/types/database'
 import TelegramBanner from '@/components/TelegramBanner'
+import { fetchCards, fetchFolders, getPendingCount } from '@/lib/offline/repo'
+import { clearLocalData } from '@/lib/offline/db'
 
 function vocabularyPhrase(count: number): string {
   if (count === 0) return 'Пока пусто — но начало уже положено.'
@@ -46,36 +48,20 @@ export default function HomePage() {
       setLoadingData(true)
       setError(null)
 
-      const [folderRes, learnedRes, favoritesRes, mistakesRes] = await Promise.all([
-        supabase.from('folders').select('*').order('created_at', { ascending: true }),
-        supabase
-          .from('cards')
-          .select('id', { count: 'exact', head: true })
-          .not('learned_at', 'is', null),
-        supabase
-          .from('cards')
-          .select('id', { count: 'exact', head: true })
-          .eq('is_favorite', true),
-        supabase
-          .from('cards')
-          .select('id', { count: 'exact', head: true })
-          .gte('wrong_count', 2),
+      const [list, learnedCards, favoriteCards, mistakeCards] = await Promise.all([
+        fetchFolders(user.id),
+        fetchCards({ userId: user.id, learned: true }),
+        fetchCards({ userId: user.id, favorite: true }),
+        fetchCards({ userId: user.id, mistakes: true }),
       ])
 
       if (cancelled) return
 
-      if (folderRes.error) {
-        setError('Ошибка загрузки папок')
-        setLoadingData(false)
-        return
-      }
-
-      const list = (folderRes.data ?? []) as Folder[]
       setFolders(list)
       setLearnedFolder(list.find(folder => folder.type === 'learned') ?? null)
-      setLearnedCount(learnedRes.count ?? 0)
-      setFavoritesCount(favoritesRes.count ?? 0)
-      setMistakesCount(mistakesRes.count ?? 0)
+      setLearnedCount(learnedCards.length)
+      setFavoritesCount(favoriteCards.length)
+      setMistakesCount(mistakeCards.length)
       setLoadingData(false)
     }
 
@@ -87,7 +73,26 @@ export default function HomePage() {
   }, [user])
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    const pending = await getPendingCount().catch(() => 0)
+    if (
+      pending > 0 &&
+      !confirm(
+        `На устройстве есть несохранённые изменения (${pending}). Они будут потеряны при выходе. Выйти?`
+      )
+    ) {
+      return
+    }
+    try {
+      if (navigator.onLine) {
+        const { error } = await supabase.auth.signOut()
+        if (error) await supabase.auth.signOut({ scope: 'local' })
+      } else {
+        await supabase.auth.signOut({ scope: 'local' })
+      }
+    } catch {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+    }
+    await clearLocalData().catch(() => {})
     router.push('/login')
   }
 
@@ -129,9 +134,17 @@ export default function HomePage() {
 
             <div className="flex flex-col items-end gap-2">
               <span className="hidden text-[11px] text-[#948e82] md:block">{user?.email}</span>
-              <button onClick={logout} className="btn btn-ghost !px-0 !py-0 text-[10px]">
-                Выйти
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/settings"
+                  className="text-[10px] uppercase tracking-[0.14em] text-[#948e82] transition hover:text-[#c9a96e]"
+                >
+                  Настройки
+                </Link>
+                <button onClick={logout} className="btn btn-ghost !px-0 !py-0 text-[10px]">
+                  Выйти
+                </button>
+              </div>
             </div>
           </div>
         </header>

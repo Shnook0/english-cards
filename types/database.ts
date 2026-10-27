@@ -29,4 +29,6 @@ export type Card = {
   learned_at?: string | null
   created_at: string
   sync_group_id?: string | null
+  content_updated_at?: string | null
+  last_answer_at?: string | null
 }

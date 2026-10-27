@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
+import { saveCardAnswer, setFavorite } from '@/lib/offline/repo'
 import {
   BOT_REPEAT_MISTAKE_THRESHOLD,
   SRS_INTERVALS_DAYS,
@@ -102,17 +102,21 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
     if (!currentCard || isSaving) return
     const id = currentCard.id
     const newFav = !currentCard.is_favorite
-    await supabase.from('cards').update({ is_favorite: newFav }).eq('id', id)
+    const ok = await setFavorite(id, newFav)
+    if (!ok) {
+      setSaveError('Не удалось изменить избранное. Попробуйте ещё раз.')
+      return
+    }
     setQueue(q => q.map(c => (c.id === id ? { ...c, is_favorite: newFav } : c)))
   }
 
-  const saveCard = async (patch: Partial<Card>): Promise<boolean> => {
+  const saveAnswer = async (correct: boolean): Promise<boolean> => {
     if (!currentCard) return false
     setIsSaving(true)
     setSaveError(null)
-    const { error } = await supabase.from('cards').update(patch).eq('id', currentCard.id)
+    const ok = await saveCardAnswer(currentCard, correct, isLevel)
     setIsSaving(false)
-    if (error) {
+    if (!ok) {
       setSaveError('Не удалось сохранить. Проверьте интернет и нажмите ещё раз.')
       return false
     }
@@ -157,7 +161,7 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
       patch.learned_at = new Date().toISOString()
     }
 
-    const ok = await saveCard(patch as Partial<Card>)
+    const ok = await saveAnswer(true)
     if (!ok) return
 
     const updated = { ...currentCard, ...patch } as Card
@@ -206,7 +210,7 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
     }
     if (wasLearned) patch.learned_at = null
 
-    const ok = await saveCard(patch)
+    const ok = await saveAnswer(false)
     if (!ok) return
 
     const id = currentCard.id

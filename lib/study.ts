@@ -105,29 +105,36 @@ export function buildStudyQueue(cards: Card[]): Card[] {
 }
 
 // Что записать в карточку после правильного ответа (логика как в обычной «Учить»)
-export function patchCorrect(card: Card, isLevel: boolean): Partial<Card> {
+export function patchCorrect(
+  card: Card,
+  isLevel: boolean,
+  at: number = Date.now()
+): Partial<Card> {
   const oldSrs = card.srs_level || 0
   const days = SRS_INTERVALS_DAYS[oldSrs] ?? 240
   const newStreak = (card.known_streak || 0) + 1
+  const answeredAt = new Date(at).toISOString()
 
   const patch: Record<string, unknown> = {
     srs_level: Math.min(oldSrs + 1, 7),
     known_streak: newStreak,
     wrong_count: Math.max((card.wrong_count || 0) - 1, 0),
-    next_review_at: new Date(Date.now() + days * DAY_MS).toISOString(),
+    next_review_at: new Date(at + days * DAY_MS).toISOString(),
+    last_answer_at: answeredAt,
   }
 
   if (!card.learned_at && (isLevel || newStreak >= LEARNED_STREAK)) {
-    patch.learned_at = new Date().toISOString()
+    patch.learned_at = answeredAt
   }
 
   return patch as Partial<Card>
 }
 
 // Что записать в карточку после ошибки (логика как в обычной «Учить»)
-export function patchWrong(card: Card, isLevel: boolean): Partial<Card> {
+export function patchWrong(card: Card, isLevel: boolean, at: number = Date.now()): Partial<Card> {
   const wasLearned = !!card.learned_at
   const wrong = card.wrong_count || 0
+  const answeredAt = new Date(at).toISOString()
 
   let wrongCount: number
   if (isLevel) wrongCount = Math.max(wrong + 1, 5)
@@ -138,15 +145,11 @@ export function patchWrong(card: Card, isLevel: boolean): Partial<Card> {
     srs_level: 0,
     known_streak: 0,
     wrong_count: wrongCount,
-    next_review_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    next_review_at: new Date(at + 10 * 60 * 1000).toISOString(),
+    last_answer_at: answeredAt,
   }
   if (wasLearned) patch.learned_at = null
   return patch
-}
-
-export async function saveCardPatch(cardId: string, patch: Partial<Card>): Promise<boolean> {
-  const { error } = await supabase.from('cards').update(patch).eq('id', cardId)
-  return !error
 }
 
 // Ставит слово в обычные запланированные повторы Telegram-бота.

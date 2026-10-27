@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { GeneralTraining } from '@/types/general'
-import { fetchProgress, fetchTrainingCards, getStats } from '@/lib/general'
+import { getStats } from '@/lib/general'
+import { fetchProgress, fetchTraining, fetchTrainingCards } from '@/lib/offline/repo'
 
 export default function GeneralTrainingPage() {
   const { user, loading: authLoading } = useAuth()
@@ -29,20 +29,18 @@ export default function GeneralTrainingPage() {
     setLoading(true)
     setError(null)
     try {
-      const { data: t, error: tErr } = await supabase
-        .from('general_trainings')
-        .select('*')
-        .eq('id', trainingId)
-        .single()
-      if (tErr || !t) {
+      const t = await fetchTraining(trainingId)
+      if (!t) {
         setError('Тренировка не найдена')
         setLoading(false)
         return
       }
-      setTraining(t as GeneralTraining)
+      setTraining(t)
 
-      const cards = await fetchTrainingCards(t as GeneralTraining, user.id)
-      const progress = await fetchProgress(trainingId)
+      const [cards, progress] = await Promise.all([
+        fetchTrainingCards(t, user.id),
+        fetchProgress(trainingId),
+      ])
       setStats(getStats(cards, progress))
     } catch {
       setError('Ошибка загрузки данных')

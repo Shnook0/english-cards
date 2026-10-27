@@ -3,9 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
+import {
+  fetchCards,
+  fetchFolders,
+  resetWrongCount,
+  setFavorite,
+} from '@/lib/offline/repo'
 
 type CardWithFolder = Card & { folders?: { name: string } | null }
 
@@ -20,28 +25,36 @@ export default function MistakesPage() {
   }, [user, authLoading, router])
 
   const load = useCallback(async () => {
+    if (!user) return
     setLoading(true)
-    const { data } = await supabase
-      .from('cards')
-      .select('*, folders(name)')
-      .gte('wrong_count', 2)
-      .order('wrong_count', { ascending: false })
-    setCards((data as CardWithFolder[]) || [])
+    const [list, folders] = await Promise.all([
+      fetchCards({ userId: user.id, mistakes: true, order: 'wrong_desc' }),
+      fetchFolders(user.id),
+    ])
+    const names = new Map(folders.map(folder => [folder.id, folder.name]))
+    setCards(
+      list.map(card => ({
+        ...card,
+        folders: { name: names.get(card.folder_id) ?? 'Без папки' },
+      }))
+    )
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (user) void load()
   }, [user, load])
 
   const toggleFav = async (cardId: string, current: boolean) => {
-    await supabase.from('cards').update({ is_favorite: !current }).eq('id', cardId)
+    const ok = await setFavorite(cardId, !current)
+    if (!ok) return
     setCards(prev => prev.map(c => c.id === cardId ? { ...c, is_favorite: !current } : c))
   }
 
   const removeFromMistakes = async (cardId: string) => {
     if (!confirm('Убрать слово из «Частых ошибок»? Счётчик ошибок обнулится.')) return
-    await supabase.from('cards').update({ wrong_count: 0 }).eq('id', cardId)
+    const ok = await resetWrongCount(cardId)
+    if (!ok) return
     setCards(prev => prev.filter(c => c.id !== cardId))
   }
 

@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Folder } from '@/types/database'
+import { createFolder as createFolderLocal, fetchFolders } from '@/lib/offline/repo'
 
 export default function FoldersPage() {
   const { user, loading: authLoading } = useAuth()
@@ -31,19 +31,11 @@ export default function FoldersPage() {
       setLoadingData(true)
       setError(null)
 
-      const { data, error: loadError } = await supabase
-        .from('folders')
-        .select('*')
-        .eq('type', 'custom')
-        .order('created_at', { ascending: true })
+      const data = await fetchFolders(user.id, 'custom')
 
       if (cancelled) return
 
-      if (loadError) {
-        setError('Не удалось загрузить папки')
-      } else {
-        setFolders((data ?? []) as Folder[])
-      }
+      setFolders(data)
       setLoadingData(false)
     }
 
@@ -62,11 +54,9 @@ export default function FoldersPage() {
     setCreating(true)
     setError(null)
 
-    const { error: createError } = await supabase
-      .from('folders')
-      .insert({ user_id: user.id, name, type: 'custom' })
-
-    if (createError) {
+    try {
+      await createFolderLocal(user.id, name, 'custom')
+    } catch {
       setError('Не удалось создать папку')
       setCreating(false)
       return

@@ -22,10 +22,18 @@ html,
 body {
   background-color: var(--bg);
   color: var(--text);
+  overscroll-behavior-y: none;
 }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   font-family: var(--font-body);
   background-image:
     radial-gradient(circle at 12% -8%, rgba(201, 169, 110, 0.11), transparent 31rem),

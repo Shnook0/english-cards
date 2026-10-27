@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
-import { buildStudyQueue, patchCorrect, patchWrong, saveCardPatch } from '@/lib/study'
+import { buildStudyQueue, patchCorrect, patchWrong } from '@/lib/study'
+import { fetchCards, fetchFolder, saveCardAnswer } from '@/lib/offline/repo'
 import MatchGame from '@/components/MatchGame'
 import DictationGame from '@/components/DictationGame'
 import BlocksGame from '@/components/BlocksGame'
@@ -52,12 +52,8 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
           setError('Папка не найдена')
           return
         }
-        const { data: f, error: fErr } = await supabase
-          .from('folders')
-          .select('*')
-          .eq('id', folderId)
-          .single()
-        if (fErr || !f) {
+        const f = await fetchFolder(folderId)
+        if (!f) {
           setError('Папка не найдена')
           return
         }
@@ -66,29 +62,11 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
           return
         }
         level = f.type === 'level'
-
-        const { data, error: cErr } = await supabase
-          .from('cards')
-          .select('*')
-          .eq('folder_id', folderId)
-        if (cErr) throw cErr
-        list = (data ?? []) as Card[]
+        list = await fetchCards({ userId: user.id, folderId })
       } else if (kind === 'favorites') {
-        const { data, error: cErr } = await supabase
-          .from('cards')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_favorite', true)
-        if (cErr) throw cErr
-        list = (data ?? []) as Card[]
+        list = await fetchCards({ userId: user.id, favorite: true })
       } else {
-        const { data, error: cErr } = await supabase
-          .from('cards')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('wrong_count', 2)
-        if (cErr) throw cErr
-        list = (data ?? []) as Card[]
+        list = await fetchCards({ userId: user.id, mistakes: true })
       }
 
       isLevelRef.current = level
@@ -113,7 +91,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
       ? patchCorrect(current, isLevelRef.current)
       : patchWrong(current, isLevelRef.current)
     latestRef.current.set(card.id, { ...current, ...patch } as Card)
-    return saveCardPatch(card.id, patch)
+    return saveCardAnswer(current, correct, isLevelRef.current)
   }, [])
 
   // Новая очередь из всей папки по актуальным данным (когда слова закончились)

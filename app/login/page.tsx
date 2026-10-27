@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -16,9 +16,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [online, setOnline] = useState(true)
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine)
+    update()
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => {
+      window.removeEventListener('online', update)
+      window.removeEventListener('offline', update)
+    }
+  }, [])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!navigator.onLine) {
+      setError('Нет интернета. Вход, регистрация и сброс пароля недоступны офлайн.')
+      return
+    }
     setLoading(true)
     setError(null)
     setMessage(null)
@@ -91,6 +107,13 @@ export default function LoginPage() {
             </div>
           )}
 
+          {!online && (
+            <div className="mb-5 border border-[#c9a96e]/40 bg-[#c9a96e]/10 p-4 text-sm text-[#ddc08a]">
+              Нет интернета. Если вы уже входили на этом устройстве, откройте главную —
+              сохранённые слова и тренировки доступны офлайн.
+            </div>
+          )}
+
           <form onSubmit={handleAuth} className="space-y-5">
           <div>
             <label className="eyebrow mb-2 block">Email</label>
@@ -139,7 +162,11 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="btn btn-primary w-full">
+          <button
+            type="submit"
+            disabled={loading || !online}
+            className="btn btn-primary w-full"
+          >
             {loading
               ? 'Загрузка...'
               : isResetMode

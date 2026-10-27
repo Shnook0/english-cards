@@ -1,16 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
 import { GeneralProgress } from '@/types/general'
-import {
-  INTERVALS_DAYS,
-  MISTAKE_DAYS,
-  MISTAKE_STREAK_TO_CLEAR,
-  REINSERT_OFFSETS,
-  wordKey,
-} from '@/lib/general'
+import { REINSERT_OFFSETS, wordKey } from '@/lib/general'
+import { saveGeneralAnswer, setFavorite } from '@/lib/offline/repo'
 
 type Props = {
   trainingId: string
@@ -19,8 +13,6 @@ type Props = {
   initialProgress: Record<string, GeneralProgress>
   onExit: () => void
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000
 
 export default function GeneralTrainSession({
   trainingId,
@@ -75,74 +67,39 @@ export default function GeneralTrainSession({
     if (!currentCard || isSaving) return
     const id = currentCard.id
     const newFav = !currentCard.is_favorite
-    await supabase.from('cards').update({ is_favorite: newFav }).eq('id', id)
+    const ok = await setFavorite(id, newFav)
+    if (!ok) {
+      setSaveError('Не удалось изменить избранное. Попробуйте ещё раз.')
+      return
+    }
     setQueue(q => q.map(c => (c.id === id ? { ...c, is_favorite: newFav } : c)))
   }
 
-  const getProgress = (card: Card): GeneralProgress => {
-    const key = wordKey(card)
-    return (
-      progress[key] ?? {
-        training_id: trainingId,
-        word_key: key,
-        user_id: userId,
-        level: 0,
-        next_review_at: new Date().toISOString(),
-        mistake_until: null,
-        mistake_streak: 0,
-        wrong_total: 0,
-        updated_at: new Date().toISOString(),
-      }
-    )
-  }
-
-  const saveProgress = async (row: GeneralProgress): Promise<boolean> => {
+  const saveAnswer = async (correct: boolean): Promise<GeneralProgress | null> => {
+    if (!currentCard) return null
     setIsSaving(true)
     setSaveError(null)
-    const { error } = await supabase
-      .from('general_progress')
-      .upsert(row, { onConflict: 'training_id,word_key' })
+    const saved = await saveGeneralAnswer(
+      trainingId,
+      currentCard,
+      progress[wordKey(currentCard)],
+      correct,
+      userId
+    )
     setIsSaving(false)
-    if (error) {
+    if (!saved) {
       setSaveError('Не удалось сохранить. Проверьте интернет и нажмите ещё раз.')
-      return false
+      return null
     }
-    setProgress(prev => ({ ...prev, [row.word_key]: row }))
-    return true
+    setProgress(prev => ({ ...prev, [saved.word_key]: saved }))
+    return saved
   }
 
   const handleKnow = async () => {
     if (!currentCard || isSaving) return
 
-    const p = getProgress(currentCard)
-    const now = Date.now()
-    const lastIdx = INTERVALS_DAYS.length - 1
-    const days = INTERVALS_DAYS[Math.min(p.level, lastIdx)]
-
-    let mistakeUntil: string | null = p.mistake_until
-    let streak = p.mistake_streak
-    if (mistakeUntil && new Date(mistakeUntil).getTime() > now) {
-      streak += 1
-      if (streak >= MISTAKE_STREAK_TO_CLEAR) {
-        mistakeUntil = null
-        streak = 0
-      }
-    } else {
-      mistakeUntil = null
-      streak = 0
-    }
-
-    const row: GeneralProgress = {
-      ...p,
-      level: Math.min(p.level + 1, lastIdx),
-      next_review_at: new Date(now + days * DAY_MS).toISOString(),
-      mistake_until: mistakeUntil,
-      mistake_streak: streak,
-      updated_at: new Date(now).toISOString(),
-    }
-
-    const ok = await saveProgress(row)
-    if (!ok) return
+    const saved = await saveAnswer(true)
+    if (!saved) return
 
     const rest = queue.slice(1)
     setDoneCount(d => d + 1)
@@ -154,21 +111,8 @@ export default function GeneralTrainSession({
   const handleDontKnow = async () => {
     if (!currentCard || isSaving) return
 
-    const p = getProgress(currentCard)
-    const now = Date.now()
-
-    const row: GeneralProgress = {
-      ...p,
-      level: Math.max(p.level - 2, 0),
-      next_review_at: new Date(now + INTERVALS_DAYS[0] * DAY_MS).toISOString(),
-      mistake_until: new Date(now + MISTAKE_DAYS * DAY_MS).toISOString(),
-      mistake_streak: 0,
-      wrong_total: p.wrong_total + 1,
-      updated_at: new Date(now).toISOString(),
-    }
-
-    const ok = await saveProgress(row)
-    if (!ok) return
+    const saved = await saveAnswer(false)
+    if (!saved) return
 
     const key = wordKey(currentCard)
     const wrongNow = (wrongSession[key] || 0) + 1

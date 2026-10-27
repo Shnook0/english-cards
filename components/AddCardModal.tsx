@@ -1,8 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Card } from '@/types/database'
+import {
+  createCards,
+  deleteCard,
+  fetchCards,
+  updateCardContent,
+} from '@/lib/offline/repo'
 
 type Props = {
   isOpen: boolean
@@ -20,13 +25,7 @@ type ParsedCard = {
   sentences: string[]
 }
 
-type ExistingCard = {
-  id: string
-  word: string
-  transcription: string | null
-  translation: string
-  sentences: string[] | null
-}
+type ExistingCard = Card
 
 type ConflictChoice = 'new' | 'old' | 'both'
 
@@ -259,18 +258,12 @@ function AddCardModalContent({
   const { validCount, skippedCount, duplicateCount, parsedCards } = parseImportText(importText)
 
   const fetchFolderCards = async (): Promise<ExistingCard[] | null> => {
-    const { data, error: fetchError } = await supabase
-      .from('cards')
-      .select('id, word, transcription, translation, sentences')
-      .eq('folder_id', folderId)
-      .order('created_at', { ascending: false })
-
-    if (fetchError) {
+    try {
+      return await fetchCards({ userId, folderId, order: 'created_desc' })
+    } catch {
       setError('Не удалось проверить повторы в папке')
       return null
     }
-
-    return (data ?? []) as ExistingCard[]
   }
 
   const buildPendingCards = (
@@ -306,15 +299,8 @@ function AddCardModalContent({
       sentences: card.sentences ?? [],
     })
 
-    const inserts: Array<{
-      user_id: string
-      folder_id: string
-      word: string
-      transcription: string | null
-      translation: string
-      sentences: string[]
-    }> = []
-    const updates: Array<{ id: string; card: ParsedCard }> = []
+    const inserts: ParsedCard[] = []
+    const updates: Array<{ id: string; card: ParsedCard; base: string | null }> = []
     const deletes: string[] = []
 
     if (editId) {
@@ -332,51 +318,56 @@ function AddCardModalContent({
         return
       }
 
-      updates.push({ id: editId, card: item.parsed })
+      updates.push({
+        id: editId,
+        card: item.parsed,
+        base: cardToEdit?.content_updated_at ?? null,
+      })
       if (item.existing && item.choice === 'new') deletes.push(item.existing.id)
     } else {
       for (const item of items) {
         if (!item.existing) {
-          inserts.push({ user_id: userId, folder_id: folderId, ...toPayload(item.parsed) })
+          inserts.push(item.parsed)
         } else if (item.choice === 'new') {
-          updates.push({ id: item.existing.id, card: item.parsed })
+          updates.push({
+            id: item.existing.id,
+            card: item.parsed,
+            base: item.existing.content_updated_at ?? null,
+          })
         } else if (item.choice === 'both') {
-          inserts.push({ user_id: userId, folder_id: folderId, ...toPayload(item.parsed) })
+          inserts.push(item.parsed)
         }
       }
     }
 
     let saveError: string | null = null
 
-    if (updates.length > 0) {
-      const results = await Promise.all(
-        updates.map(update =>
-          supabase.from('cards').update(toPayload(update.card)).eq('id', update.id)
+    try {
+      for (const update of updates) {
+        const result = await updateCardContent(
+          update.id,
+          userId,
+          toPayload(update.card),
+          update.base
         )
-      )
-
-      if (results.some(result => result.error)) {
-        saveError = 'Ошибка при обновлении карточки'
+        if (!result.ok) {
+          saveError = result.error ?? 'Ошибка при обновлении карточки'
+          break
+        }
       }
-    }
 
-    if (!saveError && inserts.length > 0) {
-      const { error: insertError } = await supabase.from('cards').insert(inserts)
-
-      if (insertError) {
-        saveError =
-          intent === 'manual'
-            ? 'Ошибка при добавлении карточки'
-            : 'Ошибка при импорте карточек'
+      if (!saveError && inserts.length > 0) {
+        await createCards(userId, folderId, inserts)
       }
-    }
 
-    if (!saveError && deletes.length > 0) {
-      const { error: deleteError } = await supabase.from('cards').delete().in('id', deletes)
-
-      if (deleteError) {
-        saveError = 'Ошибка при удалении старой карточки'
+      if (!saveError && deletes.length > 0) {
+        for (const id of deletes) await deleteCard(id)
       }
+    } catch {
+      saveError =
+        intent === 'manual'
+          ? 'Ошибка при добавлении карточки'
+          : 'Ошибка при импорте карточек'
     }
 
     setLoading(false)

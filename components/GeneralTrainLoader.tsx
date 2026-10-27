@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
-import { GeneralProgress, GeneralTraining } from '@/types/general'
-import { buildQueue, fetchProgress, fetchTrainingCards } from '@/lib/general'
+import { GeneralProgress } from '@/types/general'
+import { buildQueue } from '@/lib/general'
+import { fetchProgress, fetchTraining, fetchTrainingCards } from '@/lib/offline/repo'
 import GeneralTrainSession from '@/components/GeneralTrainSession'
 
 type Props = {
@@ -35,19 +35,17 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
     setLoading(true)
     setError(null)
     try {
-      const { data: t, error: tErr } = await supabase
-        .from('general_trainings')
-        .select('*')
-        .eq('id', trainingId)
-        .single()
-      if (tErr || !t) {
+      const t = await fetchTraining(trainingId)
+      if (!t) {
         setError('Тренировка не найдена')
         setLoading(false)
         return
       }
 
-      const cards = await fetchTrainingCards(t as GeneralTraining, user.id)
-      const prog = await fetchProgress(trainingId)
+      const [cards, prog] = await Promise.all([
+        fetchTrainingCards(t, user.id),
+        fetchProgress(trainingId),
+      ])
       setProgress(prog)
       setQueue(buildQueue(cards, prog, onlyMistakes))
     } catch {

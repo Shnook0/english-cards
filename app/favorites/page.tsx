@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
+import { fetchCards, setFavorite } from '@/lib/offline/repo'
 
 export default function FavoritesPage() {
   const { user, loading: authLoading } = useAuth()
@@ -27,17 +27,10 @@ export default function FavoritesPage() {
     setLoading(true)
     setError(null)
 
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_favorite', true)
-      .order('created_at', { ascending: false })
-
-    if (error) {
+    try {
+      setCards(await fetchCards({ userId: user.id, favorite: true, order: 'created_desc' }))
+    } catch {
       setError('Ошибка при загрузке избранных карточек')
-    } else {
-      setCards(data || [])
     }
     setLoading(false)
   }, [user])
@@ -49,13 +42,11 @@ export default function FavoritesPage() {
   }, [user, fetchFavoriteCards])
 
   const handleRemoveFavorite = async (cardId: string) => {
-    const { error } = await supabase
-      .from('cards')
-      .update({ is_favorite: false })
-      .eq('id', cardId)
-
-    if (!error) {
+    const ok = await setFavorite(cardId, false)
+    if (ok) {
       setCards(cards.filter(c => c.id !== cardId))
+    } else {
+      setError('Не удалось изменить избранное')
     }
   }
 

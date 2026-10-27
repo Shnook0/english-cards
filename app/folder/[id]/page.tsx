@@ -3,11 +3,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, Folder } from '@/types/database'
 import AddCardModal from '@/components/AddCardModal'
 import MatchRecord from '@/components/MatchRecord'
+import {
+  deleteCard,
+  deleteCardsByGroup,
+  deleteFolder as deleteFolderLocal,
+  fetchCards,
+  fetchFolder,
+  setFavorite,
+} from '@/lib/offline/repo'
 
 export default function FolderPage() {
   const { user, loading: authLoading } = useAuth()
@@ -27,33 +34,26 @@ export default function FolderPage() {
   }, [user, authLoading, router])
 
   const load = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     setError(null)
 
-    const { data: f, error: fErr } = await supabase
-      .from('folders')
-      .select('*')
-      .eq('id', folderId)
-      .single()
-
-    if (fErr || !f) {
+    const f = await fetchFolder(folderId)
+    if (!f) {
       setError('Папка не найдена')
       setLoading(false)
       return
     }
-    setFolder(f as Folder)
+    setFolder(f)
 
-    let q = supabase.from('cards').select('*')
-    if (f.type === 'learned') {
-      q = q.not('learned_at', 'is', null).order('learned_at', { ascending: true })
-    } else {
-      q = q.eq('folder_id', folderId).order('created_at', { ascending: false })
-    }
-    const { data: c, error: cErr } = await q
-    if (cErr) setError('Ошибка загрузки карточек')
-    else setCards((c ?? []) as Card[])
+    const c =
+      f.type === 'learned'
+        ? await fetchCards({ userId: user.id, learned: true, order: 'learned_asc' })
+        : await fetchCards({ userId: user.id, folderId, order: 'created_desc' })
+
+    setCards(c)
     setLoading(false)
-  }, [folderId])
+  }, [folderId, user])
 
   useEffect(() => {
     if (user && folderId) void load()
@@ -61,7 +61,11 @@ export default function FolderPage() {
 
   const toggleFav = async (card: Card) => {
     const newVal = !card.is_favorite
-    await supabase.from('cards').update({ is_favorite: newVal }).eq('id', card.id)
+    const ok = await setFavorite(card.id, newVal)
+    if (!ok) {
+      setError('Не удалось изменить избранное')
+      return
+    }
     setCards(prev => prev.map(c => (c.id === card.id ? { ...c, is_favorite: newVal } : c)))
   }
 
@@ -74,31 +78,36 @@ export default function FolderPage() {
       )
 
       if (deleteOnlyThis) {
-        await supabase.from('cards').delete().eq('id', card.id)
+        await deleteCard(card.id)
       } else {
         const deleteAll = window.confirm('Удалить ВСЕ копии этого слова?')
         if (deleteAll) {
-          await supabase.from('cards').delete().eq('sync_group_id', card.sync_group_id)
+          await deleteCardsByGroup(card.sync_group_id)
         } else {
           return
         }
       }
     } else {
       if (!confirm('Удалить карточку?')) return
-      await supabase.from('cards').delete().eq('id', card.id)
+      await deleteCard(card.id)
     }
 
     if (deleteOnlyThis) {
       setCards(prev => prev.filter(c => c.id !== card.id))
     } else {
-      load()
+      void load()
     }
   }
 
   const deleteFolder = async () => {
     if (!folder || folder.type === 'learned') return
     if (!confirm(`Удалить папку «${folder.name}» и все её карточки?`)) return
-    await supabase.from('folders').delete().eq('id', folder.id)
+    try {
+      await deleteFolderLocal(folder.id)
+    } catch {
+      setError('Не удалось удалить папку')
+      return
+    }
     router.push('/')
   }
 

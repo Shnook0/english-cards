@@ -3,10 +3,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Folder } from '@/types/database'
 import { GeneralTraining } from '@/types/general'
+import {
+  createGeneralTraining,
+  deleteGeneralTraining,
+  fetchFolders,
+  fetchGeneralTrainingFolders,
+  fetchGeneralTrainings,
+} from '@/lib/offline/repo'
 
 export default function GeneralPage() {
   const { user, loading: authLoading } = useAuth()
@@ -29,32 +35,21 @@ export default function GeneralPage() {
   }, [user, authLoading, router])
 
   const load = useCallback(async () => {
+    if (!user) return
     setLoading(true)
     setError(null)
 
-    const [tRes, fRes, tfRes] = await Promise.all([
-      supabase.from('general_trainings').select('*').order('created_at', { ascending: false }),
-      supabase.from('folders').select('*').eq('type', 'custom').order('created_at', { ascending: true }),
-      supabase.from('general_training_folders').select('*'),
+    const [list, folderList, map] = await Promise.all([
+      fetchGeneralTrainings(user.id),
+      fetchFolders(user.id, 'custom'),
+      fetchGeneralTrainingFolders(user.id),
     ])
 
-    if (tRes.error) {
-      setError('Ошибка загрузки тренировок. Проверьте, что таблицы созданы в Supabase.')
-      setLoading(false)
-      return
-    }
-
-    setTrainings((tRes.data ?? []) as GeneralTraining[])
-    setFolders((fRes.data ?? []) as Folder[])
-
-    const map: Record<string, string[]> = {}
-    for (const row of (tfRes.data ?? []) as { training_id: string; folder_id: string }[]) {
-      if (!map[row.training_id]) map[row.training_id] = []
-      map[row.training_id].push(row.folder_id)
-    }
+    setTrainings(list)
+    setFolders(folderList)
     setTrainingFolders(map)
     setLoading(false)
-  }, [])
+  }, [user])
 
   useEffect(() => {
     if (user) void load()
@@ -78,26 +73,12 @@ export default function GeneralPage() {
         : folders.filter(f => selected.includes(f.id)).map(f => f.name).join(', ')
     const finalName = name.trim() || defaultName
 
-    const { data: tr, error: tErr } = await supabase
-      .from('general_trainings')
-      .insert({ user_id: user.id, name: finalName, scope })
-      .select()
-      .single()
-
-    if (tErr || !tr) {
+    try {
+      await createGeneralTraining(user.id, finalName, scope, selected)
+    } catch {
       setError('Не удалось создать тренировку')
       setCreating(false)
       return
-    }
-
-    if (scope === 'custom') {
-      const rows = selected.map(fid => ({ training_id: tr.id, folder_id: fid }))
-      const { error: fErr } = await supabase.from('general_training_folders').insert(rows)
-      if (fErr) {
-        setError('Не удалось сохранить выбранные папки')
-        setCreating(false)
-        return
-      }
     }
 
     setName('')
@@ -110,8 +91,9 @@ export default function GeneralPage() {
 
   const deleteTraining = async (t: GeneralTraining) => {
     if (!confirm(`Удалить тренировку «${t.name}» вместе с её прогрессом? Карточки и папки не пострадают.`)) return
-    const { error: dErr } = await supabase.from('general_trainings').delete().eq('id', t.id)
-    if (dErr) {
+    try {
+      await deleteGeneralTraining(t.id)
+    } catch {
       setError('Не удалось удалить тренировку')
       return
     }

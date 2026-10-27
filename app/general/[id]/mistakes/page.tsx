@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card } from '@/types/database'
 import { GeneralProgress, GeneralTraining } from '@/types/general'
-import { fetchProgress, fetchTrainingCards, isMistakeActive, wordKey } from '@/lib/general'
+import { isMistakeActive, wordKey } from '@/lib/general'
+import { fetchProgress, fetchTraining, fetchTrainingCards } from '@/lib/offline/repo'
 
 type MistakeItem = { card: Card; progress: GeneralProgress }
 
@@ -32,20 +32,18 @@ export default function GeneralMistakesPage() {
     setLoading(true)
     setError(null)
     try {
-      const { data: t, error: tErr } = await supabase
-        .from('general_trainings')
-        .select('*')
-        .eq('id', trainingId)
-        .single()
-      if (tErr || !t) {
+      const t = await fetchTraining(trainingId)
+      if (!t) {
         setError('Тренировка не найдена')
         setLoading(false)
         return
       }
-      setTraining(t as GeneralTraining)
+      setTraining(t)
 
-      const cards = await fetchTrainingCards(t as GeneralTraining, user.id)
-      const progress = await fetchProgress(trainingId)
+      const [cards, progress] = await Promise.all([
+        fetchTrainingCards(t, user.id),
+        fetchProgress(trainingId),
+      ])
       const now = Date.now()
 
       const list: MistakeItem[] = []

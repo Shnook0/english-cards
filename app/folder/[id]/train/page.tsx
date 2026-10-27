@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, Folder } from '@/types/database'
 import TrainSession from '@/components/TrainSession'
 import { buildStudyQueue } from '@/lib/study'
+import { fetchCards, fetchFolder, fetchFolders } from '@/lib/offline/repo'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -39,38 +39,21 @@ export default function TrainFolderPage() {
     setLoading(true)
     setError(null)
     try {
-      const { data: f, error: fErr } = await supabase
-        .from('folders')
-        .select('*')
-        .eq('id', folderId)
-        .single()
-      if (fErr || !f) {
+      const f = await fetchFolder(folderId)
+      if (!f) {
         setError('Папка не найдена')
         setLoading(false)
         return
       }
-      setFolder(f as Folder)
+      setFolder(f)
 
-      const { data: lf } = await supabase
-        .from('folders')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('type', 'learned')
-        .single()
-      if (lf) setLearnedFolderId(lf.id)
+      const learnedFolders = await fetchFolders(user.id, 'learned')
+      if (learnedFolders[0]) setLearnedFolderId(learnedFolders[0].id)
 
-      const { data: all, error: cErr } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('folder_id', folderId)
-        .order('created_at', { ascending: true })
-      if (cErr) {
-        setError('Ошибка загрузки карточек')
-        setLoading(false)
-        return
-      }
-
-      const list = (all ?? []) as Card[]
+      const list =
+        f.type === 'learned'
+          ? await fetchCards({ userId: user.id, learned: true, order: 'learned_asc' })
+          : await fetchCards({ userId: user.id, folderId, order: 'created_asc' })
 
       if (f.type === 'level') {
         // Особая сортировка для уровня:
@@ -88,12 +71,7 @@ export default function TrainFolderPage() {
         ]
         setCards(queue)
       } else if (f.type === 'learned') {
-        const { data } = await supabase
-          .from('cards')
-          .select('*')
-          .not('learned_at', 'is', null)
-          .order('learned_at', { ascending: true })
-        setCards((data ?? []) as Card[])
+        setCards(list)
       } else {
         // Обычные папки: вся папка в умном порядке
         // (новые строго по порядку папки → повтор → ошибки → остальные невыученные → выученные)
