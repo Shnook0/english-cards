@@ -539,19 +539,19 @@ textarea::placeholder {
 }
 
 /* ── Анимация появления ────────────────────────────────── */
+/* Только прозрачность: transform на контейнере страницы ломает position: fixed у модальных
+   окон внутри (они позиционируются от страницы, а не от экрана — «чёрный экран»). */
 @keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
 .page-in {
-  animation: page-in 260ms ease both;
+  animation: page-in 260ms ease backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -23,6 +23,7 @@ function isHidden(path: string): boolean {
     path.startsWith('/login') ||
     path.startsWith('/reset-password') ||
     path.includes('/train') ||
+    path.endsWith('/repeat') ||
     path.includes('/play/')
   )
 }

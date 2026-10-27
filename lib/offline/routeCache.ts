@@ -15,6 +15,7 @@ async function collectRoutes(): Promise<string[]> {
   for (const folder of folders) {
     urls.add(`/folder/${folder.id}`)
     urls.add(`/folder/${folder.id}/train`)
+    urls.add(`/folder/${folder.id}/repeat`)
     for (const mode of PLAY_MODES) {
       urls.add(`/folder/${folder.id}/play/${mode}`)
     }

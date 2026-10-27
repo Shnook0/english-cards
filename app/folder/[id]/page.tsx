@@ -236,6 +236,24 @@ export default function FolderPage() {
         )}
       </section>
 
+      {!isLearnedFolder && learnedCards.length > 0 && (
+        <Link
+          href={`/folder/${folderId}/repeat`}
+          className="card card-link mt-3 flex items-center gap-4 p-4"
+        >
+          <span className="tile-icon tile-icon-success">
+            <Icon name="check" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="tile-title">Повторить выученные · {learnedCards.length}</p>
+            <p className="tile-text">
+              Проверьте, не забылись ли слова. «Не знаю» вернёт слово в изучение.
+            </p>
+          </div>
+          <Icon name="arrowRight" size={18} className="shrink-0 text-[#6b6b76]" />
+        </Link>
+      )}
+
       {!isLearnedFolder && cards.length > 0 && (
         <>
           <h2 className="section-label flex items-center justify-between">

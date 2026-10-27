@@ -12,20 +12,8 @@ import {
   newId,
 } from '@/lib/offline/connectivity'
 import { getPendingCount, enqueue } from '@/lib/offline/outbox'
-import { recordConflict } from '@/lib/offline/conflicts'
 import { resolveUserId } from '@/lib/offline/authCache'
-import {
-  isMissingColumn,
-  remoteCreateCardIfMissing,
-  remoteCreateTraining,
-  remoteDeleteCard,
-  remoteDeleteCardGroup,
-  remoteDeleteFolder,
-  remoteDeleteTraining,
-  remoteSaveBlocksRecord,
-  remoteSaveMatchRecord,
-  remoteUpdateCardContent,
-} from '@/lib/offline/remotes'
+import { remoteCreateCardIfMissing } from '@/lib/offline/remotes'
 import { patchCorrect, patchWrong } from '@/lib/study'
 import {
   INTERVALS_DAYS,
@@ -205,27 +193,6 @@ export async function createFolder(
 
   const db = getDb()
 
-  if (isOnline()) {
-    try {
-      const { data, error } = await supabase
-        .from('folders')
-        .insert(folder)
-        .select('*')
-        .single()
-
-      if (!error && data) {
-        noteNetworkSuccess()
-        await db.folders.put(data as Folder)
-        return data as Folder
-      }
-
-      if (error && !isNetworkError(error)) {
-        throw new Error(error.message)
-      }
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   await db.folders.put(folder)
   await enqueue('folder_create', 'folder', folder.id, { folder })
@@ -235,19 +202,6 @@ export async function createFolder(
 export async function deleteFolder(folderId: string): Promise<void> {
   const db = getDb()
 
-  if (isOnline()) {
-    try {
-      await remoteDeleteFolder(folderId)
-      await db.transaction('rw', [db.folders, db.cards], async () => {
-        await db.folders.delete(folderId)
-        const cards = await db.cards.where('folder_id').equals(folderId).toArray()
-        if (cards.length > 0) await db.cards.bulkDelete(cards.map(card => card.id))
-      })
-      return
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   await enqueue('folder_delete', 'folder', folderId, {})
   await db.transaction('rw', [db.folders, db.cards], async () => {
@@ -295,40 +249,6 @@ export async function createCards(
 
   if (rows.length === 0) return rows
 
-  if (isOnline()) {
-    const saved: Card[] = []
-
-    for (let index = 0; index < rows.length; index += 200) {
-      const chunk = rows.slice(index, index + 200)
-      let { data, error } = await supabase.from('cards').insert(chunk).select('*')
-
-      if (error && isMissingColumn(error)) {
-        const stripped = chunk.map(card => {
-          const next = { ...card }
-          delete next.content_updated_at
-          delete next.last_answer_at
-          return next
-        })
-        const retry = await supabase.from('cards').insert(stripped).select('*')
-        data = retry.data
-        error = retry.error
-      }
-
-      if (error) {
-        if (isNetworkError(error)) noteNetworkFailure()
-        else throw new Error(error.message)
-        break
-      }
-
-      saved.push(...((data ?? []) as Card[]))
-    }
-
-    if (saved.length === rows.length) {
-      noteNetworkSuccess()
-      await db.cards.bulkPut(saved)
-      return saved
-    }
-  }
 
   await db.cards.bulkPut(rows)
   for (const card of rows) {
@@ -362,28 +282,6 @@ export async function updateCardContent(
   const base = baseContentUpdatedAt ?? local?.content_updated_at ?? null
   const now = new Date().toISOString()
 
-  if (isOnline()) {
-    try {
-      const result = await remoteUpdateCardContent(cardId, patch, base)
-      if (result.status === 'ok') {
-        await db.cards.put(result.card)
-        return { ok: true, card: result.card }
-      }
-      if (result.status === 'conflict') {
-        await recordConflict(cardId, patch, result.remote, base)
-        return {
-          ok: false,
-          conflict: true,
-          error: 'Карточку изменили на другом устройстве. Откройте «Настройки → Конфликты».',
-        }
-      }
-      return { ok: false, error: 'Карточка не найдена на сервере' }
-    } catch (error) {
-      if (!isNetworkError(error)) {
-        return { ok: false, error: 'Не удалось сохранить карточку' }
-      }
-    }
-  }
 
   const merged: Card = {
     ...(local ?? {
@@ -430,15 +328,6 @@ export async function resetWrongCount(cardId: string): Promise<boolean> {
 export async function deleteCard(cardId: string): Promise<void> {
   const db = getDb()
 
-  if (isOnline()) {
-    try {
-      await remoteDeleteCard(cardId)
-      await db.cards.delete(cardId)
-      return
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   await enqueue('card_delete', 'card', cardId, {})
   await db.cards.delete(cardId)
@@ -448,15 +337,6 @@ export async function deleteCardsByGroup(syncGroupId: string): Promise<void> {
   const db = getDb()
   const cards = await db.cards.where('sync_group_id').equals(syncGroupId).toArray()
 
-  if (isOnline()) {
-    try {
-      await remoteDeleteCardGroup(syncGroupId)
-      if (cards.length > 0) await db.cards.bulkDelete(cards.map(card => card.id))
-      return
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   await enqueue('card_delete_group', 'card', syncGroupId, { syncGroupId })
   if (cards.length > 0) await db.cards.bulkDelete(cards.map(card => card.id))
@@ -642,16 +522,6 @@ export async function createGeneralTraining(
     folder_id: folderId,
   }))
 
-  if (isOnline()) {
-    try {
-      await remoteCreateTraining(training, scope === 'custom' ? folderIds : [])
-      await db.general_trainings.put(training)
-      if (links.length > 0) await db.general_training_folders.bulkPut(links)
-      return training
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   await db.general_trainings.put(training)
   if (links.length > 0) await db.general_training_folders.bulkPut(links)
@@ -665,23 +535,6 @@ export async function createGeneralTraining(
 export async function deleteGeneralTraining(trainingId: string): Promise<void> {
   const db = getDb()
 
-  if (isOnline()) {
-    try {
-      await remoteDeleteTraining(trainingId)
-      await db.transaction(
-        'rw',
-        [db.general_trainings, db.general_training_folders, db.general_progress],
-        async () => {
-          await db.general_trainings.delete(trainingId)
-          await db.general_training_folders.where('training_id').equals(trainingId).delete()
-          await db.general_progress.where('training_id').equals(trainingId).delete()
-        }
-      )
-      return
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   await enqueue('general_delete', 'training', trainingId, {})
   await db.transaction(
@@ -938,27 +791,6 @@ export async function saveBestTime(
   const local = await db.match_records.get([userId, scope])
   if (local && local.best_time <= time) return 'not_better'
 
-  if (isOnline()) {
-    try {
-      await remoteSaveMatchRecord(scope, time)
-      const { data } = await supabase
-        .from('match_records')
-        .select('best_time')
-        .eq('user_id', userId)
-        .eq('scope', scope)
-        .maybeSingle()
-      const remote = data ? Number(data.best_time) : time
-      await db.match_records.put({
-        user_id: userId,
-        scope,
-        best_time: remote,
-        updated_at: new Date().toISOString(),
-      })
-      return remote === time ? 'saved' : 'not_better'
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   const row: MatchRecordRow = {
     user_id: userId,
@@ -1016,27 +848,6 @@ export async function saveBestScore(scope: string, score: number): Promise<boole
   const local = await db.blocks_records.get([userId, scope])
   if (local && local.best_score >= score) return false
 
-  if (isOnline()) {
-    try {
-      await remoteSaveBlocksRecord(scope, score)
-      const { data } = await supabase
-        .from('blocks_records')
-        .select('best_score')
-        .eq('user_id', userId)
-        .eq('scope', scope)
-        .maybeSingle()
-      const remote = data ? Number(data.best_score) : score
-      await db.blocks_records.put({
-        user_id: userId,
-        scope,
-        best_score: remote,
-        updated_at: new Date().toISOString(),
-      })
-      return remote <= score
-    } catch (error) {
-      if (!isNetworkError(error)) throw error
-    }
-  }
 
   const row: BlocksRecordRow = {
     user_id: userId,
