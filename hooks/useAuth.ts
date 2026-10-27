@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { cacheUser, clearCachedUser, getCachedUser } from '@/lib/offline/authCache'
+import { cacheUser, clearCachedUser, getCachedUser, getSessionUser } from '@/lib/offline/authCache'
 
 function cachedAsUser(cached: { id: string; email: string | null } | null): User | null {
   if (!cached) return null
@@ -18,15 +18,13 @@ export function useAuth() {
     let mounted = true
 
     const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      const sessionUser = await getSessionUser()
 
       if (!mounted) return
 
-      if (session?.user) {
-        await cacheUser(session.user)
-        setUser(session.user)
+      if (sessionUser) {
+        await cacheUser(sessionUser)
+        setUser(sessionUser)
       } else {
         const cached = await getCachedUser()
         setUser(cachedAsUser(cached))

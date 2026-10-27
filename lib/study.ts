@@ -155,6 +155,7 @@ export function patchWrong(card: Card, isLevel: boolean, at: number = Date.now()
 // Ставит слово в обычные запланированные повторы Telegram-бота.
 // Это не ветка «Не знаю» внутри бота, а очередь, которую бот присылает по расписанию.
 export async function queueBotRepeat(cardId: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return false
   try {
     const { data } = await supabase.auth.getSession()
     const token = data.session?.access_token

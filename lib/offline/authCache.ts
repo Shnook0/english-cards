@@ -20,16 +20,27 @@ export async function clearCachedUser(): Promise<void> {
   await setMeta(AUTH_CACHE_KEY, null)
 }
 
-export async function resolveUserId(): Promise<string | null> {
+const SESSION_TIMEOUT_MS = 3000
+
+// Offline, supabase retries the token refresh for a long time; never wait on it.
+export async function getSessionUser(): Promise<User | null> {
+  if (!isOnline()) return null
   try {
-    const { data } = await supabase.auth.getSession()
-    const user = data.session?.user
-    if (user) {
-      await cacheUser(user)
-      return user.id
-    }
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), SESSION_TIMEOUT_MS)),
+    ])
+    return result?.data.session?.user ?? null
   } catch {
-    // Offline: fall through to the cached user below.
+    return null
+  }
+}
+
+export async function resolveUserId(): Promise<string | null> {
+  const user = await getSessionUser()
+  if (user) {
+    await cacheUser(user)
+    return user.id
   }
 
   if (!isOnline()) {
