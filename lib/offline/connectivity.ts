@@ -2,19 +2,42 @@ import { setMeta } from '@/lib/offline/db'
 
 const CONNECTIVITY_EVENT = 'english-cards:connectivity'
 
+const FAILURE_KEY = 'english-cards:net-failure'
+const FAILURE_TTL_MS = 60000
+
 let forcedOffline = false
 
 export function isBrowser(): boolean {
   return typeof window !== 'undefined'
 }
 
+// Офлайн-переходы перезагружают страницу целиком, поэтому «сети нет» помним в sessionStorage,
+// иначе каждая страница заново ждала бы таймаут запроса.
+function rememberFailure(failed: boolean): void {
+  try {
+    if (failed) sessionStorage.setItem(FAILURE_KEY, String(Date.now()))
+    else sessionStorage.removeItem(FAILURE_KEY)
+  } catch {}
+}
+
+function recentFailure(): boolean {
+  try {
+    const at = Number(sessionStorage.getItem(FAILURE_KEY))
+    return at > 0 && Date.now() - at < FAILURE_TTL_MS
+  } catch {
+    return false
+  }
+}
+
 export function isOnline(): boolean {
   if (!isBrowser()) return false
+  if (!forcedOffline && recentFailure()) forcedOffline = true
   return navigator.onLine && !forcedOffline
 }
 
 export function noteNetworkFailure(): void {
   if (!isBrowser()) return
+  rememberFailure(true)
   if (!forcedOffline) {
     forcedOffline = true
     window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
@@ -23,6 +46,7 @@ export function noteNetworkFailure(): void {
 
 export function noteNetworkSuccess(): void {
   if (!isBrowser()) return
+  rememberFailure(false)
   if (forcedOffline) {
     forcedOffline = false
     window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
@@ -30,6 +54,7 @@ export function noteNetworkSuccess(): void {
 }
 
 export function resetForcedOffline(): void {
+  rememberFailure(false)
   if (forcedOffline) {
     forcedOffline = false
     if (isBrowser()) window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
@@ -40,6 +65,7 @@ export function subscribeConnectivity(listener: () => void): () => void {
   if (!isBrowser()) return () => {}
   const onOnline = () => {
     forcedOffline = false
+    rememberFailure(false)
     listener()
   }
   const onOffline = () => listener()

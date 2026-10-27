@@ -2,7 +2,7 @@
 
 import { defaultCache } from '@serwist/turbopack/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from 'serwist'
+import { ExpirationPlugin, NetworkOnly, Serwist, StaleWhileRevalidate } from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -46,9 +46,8 @@ const serwist = new Serwist({
         sameOrigin &&
         !url.pathname.startsWith('/api/') &&
         (request.mode === 'navigate' || request.destination === 'document'),
-      handler: new NetworkFirst({
+      handler: new StaleWhileRevalidate({
         cacheName: appPagesCache,
-        networkTimeoutSeconds: 3,
         matchOptions: { ignoreVary: true },
         plugins: [
           new ExpirationPlugin({
