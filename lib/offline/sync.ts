@@ -10,7 +10,7 @@ import {
   getPendingCount,
   markOutboxFailed,
 } from '@/lib/offline/outbox'
-import { isNetworkError, isOnline, noteNetworkFailure } from '@/lib/offline/connectivity'
+import { isNetworkError, isOnline, isSnapshotFresh, noteNetworkFailure } from '@/lib/offline/connectivity'
 import { recordConflict } from '@/lib/offline/conflicts'
 import { pullSnapshot } from '@/lib/offline/data'
 import {
@@ -196,9 +196,10 @@ async function pushOutbox(): Promise<SyncResult> {
   }
 }
 
+const PULL_MIN_INTERVAL_MS = 60000
 const running = new Map<string, Promise<SyncResult>>()
 
-async function runSync(userId: string): Promise<SyncResult> {
+async function runSync(userId: string, force: boolean): Promise<SyncResult> {
   if (!isOnline()) {
     return {
       ok: false,
@@ -214,7 +215,7 @@ async function runSync(userId: string): Promise<SyncResult> {
   if (!pushed.ok) return pushed
 
   let pulled = false
-  if (pushed.pending === 0 && pushed.failed === 0) {
+  if (pushed.pending === 0 && pushed.failed === 0 && (force || !isSnapshotFresh(PULL_MIN_INTERVAL_MS))) {
     pulled = await pullSnapshot(userId)
   }
 
@@ -231,11 +232,11 @@ async function runSync(userId: string): Promise<SyncResult> {
   }
 }
 
-export function syncNow(userId: string): Promise<SyncResult> {
+export function syncNow(userId: string, force = false): Promise<SyncResult> {
   const current = running.get(userId)
   if (current) return current
 
-  const task = runSync(userId).finally(() => {
+  const task = runSync(userId, force).finally(() => {
     running.delete(userId)
   })
   running.set(userId, task)

@@ -184,7 +184,7 @@ export default function SettingsPage() {
     setBusy('sync')
     setMessage(null)
     try {
-      const result = await syncNow(user.id)
+      const result = await syncNow(user.id, true)
       await refresh()
       setMessage(syncResultMessage(result))
     } catch {
@@ -200,7 +200,7 @@ export default function SettingsPage() {
     setMessage(null)
     try {
       await retryFailedOutbox()
-      const result = await syncNow(user.id)
+      const result = await syncNow(user.id, true)
       await refresh()
       setMessage(syncResultMessage(result))
     } catch {

@@ -5,6 +5,8 @@ import { getDb, setMeta } from '@/lib/offline/db'
 import {
   isNetworkError,
   isOnline,
+  isReadOnline,
+  markSnapshotFresh,
   noteNetworkFailure,
   noteNetworkSuccess,
   newId,
@@ -122,7 +124,7 @@ export async function fetchCards(query: CardQuery): Promise<Card[]> {
   const local = await localCards(query)
   const pending = await getPendingCount().catch(() => 0)
 
-  if (!isOnline() || (pending > 0 && local.length > 0)) return local
+  if (!isReadOnline() || (pending > 0 && local.length > 0)) return local
 
   try {
     const remote = await remoteCards(query)
@@ -144,7 +146,7 @@ export async function fetchFolders(
   local.sort((a, b) => a.created_at.localeCompare(b.created_at))
 
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || (pending > 0 && local.length > 0)) return local
+  if (!isReadOnline() || (pending > 0 && local.length > 0)) return local
 
   const rows: Folder[] = []
   try {
@@ -173,7 +175,7 @@ export async function fetchFolder(folderId: string): Promise<Folder | null> {
   const db = getDb()
   const local = (await db.folders.get(folderId)) ?? null
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || (pending > 0 && local)) return local
+  if (!isReadOnline() || (pending > 0 && local)) return local
 
   const { data, error } = await supabase
     .from('folders')
@@ -534,7 +536,7 @@ export async function fetchGeneralTrainings(userId: string): Promise<GeneralTrai
   local.sort((a, b) => b.created_at.localeCompare(a.created_at))
 
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || (pending > 0 && local.length > 0)) return local
+  if (!isReadOnline() || (pending > 0 && local.length > 0)) return local
 
   const rows: GeneralTraining[] = []
   try {
@@ -566,7 +568,7 @@ export async function fetchTraining(
   const db = getDb()
   const local = (await db.general_trainings.get(trainingId)) ?? null
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || (pending > 0 && local)) return local
+  if (!isReadOnline() || (pending > 0 && local)) return local
 
   const { data, error } = await supabase
     .from('general_trainings')
@@ -593,7 +595,7 @@ export async function fetchTrainingFolderIds(trainingId: string): Promise<string
     .toArray()
 
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || (pending > 0 && local.length > 0)) {
+  if (!isReadOnline() || (pending > 0 && local.length > 0)) {
     return local.map(row => row.folder_id)
   }
 
@@ -634,7 +636,7 @@ export async function fetchGeneralTrainingFolders(
   }
 
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || pending > 0 || trainings.length === 0) return map
+  if (!isReadOnline() || pending > 0 || trainings.length === 0) return map
 
   try {
     const ids = trainings.map(training => training.id)
@@ -767,7 +769,7 @@ export async function fetchTrainingCards(
 
   const local = await localTrainingCards(folderIds)
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || (pending > 0 && local.length > 0)) return local
+  if (!isReadOnline() || (pending > 0 && local.length > 0)) return local
 
   const all: Card[] = []
   try {
@@ -814,7 +816,7 @@ export async function fetchProgress(trainingId: string): Promise<Record<string, 
   const local = progressToMap(localRows)
 
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || pending > 0) return local
+  if (!isReadOnline() || pending > 0) return local
 
   const rows: GeneralProgress[] = []
   try {
@@ -959,7 +961,7 @@ export async function fetchBestTime(scope: string): Promise<number | null> {
 
   const local = await db.match_records.get([userId, scope])
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || pending > 0) return local?.best_time ?? null
+  if (!isReadOnline() || pending > 0) return local?.best_time ?? null
 
   const { data, error } = await supabase
     .from('match_records')
@@ -1040,7 +1042,7 @@ export async function fetchBestScore(scope: string): Promise<number | null> {
 
   const local = await db.blocks_records.get([userId, scope])
   const pending = await getPendingCount().catch(() => 0)
-  if (!isOnline() || pending > 0) return local?.best_score ?? null
+  if (!isReadOnline() || pending > 0) return local?.best_score ?? null
 
   const { data, error } = await supabase
     .from('blocks_records')
@@ -1258,6 +1260,7 @@ export async function pullSnapshot(userId: string): Promise<boolean> {
     )
 
     noteNetworkSuccess()
+    markSnapshotFresh()
     await setMeta('last_sync_at', new Date().toISOString())
     return true
   } catch (error) {

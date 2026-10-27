@@ -35,6 +35,31 @@ export function isOnline(): boolean {
   return navigator.onLine && !forcedOffline
 }
 
+const SNAPSHOT_KEY = 'english-cards:snapshot-at'
+const SNAPSHOT_FRESH_MS = 5 * 60000
+
+export function markSnapshotFresh(): void {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, String(Date.now()))
+  } catch {}
+}
+
+export function isSnapshotFresh(maxAgeMs: number): boolean {
+  if (!isBrowser()) return false
+  try {
+    const at = Number(localStorage.getItem(SNAPSHOT_KEY))
+    return at > 0 && Date.now() - at < maxAgeMs
+  } catch {
+    return false
+  }
+}
+
+// Чтение: пока полная копия данных на устройстве свежая, не ждём сеть вообще.
+// Это главное, что делает страницы быстрыми, когда iOS в авиарежиме говорит «онлайн».
+export function isReadOnline(): boolean {
+  return isOnline() && !isSnapshotFresh(SNAPSHOT_FRESH_MS)
+}
+
 export function noteNetworkFailure(): void {
   if (!isBrowser()) return
   rememberFailure(true)

@@ -18,6 +18,20 @@ export function useAuth() {
     let mounted = true
 
     const init = async () => {
+      // Сначала берём пользователя с устройства — не ждём сеть. Сессию проверяем в фоне.
+      const cached = await getCachedUser().catch(() => null)
+      if (!mounted) return
+
+      if (cached) {
+        setUser(cachedAsUser(cached))
+        setLoading(false)
+        const fresh = await getSessionUser()
+        if (!mounted || !fresh) return
+        await cacheUser(fresh)
+        if (fresh.id !== cached.id) setUser(fresh)
+        return
+      }
+
       const sessionUser = await getSessionUser()
 
       if (!mounted) return

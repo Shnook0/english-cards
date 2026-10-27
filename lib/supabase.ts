@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+﻿import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -7,7 +7,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Отсутствуют переменные окружения для Supabase в .env.local')
 }
 
-const READ_TIMEOUT_MS = 3000
+const READ_TIMEOUT_MS = 6000
 const WRITE_TIMEOUT_MS = 20000
 
 // iOS в авиарежиме часто оставляет navigator.onLine = true, и запросы к Supabase
