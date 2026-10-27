@@ -2,7 +2,7 @@
 
 import { defaultCache } from '@serwist/turbopack/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { NetworkOnly, Serwist } from 'serwist'
+import { ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from 'serwist'
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -32,6 +32,7 @@ const appShellEntries: PrecacheEntry[] = [
   '/reset-password',
 ].map(url => ({ url, revision: buildId ?? 'app-shell' }))
 
+const appPagesCache = `app-pages-${buildId ?? 'app-shell'}`
 const networkOnly = new NetworkOnly()
 
 const serwist = new Serwist({
@@ -41,12 +42,102 @@ const serwist = new Serwist({
   navigationPreload: true,
   runtimeCaching: [
     {
+      matcher: ({ request, url, sameOrigin }) =>
+        sameOrigin &&
+        !url.pathname.startsWith('/api/') &&
+        (request.mode === 'navigate' || request.destination === 'document'),
+      handler: new NetworkFirst({
+        cacheName: appPagesCache,
+        networkTimeoutSeconds: 3,
+        matchOptions: { ignoreVary: true },
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 200,
+            maxAgeSeconds: 30 * 24 * 60 * 60,
+          }),
+        ],
+      }),
+    },
+    {
       matcher: ({ url }) =>
         url.hostname.endsWith('.supabase.co') || url.pathname.startsWith('/api/'),
       handler: networkOnly,
     },
     ...defaultCache,
   ],
+  fallbacks: {
+    entries: [
+      {
+        url: '/offline.html',
+        matcher: ({ request }) =>
+          request.mode === 'navigate' || request.destination === 'document',
+      },
+    ],
+  },
 })
 
 serwist.addEventListeners()
+
+const MAX_WARM_ROUTES = 60
+let warming = false
+
+async function warmRoutes(urls: string[]): Promise<void> {
+  if (!Array.isArray(urls) || warming) return
+  warming = true
+
+  try {
+    const cache = await caches.open(appPagesCache)
+    const origin = self.location.origin
+    let added = 0
+
+    for (const value of urls) {
+      if (added >= MAX_WARM_ROUTES) break
+      if (typeof value !== 'string' || !value.startsWith('/')) continue
+
+      let url: URL
+      try {
+        url = new URL(value, origin)
+      } catch {
+        continue
+      }
+      if (url.origin !== origin) continue
+
+      const cached = await cache.match(url.href, { ignoreVary: true })
+      if (cached) continue
+
+      try {
+        const response = await fetch(url.href, {
+          credentials: 'same-origin',
+          headers: { Accept: 'text/html' },
+        })
+        if (
+          response.ok &&
+          response.headers.get('content-type')?.includes('text/html')
+        ) {
+          await cache.put(url.href, response)
+          added++
+        }
+      } catch {}
+    }
+  } finally {
+    warming = false
+  }
+}
+
+self.addEventListener('message', event => {
+  const data = event.data as { type?: unknown; urls?: unknown } | null
+  if (!data || data.type !== 'warm-routes' || !Array.isArray(data.urls)) return
+  event.waitUntil(warmRoutes(data.urls))
+})
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(key => key.startsWith('app-pages-') && key !== appPagesCache)
+          .map(key => caches.delete(key))
+      )
+    )
+  )
+})

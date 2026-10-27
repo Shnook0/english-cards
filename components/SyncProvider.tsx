@@ -147,15 +147,15 @@ export default function SyncProvider() {
   }
 
   const accent = !state.online
-    ? 'border-[#4a463e] text-[#b5aea1]'
+    ? 'border-[#44444e] text-[#b0b0bb]'
     : state.conflicts > 0 || state.error
-    ? 'border-[#bb7464]/60 text-[#d9a093]'
-    : 'border-[#c9a96e]/50 text-[#c9a96e]'
+    ? 'border-[#e5786f]/60 text-[#f0a39b]'
+    : 'border-[#8ea2ff]/50 text-[#8ea2ff]'
 
   return (
     <Link
       href="/settings"
-      className={`fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] rounded-full border bg-[#111110]/95 px-3.5 py-2 text-[11px] shadow-xl backdrop-blur transition hover:border-[#c9a96e] ${accent}`}
+      className={`fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] rounded-full border bg-[#15151a]/95 px-3.5 py-2 text-xs shadow-xl backdrop-blur transition hover:border-[#8ea2ff] ${accent}`}
       style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
     >
       <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current align-middle" />

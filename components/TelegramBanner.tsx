@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 
 type BotInfo = {
   connected: boolean
@@ -12,7 +12,7 @@ type BotInfo = {
 
 export default function TelegramBanner() {
   const { user, loading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
 
   const [info, setInfo] = useState<BotInfo>({ connected: false, botUrl: null })
   const [checking, setChecking] = useState(false)
@@ -155,7 +155,7 @@ export default function TelegramBanner() {
         <div className="max-w-2xl">
           <p className="eyebrow">Telegram</p>
           <h2 className="mt-2 text-2xl md:text-3xl">Повторяйте слова в мессенджере</h2>
-          <p className="mt-3 text-sm leading-6 text-[#b5aea1]">
+          <p className="mt-3 text-sm leading-6 text-[#b0b0bb]">
             Бот присылает сложные слова из ваших папок, помогает повторять их и
             увеличивать ваш словарный запас. Прогресс сохраняется после каждого
             ответа. Подключение занимает пару секунд — регистрация не нужна.
@@ -178,14 +178,14 @@ export default function TelegramBanner() {
             </button>
             {info.connected && (
               <>
-                <span className="text-[10px] uppercase tracking-[0.16em] text-[#9fb59f]">
+                <span className="text-xs text-[#7fc8a0]">
                   уже подключён
                 </span>
                 <button
                   type="button"
                   onClick={disconnect}
                   disabled={disconnecting || connecting}
-                  className="btn btn-ghost !px-0 !py-0 text-[10px] text-[#bb7464] hover:text-[#d9a093]"
+                  className="btn btn-ghost !px-0 !py-0 text-xs text-[#e5786f] hover:text-[#f0a39b]"
                 >
                   {disconnecting ? 'Отвязываем...' : 'Отвязать Telegram'}
                 </button>
@@ -194,69 +194,69 @@ export default function TelegramBanner() {
           </div>
 
           {notice && (
-            <p className="mt-3 border border-[#9fb59f]/40 bg-[#9fb59f]/10 px-3 py-2 text-xs text-[#b9c9b8]">
+            <p className="mt-3 border border-[#7fc8a0]/40 bg-[#7fc8a0]/10 px-3 py-2 text-xs text-[#a9ddc0]">
               {notice}
             </p>
           )}
 
           {error && (
-            <p className="mt-3 border border-[#bb7464]/50 bg-[#bb7464]/10 px-3 py-2 text-xs text-[#d9a093]">
+            <p className="mt-3 border border-[#e5786f]/50 bg-[#e5786f]/10 px-3 py-2 text-xs text-[#f0a39b]">
               {error}
             </p>
           )}
 
-          <p className="mt-3 max-w-[260px] text-[10px] leading-4 text-[#6f6a61]">
+          <p className="mt-3 max-w-[260px] text-xs leading-4 text-[#6b6b76]">
             Откроется Telegram и привяжет бота к вашему аккаунту на сайте.
           </p>
         </div>
       </div>
 
-      <div className="mt-7 border-t border-[#24221e] pt-6">
+      <div className="mt-7 border-t border-[#24242b] pt-6">
         <p className="eyebrow">Как это работает</p>
         <div className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-[#f2eee5]">Слова из ваших папок</p>
-            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm font-medium text-[#ececf1]">Слова из ваших папок</p>
+            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
               Бот берёт слова с сайта и присылает их в удобное для вас время.
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-[#f2eee5]">Окно и интервал</p>
-            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm font-medium text-[#ececf1]">Окно и интервал</p>
+            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
               Настройте, когда и как часто приходят слова. Например, с 09:00 до
               21:00 каждые 60 минут.
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-[#f2eee5]">Кнопка «Не знаю»</p>
-            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm font-medium text-[#ececf1]">Кнопка «Не знаю»</p>
+            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
               Слово начнёт приходить чаще: через 15 минут, 2 и 5 часов, затем через
               1, 2, 4, 7, 15 и 30 дней.
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-[#f2eee5]">Кнопка «Знаю»</p>
-            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm font-medium text-[#ececf1]">Кнопка «Знаю»</p>
+            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
               Бот отметит слово как знакомое и будет повторять его реже. Прогресс
               сохраняется автоматически.
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-[#f2eee5]">Перевод и лишние слова</p>
-            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm font-medium text-[#ececf1]">Перевод и лишние слова</p>
+            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
               Перевод можно скрыть под спойлером, а ненужное слово — отключить
               кнопкой «Больше не повторять». В папке оно останется.
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-[#f2eee5]">Настройки в боте</p>
-            <p className="mt-1 text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm font-medium text-[#ececf1]">Настройки в боте</p>
+            <p className="mt-1 text-sm leading-6 text-[#b0b0bb]">
               Окно, интервал и часовой пояс меняются кнопкой «Настройки» прямо в
               Telegram.
             </p>
           </div>
         </div>
-        <p className="mt-5 text-xs leading-5 text-[#6f6a61]">
+        <p className="mt-5 text-xs leading-5 text-[#6b6b76]">
           Нажмите «Подключить бота» — Telegram откроется автоматически, и бот
           привяжется к вашему аккаунту.
         </p>

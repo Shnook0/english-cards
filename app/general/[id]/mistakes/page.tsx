@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card } from '@/types/database'
 import { GeneralProgress, GeneralTraining } from '@/types/general'
 import { isMistakeActive, wordKey } from '@/lib/general'
@@ -14,7 +15,7 @@ type MistakeItem = { card: Card; progress: GeneralProgress }
 export default function GeneralMistakesPage() {
   const { user, loading: authLoading } = useAuth()
   const params = useParams()
-  const router = useRouter()
+  const router = useOfflineRouter()
   const trainingId = params.id as string
 
   const [training, setTraining] = useState<GeneralTraining | null>(null)
@@ -80,7 +81,7 @@ export default function GeneralMistakesPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
         Загрузка...
       </div>
     )
@@ -88,9 +89,9 @@ export default function GeneralMistakesPage() {
 
   if (error || !training) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#bb7464]">{error || 'Тренировка не найдена'}</p>
-        <Link href="/general" className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#e5786f]">{error || 'Тренировка не найдена'}</p>
+        <Link href="/general" className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
       </div>
     )
   }
@@ -101,18 +102,18 @@ export default function GeneralMistakesPage() {
         <div className="mb-10 flex items-center justify-between">
           <Link
             href={`/general/${trainingId}`}
-            className="link-muted text-xs uppercase tracking-[0.18em]"
+            className="link-muted text-xs"
           >
             ← {training.name}
           </Link>
           <span className="eyebrow">Разбор ошибок</span>
         </div>
 
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24221e] pb-8">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24242b] pb-8">
           <div>
             <p className="eyebrow mb-3">Общая практика</p>
             <h1 className="display text-5xl md:text-6xl">Общие ошибки</h1>
-            <p className="mt-4 text-sm text-[#948e82]">Слов в ошибках: {items.length}</p>
+            <p className="mt-4 text-sm text-[#8a8a96]">Слов в ошибках: {items.length}</p>
           </div>
           {items.length > 0 && (
             <Link
@@ -127,7 +128,7 @@ export default function GeneralMistakesPage() {
         {items.length === 0 ? (
           <div className="panel p-14 text-center">
             <p className="display mb-3 text-3xl">Чисто</p>
-            <p className="text-sm text-[#948e82]">Сейчас в ошибках нет слов.</p>
+            <p className="text-sm text-[#8a8a96]">Сейчас в ошибках нет слов.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -138,11 +139,11 @@ export default function GeneralMistakesPage() {
                     {card.word}
                   </span>
                   {card.transcription && (
-                    <p className="mt-1 text-sm text-[#948e82]">{card.transcription}</p>
+                    <p className="mt-1 text-sm text-[#8a8a96]">{card.transcription}</p>
                   )}
-                  <p className="mb-4 mt-3 text-base text-[#f2eee5]">{card.translation}</p>
+                  <p className="mb-4 mt-3 text-base text-[#ececf1]">{card.translation}</p>
                 </div>
-                <div className="border-t border-[#24221e] pt-4 text-xs leading-5 text-[#948e82]">
+                <div className="border-t border-[#24242b] pt-4 text-xs leading-5 text-[#8a8a96]">
                   В ошибках до: {formatUntil(progress.mistake_until)}
                 </div>
               </div>

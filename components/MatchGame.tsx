@@ -174,27 +174,27 @@ export default function MatchGame({
 
   if (phase === 'finished') {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">
             {cards.length === 0 ? 'Нет слов для подбора' : 'Сессия завершена'}
           </h2>
           {cards.length > 0 && (
-            <p className="text-sm text-[#948e82] mb-6">Раундов сыграно: {roundNo}</p>
+            <p className="text-sm text-[#8a8a96] mb-6">Раундов сыграно: {roundNo}</p>
           )}
           {cards.length === 0 && <div className="mb-6" />}
           <div className="flex flex-col gap-3">
             {cards.length > 0 && (
               <button
                 onClick={onNextRound}
-                className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
+                className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
               >
                 Ещё раунд
               </button>
             )}
             <button
               onClick={onExit}
-              className="w-full rounded-lg border border-[#2d2a25] py-3 font-medium hover:border-[#c9a96e] transition"
+              className="w-full rounded-lg border border-[#2c2c34] py-3 font-medium hover:border-[#8ea2ff] transition"
             >
               Выйти
             </button>
@@ -206,29 +206,29 @@ export default function MatchGame({
 
   if (phase === 'roundDone') {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Раунд {roundNo} завершён</h2>
-          <p className="text-3xl font-bold text-[#c9a96e] mb-2">{formatTime(lastTime)} с</p>
+          <p className="text-3xl font-bold text-[#8ea2ff] mb-2">{formatTime(lastTime)} с</p>
 
           {fullRound ? (
             isRecord ? (
-              <p className="text-[#9fb59f] font-semibold mb-2">Новый рекорд! 🏆</p>
+              <p className="text-[#7fc8a0] font-semibold mb-2">Новый рекорд! 🏆</p>
             ) : (
               best !== null && (
-                <p className="text-sm text-[#948e82] mb-2">Рекорд: {formatTime(best)} с</p>
+                <p className="text-sm text-[#8a8a96] mb-2">Рекорд: {formatTime(best)} с</p>
               )
             )
           ) : (
-            <p className="text-xs text-[#948e82] mb-2">
+            <p className="text-xs text-[#8a8a96] mb-2">
               Рекорд считается только за полный раунд из 6 пар
             </p>
           )}
 
-          <p className="text-sm text-[#948e82] mb-6">Ошибок: {roundMisses}</p>
+          <p className="text-sm text-[#8a8a96] mb-6">Ошибок: {roundMisses}</p>
           <button
             onClick={startNextRound}
-            className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
+            className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
           >
             {hasMore ? 'Следующий раунд' : 'Завершить'}
           </button>
@@ -238,22 +238,22 @@ export default function MatchGame({
   }
 
   return (
-    <div className="min-h-screen bg-[#090909] text-[#f2eee5] p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] p-4 md:p-8 max-w-5xl mx-auto">
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
+        <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm text-center">
           Не удалось сохранить часть результатов. Проверьте интернет.
         </div>
       )}
 
-      <div className="grid grid-cols-3 items-center mb-6 text-sm text-[#948e82]">
-        <span className="font-medium text-[#f2eee5]">Подбор · раунд {roundNo}</span>
+      <div className="grid grid-cols-3 items-center mb-6 text-sm text-[#8a8a96]">
+        <span className="font-medium text-[#ececf1]">Подбор · раунд {roundNo}</span>
         <div className="text-center">
-          <div className="text-lg font-bold text-[#f2eee5]">{formatTime(elapsed)}</div>
+          <div className="text-lg font-bold text-[#ececf1]">{formatTime(elapsed)}</div>
           {best !== null && (
-            <div className="text-xs text-[#948e82]">🏆 {formatTime(best)}</div>
+            <div className="text-xs text-[#8a8a96]">🏆 {formatTime(best)}</div>
           )}
         </div>
-        <button onClick={onExit} className="text-right hover:text-[#f2eee5] transition font-medium">
+        <button onClick={onExit} className="text-right hover:text-[#ececf1] transition font-medium">
           Выйти
         </button>
       </div>
@@ -264,9 +264,9 @@ export default function MatchGame({
           const isWrong = wrongPair.includes(t.id)
           const isSelected = selected === t.id
 
-          let state = 'border-[#2d2a25] bg-[#111110] hover:border-[#4a463e]'
-          if (isWrong) state = 'border-[#bb7464] bg-[#bb7464]/20'
-          else if (isSelected) state = 'border-[#c9a96e] bg-[#c9a96e]/20'
+          let state = 'border-[#2c2c34] bg-[#15151a] hover:border-[#44444e]'
+          if (isWrong) state = 'border-[#e5786f] bg-[#e5786f]/20'
+          else if (isSelected) state = 'border-[#8ea2ff] bg-[#8ea2ff]/20'
 
           return (
             <button

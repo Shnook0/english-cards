@@ -56,8 +56,8 @@ function ChoiceOption({
     <label
       className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition ${
         checked
-          ? 'border-[#c9a96e]/70 bg-[#c9a96e]/10'
-          : 'border-[#24221e] bg-[#111110] hover:border-[#4a463e]'
+          ? 'border-[#8ea2ff]/70 bg-[#8ea2ff]/10'
+          : 'border-[#24242b] bg-[#15151a] hover:border-[#44444e]'
       }`}
     >
       <input
@@ -69,20 +69,20 @@ function ChoiceOption({
       />
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-          checked ? 'border-[#c9a96e]' : 'border-[#4a463e]'
+          checked ? 'border-[#8ea2ff]' : 'border-[#44444e]'
         }`}
       >
-        {checked && <span className="h-2 w-2 rounded-full bg-[#c9a96e]" />}
+        {checked && <span className="h-2 w-2 rounded-full bg-[#8ea2ff]" />}
       </span>
       <span className="min-w-0">
         <span
-          className={`block text-[10px] uppercase tracking-[0.14em] ${
-            checked ? 'text-[#c9a96e]' : 'text-[#948e82]'
+          className={`block text-xs ${
+            checked ? 'text-[#8ea2ff]' : 'text-[#8a8a96]'
           }`}
         >
           {title}
         </span>
-        <span className="mt-0.5 block break-words text-sm text-[#f2eee5]">{detail}</span>
+        <span className="mt-0.5 block break-words text-sm text-[#ececf1]">{detail}</span>
       </span>
     </label>
   )
@@ -503,27 +503,27 @@ function AddCardModalContent({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-[#111110] border border-[#24221e] p-6 shadow-2xl text-[#f2eee5]">
+      <div className="w-full max-w-lg rounded-2xl bg-[#15151a] border border-[#24242b] p-6 shadow-2xl text-[#ececf1]">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold">
             {cardToEdit ? 'Редактировать карточку' : 'Добавить карточки'}
           </h3>
           <button
             onClick={onClose}
-            className="text-[#948e82] hover:text-[#f2eee5] text-lg font-bold"
+            className="text-[#8a8a96] hover:text-[#ececf1] text-lg font-bold"
           >
             ✕
           </button>
         </div>
 
         {!cardToEdit && !showConflictScreen && (
-          <div className="flex border-b border-[#24221e] mb-4">
+          <div className="flex border-b border-[#24242b] mb-4">
             <button
               onClick={() => setActiveTab('manual')}
               className={`pb-2 px-4 text-sm font-medium transition border-b-2 ${
                 activeTab === 'manual'
-                  ? 'border-[#c9a96e] text-[#c9a96e]'
-                  : 'border-transparent text-[#948e82] hover:text-[#f2eee5]'
+                  ? 'border-[#8ea2ff] text-[#8ea2ff]'
+                  : 'border-transparent text-[#8a8a96] hover:text-[#ececf1]'
               }`}
             >
               Вручную
@@ -532,8 +532,8 @@ function AddCardModalContent({
               onClick={() => setActiveTab('import')}
               className={`pb-2 px-4 text-sm font-medium transition border-b-2 ${
                 activeTab === 'import'
-                  ? 'border-[#c9a96e] text-[#c9a96e]'
-                  : 'border-transparent text-[#948e82] hover:text-[#f2eee5]'
+                  ? 'border-[#8ea2ff] text-[#8ea2ff]'
+                  : 'border-transparent text-[#8a8a96] hover:text-[#ececf1]'
               }`}
             >
               Текстовый импорт
@@ -542,25 +542,25 @@ function AddCardModalContent({
         )}
 
         {error && (
-          <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm">
+          <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm">
             {error}
           </div>
         )}
 
         {showConflictScreen ? (
           <div className="space-y-4">
-            <div className="flex flex-col gap-3 border-b border-[#24221e] pb-3">
+            <div className="flex flex-col gap-3 border-b border-[#24242b] pb-3">
               <div>
-                <h4 className="text-sm font-semibold text-[#f2eee5]">
+                <h4 className="text-sm font-semibold text-[#ececf1]">
                   {cardToEdit ? 'Слово уже есть в папке' : `Найдены совпадения: ${conflictCards.length}`}
                 </h4>
-                <p className="mt-1 text-xs text-[#948e82]">
+                <p className="mt-1 text-xs text-[#8a8a96]">
                   {cardToEdit
                     ? 'Выберите, что сохранить: изменённую карточку, старую или обе.'
                     : 'Для каждого слова выберите: оставить новую карточку, старую или обе.'}
                 </p>
                 {!cardToEdit && pendingCards.length > conflictCards.length && (
-                  <p className="mt-1 text-xs text-[#6f6a61]">
+                  <p className="mt-1 text-xs text-[#6b6b76]">
                     Остальные слова ({pendingCards.length - conflictCards.length}) добавятся
                     без вопросов.
                   </p>
@@ -574,8 +574,8 @@ function AddCardModalContent({
                     onClick={() => setAllConflictChoices('new')}
                     className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                       allNew
-                        ? 'border-[#c9a96e] bg-[#c9a96e]/20 text-[#c9a96e]'
-                        : 'border-[#24221e] bg-[#111110] text-[#948e82] hover:border-[#4a463e] hover:text-[#f2eee5]'
+                        ? 'border-[#8ea2ff] bg-[#8ea2ff]/20 text-[#8ea2ff]'
+                        : 'border-[#24242b] bg-[#15151a] text-[#8a8a96] hover:border-[#44444e] hover:text-[#ececf1]'
                     }`}
                   >
                     Для всех: новая
@@ -585,8 +585,8 @@ function AddCardModalContent({
                     onClick={() => setAllConflictChoices('old')}
                     className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                       allOld
-                        ? 'border-[#c9a96e] bg-[#c9a96e]/20 text-[#c9a96e]'
-                        : 'border-[#24221e] bg-[#111110] text-[#948e82] hover:border-[#4a463e] hover:text-[#f2eee5]'
+                        ? 'border-[#8ea2ff] bg-[#8ea2ff]/20 text-[#8ea2ff]'
+                        : 'border-[#24242b] bg-[#15151a] text-[#8a8a96] hover:border-[#44444e] hover:text-[#ececf1]'
                     }`}
                   >
                     Для всех: старая
@@ -596,8 +596,8 @@ function AddCardModalContent({
                     onClick={() => setAllConflictChoices('both')}
                     className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                       allBoth
-                        ? 'border-[#c9a96e] bg-[#c9a96e]/20 text-[#c9a96e]'
-                        : 'border-[#24221e] bg-[#111110] text-[#948e82] hover:border-[#4a463e] hover:text-[#f2eee5]'
+                        ? 'border-[#8ea2ff] bg-[#8ea2ff]/20 text-[#8ea2ff]'
+                        : 'border-[#24242b] bg-[#15151a] text-[#8a8a96] hover:border-[#44444e] hover:text-[#ececf1]'
                     }`}
                   >
                     Для всех: обе
@@ -613,18 +613,18 @@ function AddCardModalContent({
                 return (
                   <div
                     key={`${normalizeWord(item.parsed.word)}-${index}`}
-                    className="space-y-2.5 rounded-xl border border-[#24221e] bg-[#090909] p-3.5"
+                    className="space-y-2.5 rounded-xl border border-[#24242b] bg-[#0d0d10] p-3.5"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-base font-bold text-[#f2eee5]">
+                        <div className="text-base font-bold text-[#ececf1]">
                           {item.parsed.word}
                         </div>
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-[#c9a96e]">
+                        <p className="text-xs text-[#8ea2ff]">
                           {cardToEdit ? 'Совпадает с другой карточкой' : 'Уже есть в этой папке'}
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-full border border-[#c9a96e]/40 bg-[#c9a96e]/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-[#c9a96e]">
+                      <span className="shrink-0 rounded-full border border-[#8ea2ff]/40 bg-[#8ea2ff]/10 px-2.5 py-0.5 text-xs text-[#8ea2ff]">
                         {item.choice === 'new' ? 'новая' : item.choice === 'old' ? 'старая' : 'обе'}
                       </span>
                     </div>
@@ -638,7 +638,7 @@ function AddCardModalContent({
                           <>
                             {item.parsed.translation}
                             {item.parsed.transcription && (
-                              <span className="ml-2 text-xs text-[#948e82]">
+                              <span className="ml-2 text-xs text-[#8a8a96]">
                                 ({item.parsed.transcription})
                               </span>
                             )}
@@ -654,7 +654,7 @@ function AddCardModalContent({
                           <>
                             {item.existing.translation}
                             {item.existing.transcription && (
-                              <span className="ml-2 text-xs text-[#948e82]">
+                              <span className="ml-2 text-xs text-[#8a8a96]">
                                 ({item.existing.transcription})
                               </span>
                             )}
@@ -669,7 +669,7 @@ function AddCardModalContent({
                         detail={
                           <>
                             {item.parsed.translation}
-                            <span className="mx-1.5 text-[#6f6a61]">и</span>
+                            <span className="mx-1.5 text-[#6b6b76]">и</span>
                             {item.existing.translation}
                           </>
                         }
@@ -677,7 +677,7 @@ function AddCardModalContent({
                       />
                     </div>
 
-                    <p className="rounded-lg bg-[#111110] px-3 py-2 text-[11px] leading-4 text-[#6f6a61]">
+                    <p className="rounded-lg bg-[#15151a] px-3 py-2 text-xs leading-4 text-[#6b6b76]">
                       {cardToEdit
                         ? item.choice === 'old'
                           ? 'Изменения не сохранятся, карточка останется как была.'
@@ -695,8 +695,8 @@ function AddCardModalContent({
               })}
             </div>
 
-            <div className="space-y-3 border-t border-[#24221e] pt-3">
-              <p className="text-xs text-[#948e82]">
+            <div className="space-y-3 border-t border-[#24242b] pt-3">
+              <p className="text-xs text-[#8a8a96]">
                 {cardToEdit
                   ? pendingCards[0]?.choice === 'old'
                     ? 'Изменения не будут сохранены.'
@@ -713,7 +713,7 @@ function AddCardModalContent({
                   onClick={() =>
                     void saveCards(pendingCards, conflictIntent, cardToEdit?.id)
                   }
-                  className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 font-medium text-[#0b0b0a] transition hover:bg-[#b8975b] disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-[#8ea2ff] py-2.5 font-medium text-[#0d0d10] transition hover:bg-[#7186e8] disabled:opacity-50"
                 >
                   {loading
                     ? 'Сохраняю...'
@@ -727,7 +727,7 @@ function AddCardModalContent({
                     setPendingCards([])
                     setShowConflictScreen(false)
                   }}
-                  className="rounded-lg border border-[#2d2a25] bg-transparent px-4 text-[#948e82] transition hover:border-[#4a463e] hover:text-[#f2eee5]"
+                  className="rounded-lg border border-[#2c2c34] bg-transparent px-4 text-[#8a8a96] transition hover:border-[#44444e] hover:text-[#ececf1]"
                 >
                   Назад
                 </button>
@@ -737,7 +737,7 @@ function AddCardModalContent({
         ) : activeTab === 'manual' || cardToEdit ? (
           <form onSubmit={handleManualSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#948e82] mb-1">
+              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
                 Слово (англ) *
               </label>
               <div className="relative">
@@ -752,18 +752,18 @@ function AddCardModalContent({
                   onBlur={() => {
                     setTimeout(() => setSuggestionsOpen(false), 120)
                   }}
-                  className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 pr-20 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
+                  className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 pr-20 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none"
                   placeholder="apple"
                 />
                 {suggesting && (
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#6b6b76]">
                     ищу...
                   </span>
                 )}
 
                 {suggestionsOpen && suggestions.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-[#2d2a25] bg-[#111110] shadow-2xl">
-                    <p className="border-b border-[#24221e] px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-[#948e82]">
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-[#2c2c34] bg-[#15151a] shadow-2xl">
+                    <p className="border-b border-[#24242b] px-3 py-2 text-xs text-[#8a8a96]">
                       Возможные переводы
                     </p>
                     <div className="max-h-52 overflow-y-auto p-1">
@@ -773,17 +773,17 @@ function AddCardModalContent({
                           type="button"
                           onMouseDown={event => event.preventDefault()}
                           onClick={() => applySuggestion(item)}
-                          className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-[#f2eee5] transition hover:bg-[#c9a96e]/10 hover:text-[#c9a96e]"
+                          className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-[#ececf1] transition hover:bg-[#8ea2ff]/10 hover:text-[#8ea2ff]"
                         >
                           <span>{item}</span>
-                          <span className="text-xs text-[#6f6a61]">→</span>
+                          <span className="text-xs text-[#6b6b76]">→</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
               </div>
-              <p className="mt-1.5 text-[10px] leading-4 text-[#6f6a61]">
+              <p className="mt-1.5 text-xs leading-4 text-[#6b6b76]">
                 {suggesting
                   ? 'Подбираю перевод...'
                   : suggestions.length > 0
@@ -793,20 +793,20 @@ function AddCardModalContent({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#948e82] mb-1">
+              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
                 Транскрипция
               </label>
               <input
                 type="text"
                 value={transcription}
                 onChange={e => setTranscription(e.target.value)}
-                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
+                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none"
                 placeholder="[ˈæp.əl]"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#948e82] mb-1">
+              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
                 Перевод *
               </label>
               <input
@@ -815,20 +815,20 @@ function AddCardModalContent({
                 required
                 value={translation}
                 onChange={e => setTranslation(e.target.value)}
-                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none"
+                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none"
                 placeholder="яблоко"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#948e82] mb-1">
+              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
                 Примеры (каждый с новой строки)
               </label>
               <textarea
                 rows={3}
                 value={sentencesText}
                 onChange={e => setSentencesText(e.target.value)}
-                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] focus:border-[#c9a96e] focus:outline-none resize-none"
+                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] focus:border-[#8ea2ff] focus:outline-none resize-none"
                 placeholder="I like to eat a red apple."
               />
             </div>
@@ -837,7 +837,7 @@ function AddCardModalContent({
               <button
                 type="submit"
                 disabled={loading || checkingDuplicates}
-                className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#8ea2ff] py-2.5 text-[#0d0d10] font-medium hover:bg-[#7186e8] transition disabled:opacity-50"
               >
                 {checkingDuplicates
                   ? 'Проверяю повторы...'
@@ -850,7 +850,7 @@ function AddCardModalContent({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 rounded-lg border border-[#2d2a25] bg-transparent text-[#948e82] hover:text-[#f2eee5] hover:border-[#4a463e] transition"
+                className="px-4 rounded-lg border border-[#2c2c34] bg-transparent text-[#8a8a96] hover:text-[#ececf1] hover:border-[#44444e] transition"
               >
                 Отмена
               </button>
@@ -859,7 +859,7 @@ function AddCardModalContent({
         ) : (
           <form onSubmit={handleImport} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#948e82] mb-1">
+              <label className="block text-sm font-medium text-[#8a8a96] mb-1">
                 Импорт через разделитель «|» (слово | транскрипция | перевод | пример 1 | пример 2)
               </label>
               <textarea
@@ -867,21 +867,21 @@ function AddCardModalContent({
                 required
                 value={importText}
                 onChange={e => setImportText(e.target.value)}
-                className="w-full rounded-lg border border-[#2d2a25] bg-[#090909] px-3 py-2 text-[#f2eee5] font-mono text-sm focus:border-[#c9a96e] focus:outline-none resize-none"
+                className="w-full rounded-lg border border-[#2c2c34] bg-[#0d0d10] px-3 py-2 text-[#ececf1] font-mono text-sm focus:border-[#8ea2ff] focus:outline-none resize-none"
                 placeholder={`apple | /ˈæp.əl/ | яблоко | I eat an apple every day. | She bought two apples.\nbook | /bʊk/ | книга | This book is interesting. |`}
               />
             </div>
 
             {importText.trim() && (
-              <div className="rounded-lg bg-[#090909] p-3 text-xs space-y-1 border border-[#24221e]">
-                <p className="text-[#f2eee5]">Уникальных слов: {validCount}</p>
+              <div className="rounded-lg bg-[#0d0d10] p-3 text-xs space-y-1 border border-[#24242b]">
+                <p className="text-[#ececf1]">Уникальных слов: {validCount}</p>
                 {duplicateCount > 0 && (
-                  <p className="text-[#c9a96e]">
+                  <p className="text-[#8ea2ff]">
                     Повторов в тексте: {duplicateCount} — оставлен последний вариант
                   </p>
                 )}
                 {skippedCount > 0 && (
-                  <p className="text-[#bb7464]">Пропущено строк: {skippedCount}</p>
+                  <p className="text-[#e5786f]">Пропущено строк: {skippedCount}</p>
                 )}
               </div>
             )}
@@ -890,7 +890,7 @@ function AddCardModalContent({
               <button
                 type="submit"
                 disabled={loading || checkingDuplicates || validCount === 0}
-                className="flex-1 rounded-lg bg-[#c9a96e] py-2.5 text-[#0b0b0a] font-medium hover:bg-[#b8975b] transition disabled:opacity-50"
+                className="flex-1 rounded-lg bg-[#8ea2ff] py-2.5 text-[#0d0d10] font-medium hover:bg-[#7186e8] transition disabled:opacity-50"
               >
                 {checkingDuplicates
                   ? 'Проверяю повторы...'
@@ -901,7 +901,7 @@ function AddCardModalContent({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 rounded-lg border border-[#2d2a25] bg-transparent text-[#948e82] hover:text-[#f2eee5] hover:border-[#4a463e] transition"
+                className="px-4 rounded-lg border border-[#2c2c34] bg-transparent text-[#8a8a96] hover:text-[#ececf1] hover:border-[#44444e] transition"
               >
                 Отмена
               </button>

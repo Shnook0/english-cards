@@ -1,15 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card } from '@/types/database'
 import TrainSession from '@/components/TrainSession'
 import { fetchCards, fetchFolders } from '@/lib/offline/repo'
 
 export default function TrainMistakesPage() {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
   const [cards, setCards] = useState<Card[]>([])
   const [learnedFolderId, setLearnedFolderId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -34,7 +34,7 @@ export default function TrainMistakesPage() {
   }, [user, load])
 
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">Загрузка тренировки...</div>
+    return <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">Загрузка тренировки...</div>
   }
 
   return (

@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { useAuth } from '@/hooks/useAuth'
 import { ConflictItem, SyncState } from '@/types/offline'
 import {
@@ -105,7 +105,7 @@ function syncResultMessage(result: SyncResult): Message {
 
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [sync, setSync] = useState<SyncState>(EMPTY_SYNC)
@@ -286,7 +286,7 @@ export default function SettingsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#948e82]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#8a8a96]">
         <span className="eyebrow">Загружаем настройки</span>
       </div>
     )
@@ -294,7 +294,7 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#948e82]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#8a8a96]">
         <span className="eyebrow">Нужно войти в аккаунт</span>
       </div>
     )
@@ -307,16 +307,16 @@ export default function SettingsPage() {
     <div className="min-h-screen p-4 pb-24 md:p-7 lg:p-10">
       <div className="page-in mx-auto max-w-4xl">
         <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+          <Link href="/" className="link-muted text-xs">
             ← На главную
           </Link>
           <span className="eyebrow">Офлайн-режим</span>
         </div>
 
-        <header className="border-b border-[#24221e] pb-6">
+        <header className="border-b border-[#24242b] pb-6">
           <p className="eyebrow mb-3">Настройки</p>
           <h1 className="display text-4xl md:text-5xl">Синхронизация</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#948e82]">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#8a8a96]">
             Здесь можно проверить состояние данных, разрешить конфликты и сохранить резервную
             копию. Тренировки и изменения слов работают без интернета.
           </p>
@@ -325,38 +325,38 @@ export default function SettingsPage() {
         <section className="grid gap-2 py-6 sm:grid-cols-2 lg:grid-cols-4">
           <div className="panel p-4">
             <p className="eyebrow">Соединение</p>
-            <p className={`mt-2 text-lg ${sync.online ? 'text-[#9fb59f]' : 'text-[#c9a96e]'}`}>
+            <p className={`mt-2 text-lg ${sync.online ? 'text-[#7fc8a0]' : 'text-[#8ea2ff]'}`}>
               {sync.online ? 'Онлайн' : 'Офлайн'}
             </p>
-            <p className="mt-1 text-[10px] leading-4 text-[#6f6a61]">
+            <p className="mt-1 text-xs leading-4 text-[#6b6b76]">
               {sync.online ? 'Изменения отправляются сразу' : 'Всё сохраняется на устройстве'}
             </p>
           </div>
 
           <div className="panel p-4">
             <p className="eyebrow">Ожидают отправки</p>
-            <p className="stat-number mt-2 text-[#f2eee5]">{sync.pending}</p>
-            <p className="mt-1 text-[10px] leading-4 text-[#6f6a61]">
+            <p className="stat-number mt-2 text-[#ececf1]">{sync.pending}</p>
+            <p className="mt-1 text-xs leading-4 text-[#6b6b76]">
               {plural(sync.pending, 'изменение', 'изменения', 'изменений')} в очереди
             </p>
           </div>
 
           <div className="panel p-4">
             <p className="eyebrow">Ошибки</p>
-            <p className={`stat-number mt-2 ${failed > 0 ? 'text-[#d9a093]' : 'text-[#f2eee5]'}`}>
+            <p className={`stat-number mt-2 ${failed > 0 ? 'text-[#f0a39b]' : 'text-[#ececf1]'}`}>
               {failed}
             </p>
-            <p className="mt-1 text-[10px] leading-4 text-[#6f6a61]">
+            <p className="mt-1 text-xs leading-4 text-[#6b6b76]">
               {failed > 0 ? 'Можно повторить вручную' : 'Нет неудачных отправок'}
             </p>
           </div>
 
           <div className="panel p-4">
             <p className="eyebrow">Конфликты</p>
-            <p className={`stat-number mt-2 ${conflicts.length > 0 ? 'text-[#d9a093]' : 'text-[#f2eee5]'}`}>
+            <p className={`stat-number mt-2 ${conflicts.length > 0 ? 'text-[#f0a39b]' : 'text-[#ececf1]'}`}>
               {conflicts.length}
             </p>
-            <p className="mt-1 text-[10px] leading-4 text-[#6f6a61]">
+            <p className="mt-1 text-xs leading-4 text-[#6b6b76]">
               {conflicts.length > 0 ? 'Нужно выбрать версию' : 'Нет расхождений'}
             </p>
           </div>
@@ -366,8 +366,8 @@ export default function SettingsPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="eyebrow">Последняя синхронизация</p>
-              <p className="mt-1 text-sm text-[#f2eee5]">{formatDate(sync.lastSyncAt)}</p>
-              <p className="mt-1 text-[10px] text-[#6f6a61]">
+              <p className="mt-1 text-sm text-[#ececf1]">{formatDate(sync.lastSyncAt)}</p>
+              <p className="mt-1 text-xs text-[#6b6b76]">
                 Локальное хранилище:{' '}
                 {persisted === null ? 'проверяем…' : persisted ? 'защищено от очистки' : 'может быть очищено системой'}
               </p>
@@ -393,7 +393,7 @@ export default function SettingsPage() {
           </div>
 
           {allClear && !message && (
-            <p className="border-t border-[#24221e] pt-4 text-sm text-[#9fb59f]">
+            <p className="border-t border-[#24242b] pt-4 text-sm text-[#7fc8a0]">
               Все данные синхронизированы. Можно тренироваться офлайн.
             </p>
           )}
@@ -402,10 +402,10 @@ export default function SettingsPage() {
             <div
               className={`border px-4 py-3 text-sm ${
                 message.tone === 'ok'
-                  ? 'border-[#9fb59f]/40 bg-[#9fb59f]/10 text-[#c2d2c1]'
+                  ? 'border-[#7fc8a0]/40 bg-[#7fc8a0]/10 text-[#a9ddc0]'
                   : message.tone === 'info'
-                    ? 'border-[#c9a96e]/40 bg-[#c9a96e]/10 text-[#ddc08a]'
-                    : 'border-[#bb7464]/50 bg-[#bb7464]/10 text-[#d9a093]'
+                    ? 'border-[#8ea2ff]/40 bg-[#8ea2ff]/10 text-[#a8b8ff]'
+                    : 'border-[#e5786f]/50 bg-[#e5786f]/10 text-[#f0a39b]'
               }`}
             >
               {message.text}
@@ -420,7 +420,7 @@ export default function SettingsPage() {
                 <p className="eyebrow">Требует внимания</p>
                 <h2 className="mt-1 text-2xl">Конфликты изменений</h2>
               </div>
-              <span className="text-xs text-[#948e82]">{conflicts.length}</span>
+              <span className="text-xs text-[#8a8a96]">{conflicts.length}</span>
             </div>
 
             <div className="space-y-3">
@@ -436,32 +436,32 @@ export default function SettingsPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <h3 className="text-xl">{word}</h3>
-                        <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-[#6f6a61]">
+                        <p className="mt-1 text-xs text-[#6b6b76]">
                           {conflict.remote.transcription || 'без транскрипции'}
                         </p>
                       </div>
-                      <span className="border border-[#bb7464]/40 bg-[#bb7464]/10 px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-[#d9a093]">
+                      <span className="border border-[#e5786f]/40 bg-[#e5786f]/10 px-2 py-1 text-xs text-[#f0a39b]">
                         Конфликт
                       </span>
                     </div>
 
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      <div className="border border-[#c9a96e]/30 bg-[#c9a96e]/[0.04] p-3">
-                        <p className="eyebrow text-[#c9a96e]">Моя версия</p>
-                        <p className="mt-2 text-sm text-[#f2eee5]">
+                      <div className="border border-[#8ea2ff]/30 bg-[#8ea2ff]/[0.04] p-3">
+                        <p className="eyebrow text-[#8ea2ff]">Моя версия</p>
+                        <p className="mt-2 text-sm text-[#ececf1]">
                           {conflict.local.translation || '—'}
                         </p>
                         {localSentences.length > 0 && (
-                          <p className="mt-2 text-[11px] leading-5 text-[#948e82]">
+                          <p className="mt-2 text-xs leading-5 text-[#8a8a96]">
                             {localSentences.slice(0, 2).join(' · ')}
                           </p>
                         )}
                       </div>
-                      <div className="border border-[#24221e] bg-black/20 p-3">
+                      <div className="border border-[#24242b] bg-black/20 p-3">
                         <p className="eyebrow">Версия сервера</p>
-                        <p className="mt-2 text-sm text-[#f2eee5]">{conflict.remote.translation}</p>
+                        <p className="mt-2 text-sm text-[#ececf1]">{conflict.remote.translation}</p>
                         {remoteSentences.length > 0 && (
-                          <p className="mt-2 text-[11px] leading-5 text-[#948e82]">
+                          <p className="mt-2 text-xs leading-5 text-[#8a8a96]">
                             {remoteSentences.slice(0, 2).join(' · ')}
                           </p>
                         )}
@@ -494,7 +494,7 @@ export default function SettingsPage() {
                         Взять с сервера
                       </button>
                     </div>
-                    <p className="mt-3 text-[10px] leading-4 text-[#6f6a61]">
+                    <p className="mt-3 text-xs leading-4 text-[#6b6b76]">
                       Конфликт возник, потому что слово изменили на другом устройстве. «Объединить»
                       сохранит оба варианта предложений.
                     </p>
@@ -511,7 +511,7 @@ export default function SettingsPage() {
             <h2 className="mt-1 text-2xl">Резервная копия</h2>
           </div>
           <div className="panel p-5">
-            <p className="text-sm leading-6 text-[#b5aea1]">
+            <p className="text-sm leading-6 text-[#b0b0bb]">
               Файл содержит слова, папки, общие тренировки, прогресс и рекорды. Импорт заменяет
               данные на этом устройстве и загружает копию в аккаунт, поэтому выполняется только
               онлайн.
@@ -542,7 +542,7 @@ export default function SettingsPage() {
               />
             </div>
             {!sync.online && (
-              <p className="mt-3 text-[10px] text-[#c9a96e]">
+              <p className="mt-3 text-xs text-[#8ea2ff]">
                 Скачать копию можно офлайн. Для импорта подключитесь к интернету.
               </p>
             )}
@@ -554,14 +554,14 @@ export default function SettingsPage() {
             <p className="eyebrow">iPhone</p>
             <h2 className="mt-1 text-2xl">Установка на экран «Домой»</h2>
           </div>
-          <div className="panel p-5 text-sm leading-6 text-[#b5aea1]">
+          <div className="panel p-5 text-sm leading-6 text-[#b0b0bb]">
             <ol className="list-decimal space-y-2 pl-5">
               <li>Откройте сайт в Safari.</li>
               <li>Нажмите «Поделиться» и выберите «На экран „Домой“».</li>
               <li>Запускайте приложение с иконки — оно откроется без адресной строки.</li>
               <li>Перед выходом без интернета дождитесь синхронизации или включите авиарежим.</li>
             </ol>
-            <p className="mt-3 text-[11px] leading-5 text-[#6f6a61]">
+            <p className="mt-3 text-xs leading-5 text-[#6b6b76]">
               iOS может очищать данные редко используемых сайтов. Периодически скачивайте резервную
               копию. Установка доступна только в Safari; в других браузерах на iPhone добавление на
               экран «Домой» не создаёт полноценное приложение.

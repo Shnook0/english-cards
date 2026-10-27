@@ -249,18 +249,18 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
 
   if (isFinished || !currentCard) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center p-6">
-        <div className="w-full max-w-md rounded-2xl border border-[#24221e] bg-[#111110] p-8 text-center shadow-2xl">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-2xl border border-[#24242b] bg-[#15151a] p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold mb-2">Сессия завершена</h2>
-          <p className="text-sm text-[#948e82] mb-6">Пройдено слов: {doneCount}</p>
+          <p className="text-sm text-[#8a8a96] mb-6">Пройдено слов: {doneCount}</p>
           {botNotice && (
-            <p className="mb-6 rounded-lg border border-[#6f8a72]/40 bg-[#6f8a72]/10 p-3 text-sm text-[#9fb59f]">
+            <p className="mb-6 rounded-lg border border-[#5fae84]/40 bg-[#5fae84]/10 p-3 text-sm text-[#7fc8a0]">
               {botNotice}
             </p>
           )}
           <button
             onClick={handleExit}
-            className="w-full rounded-lg bg-[#c9a96e] py-3 font-medium text-[#0b0b0a] hover:bg-[#b8975b] transition"
+            className="w-full rounded-lg bg-[#8ea2ff] py-3 font-medium text-[#0d0d10] hover:bg-[#7186e8] transition"
           >
             Готово
           </button>
@@ -273,28 +273,28 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
     totalCards > 0 ? Math.min(100, Math.round((doneCount / totalCards) * 100)) : 0
 
   return (
-    <div className="min-h-screen bg-[#090909] text-[#f2eee5] p-4 md:p-8 flex flex-col justify-between max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] p-4 md:p-8 flex flex-col justify-between max-w-2xl mx-auto">
       {saveError && (
-        <div className="mb-4 rounded-lg bg-[#bb7464]/20 border border-[#bb7464] p-3 text-sm text-center">
+        <div className="mb-4 rounded-lg bg-[#e5786f]/20 border border-[#e5786f] p-3 text-sm text-center">
           {saveError}
         </div>
       )}
       {botNotice && (
-        <div className="mb-4 rounded-lg border border-[#6f8a72]/40 bg-[#6f8a72]/10 p-3 text-sm text-center text-[#9fb59f]">
+        <div className="mb-4 rounded-lg border border-[#5fae84]/40 bg-[#5fae84]/10 p-3 text-sm text-center text-[#7fc8a0]">
           {botNotice}
         </div>
       )}
 
       <div>
-        <div className="flex items-center justify-between mb-3 text-sm text-[#948e82]">
+        <div className="flex items-center justify-between mb-3 text-sm text-[#8a8a96]">
           <span>{doneCount} / {totalCards}</span>
-          <button onClick={handleExit} className="hover:text-[#f2eee5] transition font-medium">
+          <button onClick={handleExit} className="hover:text-[#ececf1] transition font-medium">
             Выйти
           </button>
         </div>
-        <div className="w-full h-1.5 bg-[#1b1a17] rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-[#1b1b21] rounded-full overflow-hidden">
           <div
-            className="h-full bg-[#c9a96e] transition-all duration-300"
+            className="h-full bg-[#8ea2ff] transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -302,19 +302,19 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
 
       <div
         onClick={() => !showAnswer && setShowAnswer(true)}
-        className="my-auto cursor-pointer min-h-[360px] rounded-2xl border border-[#24221e] bg-[#111110] p-6 md:p-8 shadow-2xl flex flex-col justify-between transition hover:border-[#2d2a25] select-none"
+        className="my-auto cursor-pointer min-h-[360px] rounded-2xl border border-[#24242b] bg-[#15151a] p-6 md:p-8 shadow-2xl flex flex-col justify-between transition hover:border-[#2c2c34] select-none"
       >
         <div className="flex justify-between items-start">
           <button
             onClick={handleSpeak}
-            className="p-2 rounded-lg bg-[#090909] text-[#c9a96e] hover:bg-[#1b1a17] transition"
+            className="p-2 rounded-lg bg-[#0d0d10] text-[#8ea2ff] hover:bg-[#1b1b21] transition"
             title="Озвучить"
           >
             🔊
           </button>
           <button
             onClick={handleToggleFavorite}
-            className={`text-xl transition ${currentCard.is_favorite ? 'text-[#c9a96e]' : 'text-[#514c44] hover:text-[#948e82]'}`}
+            className={`text-xl transition ${currentCard.is_favorite ? 'text-[#8ea2ff]' : 'text-[#4c4c57] hover:text-[#8a8a96]'}`}
             title="Избранное"
           >
             ★
@@ -324,22 +324,22 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
         <div className="text-center my-4">
           <h2 className="text-3xl md:text-4xl font-bold mb-2">{currentCard.word}</h2>
           {currentCard.transcription && (
-            <p className="text-sm text-[#948e82]">{currentCard.transcription}</p>
+            <p className="text-sm text-[#8a8a96]">{currentCard.transcription}</p>
           )}
         </div>
 
         {currentCard.sentences && currentCard.sentences.length > 0 && (
-          <div className="space-y-1.5 bg-[#090909] p-3 rounded-xl text-xs text-[#948e82] mb-4">
+          <div className="space-y-1.5 bg-[#0d0d10] p-3 rounded-xl text-xs text-[#8a8a96] mb-4">
             {currentCard.sentences.map((s, i) => <p key={i}>• {s}</p>)}
           </div>
         )}
 
         {showAnswer ? (
-          <div className="pt-4 border-t border-[#24221e] text-center">
-            <p className="text-2xl font-bold text-[#c9a96e]">{currentCard.translation}</p>
+          <div className="pt-4 border-t border-[#24242b] text-center">
+            <p className="text-2xl font-bold text-[#8ea2ff]">{currentCard.translation}</p>
           </div>
         ) : (
-          <div className="text-center text-xs text-[#948e82] pt-2 border-t border-[#24221e]/50 uppercase tracking-wider">
+          <div className="text-center text-xs text-[#8a8a96] pt-2 border-t border-[#24242b]/50 tracking-wider">
             Нажмите, чтобы показать перевод
           </div>
         )}
@@ -351,14 +351,14 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
             <button
               onClick={handleDontKnow}
               disabled={isSaving}
-              className="rounded-xl border border-[#bb7464] bg-[#bb7464]/10 py-3.5 font-semibold text-[#bb7464] hover:bg-[#bb7464]/20 transition disabled:opacity-50"
+              className="rounded-xl border border-[#e5786f] bg-[#e5786f]/10 py-3.5 font-semibold text-[#e5786f] hover:bg-[#e5786f]/20 transition disabled:opacity-50"
             >
               {isSaving ? 'Сохранение...' : 'Не знаю'}
             </button>
             <button
               onClick={handleKnow}
               disabled={isSaving}
-              className="rounded-xl bg-[#c9a96e] py-3.5 font-semibold text-[#0b0b0a] hover:bg-[#b8975b] transition disabled:opacity-50"
+              className="rounded-xl bg-[#8ea2ff] py-3.5 font-semibold text-[#0d0d10] hover:bg-[#7186e8] transition disabled:opacity-50"
             >
               {isSaving ? 'Сохранение...' : 'Знаю'}
             </button>
@@ -366,7 +366,7 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
         ) : (
           <button
             onClick={() => setShowAnswer(true)}
-            className="w-full rounded-xl border border-[#2d2a25] bg-[#111110] py-3.5 font-semibold text-[#f2eee5] hover:border-[#c9a96e] transition"
+            className="w-full rounded-xl border border-[#2c2c34] bg-[#15151a] py-3.5 font-semibold text-[#ececf1] hover:border-[#8ea2ff] transition"
           >
             Показать ответ
           </button>

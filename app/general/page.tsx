@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Folder } from '@/types/database'
 import { GeneralTraining } from '@/types/general'
 import {
@@ -16,7 +16,7 @@ import {
 
 export default function GeneralPage() {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
 
   const [trainings, setTrainings] = useState<GeneralTraining[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -102,7 +102,7 @@ export default function GeneralPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
         Загрузка...
       </div>
     )
@@ -112,17 +112,17 @@ export default function GeneralPage() {
     <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
       <div className="page-in mx-auto max-w-5xl">
         <div className="mb-10 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+          <Link href="/" className="link-muted text-xs">
             ← На главную
           </Link>
           <span className="eyebrow">Общая практика</span>
         </div>
 
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24221e] pb-8">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24242b] pb-8">
           <div>
             <p className="eyebrow mb-3">Единый словарь</p>
             <h1 className="display text-5xl md:text-6xl">Общая тренировка</h1>
-            <p className="mt-4 text-sm text-[#948e82]">
+            <p className="mt-4 text-sm text-[#8a8a96]">
               Слова из папок с умным повторением
             </p>
           </div>
@@ -134,7 +134,7 @@ export default function GeneralPage() {
         </div>
 
         {error && (
-          <div className="mb-6 border border-[#bb7464]/50 bg-[#bb7464]/10 p-4 text-sm text-[#e3b4a8]">
+          <div className="mb-6 border border-[#e5786f]/50 bg-[#e5786f]/10 p-4 text-sm text-[#f4b8b1]">
             {error}
           </div>
         )}
@@ -176,9 +176,9 @@ export default function GeneralPage() {
             </div>
 
             {scope === 'custom' && (
-              <div className="space-y-3 border border-[#24221e] bg-black/20 p-4">
+              <div className="space-y-3 border border-[#24242b] bg-black/20 p-4">
                 {folders.length === 0 ? (
-                  <p className="text-sm text-[#948e82]">У вас пока нет своих папок.</p>
+                  <p className="text-sm text-[#8a8a96]">У вас пока нет своих папок.</p>
                 ) : (
                   folders.map(f => (
                     <label key={f.id} className="flex cursor-pointer items-center gap-3 text-sm">
@@ -216,7 +216,7 @@ export default function GeneralPage() {
         {trainings.length === 0 ? (
           <div className="panel p-14 text-center">
             <p className="display mb-3 text-3xl">Пока пусто</p>
-            <p className="text-sm text-[#948e82]">
+            <p className="text-sm text-[#8a8a96]">
               Общих тренировок нет. Создайте первую.
             </p>
           </div>
@@ -235,7 +235,7 @@ export default function GeneralPage() {
                   <div>
                     <p className="eyebrow mb-3">Набор</p>
                     <h3 className="text-2xl">{t.name}</h3>
-                    <p className="mt-2 text-xs leading-5 text-[#948e82]">
+                    <p className="mt-2 text-xs leading-5 text-[#8a8a96]">
                       {t.scope === 'all' ? 'Все папки' : `Папки: ${folderNames || '—'}`}
                     </p>
                   </div>
@@ -245,7 +245,7 @@ export default function GeneralPage() {
                     </Link>
                     <button
                       onClick={() => deleteTraining(t)}
-                      className="text-xs text-[#bb7464] transition hover:opacity-75"
+                      className="text-xs text-[#e5786f] transition hover:opacity-75"
                     >
                       Удалить
                     </button>

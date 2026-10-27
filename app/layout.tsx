@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { SerwistProvider } from '@serwist/turbopack/react'
 import './globals.css'
+import OfflineNavigationGuard from '@/components/OfflineNavigationGuard'
+import OfflineRouteCache from '@/components/OfflineRouteCache'
 import ScrollRestorer from '@/components/ScrollRestorer'
 import SyncProvider from '@/components/SyncProvider'
 
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#090909',
+  themeColor: '#0d0d10',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -40,12 +42,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="bg-[#090909] text-[#f2eee5] min-h-screen font-sans antialiased">
+      <body className="bg-[#0d0d10] text-[#ececf1] min-h-screen font-sans antialiased">
         <SerwistProvider
           swUrl="/serwist/sw.js"
           cacheOnNavigation={true}
           reloadOnOnline={false}
         >
+          <OfflineNavigationGuard />
+          <OfflineRouteCache />
           <ScrollRestorer />
           <SyncProvider />
           {children}

@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router = useOfflineRouter()
   const [isSignUp, setIsSignUp] = useState(false)
   const [isResetMode, setIsResetMode] = useState(false)
 
@@ -87,7 +87,7 @@ export default function LoginPage() {
               ? 'Регистрация'
               : 'Вход в аккаунт'}
           </h1>
-          <p className="mt-4 text-sm leading-6 text-[#948e82]">
+          <p className="mt-4 text-sm leading-6 text-[#8a8a96]">
             {isResetMode
               ? 'Пришлём ссылку для нового пароля.'
               : 'Личный лексикон, который остаётся с вами.'}
@@ -96,19 +96,19 @@ export default function LoginPage() {
 
         <div className="panel p-7 md:p-9">
           {error && (
-            <div className="mb-5 border border-[#bb7464]/50 bg-[#bb7464]/10 p-4 text-sm text-[#e3b4a8]">
+            <div className="mb-5 border border-[#e5786f]/50 bg-[#e5786f]/10 p-4 text-sm text-[#f4b8b1]">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="mb-5 border border-[#9fb59f]/40 bg-[#9fb59f]/10 p-4 text-sm text-[#c2d2c1]">
+            <div className="mb-5 border border-[#7fc8a0]/40 bg-[#7fc8a0]/10 p-4 text-sm text-[#a9ddc0]">
               {message}
             </div>
           )}
 
           {!online && (
-            <div className="mb-5 border border-[#c9a96e]/40 bg-[#c9a96e]/10 p-4 text-sm text-[#ddc08a]">
+            <div className="mb-5 border border-[#8ea2ff]/40 bg-[#8ea2ff]/10 p-4 text-sm text-[#a8b8ff]">
               Нет интернета. Если вы уже входили на этом устройстве, откройте главную —
               сохранённые слова и тренировки доступны офлайн.
             </div>
@@ -145,7 +145,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#948e82] hover:text-[#f2eee5] transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8a8a96] hover:text-[#ececf1] transition"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -177,7 +177,7 @@ export default function LoginPage() {
           </button>
           </form>
 
-          <div className="mt-7 flex flex-col items-center gap-3 border-t border-[#24221e] pt-5 text-sm text-[#948e82]">
+          <div className="mt-7 flex flex-col items-center gap-3 border-t border-[#24242b] pt-5 text-sm text-[#8a8a96]">
             {!isResetMode && (
               <button
                 type="button"
@@ -200,7 +200,7 @@ export default function LoginPage() {
                 setError(null)
                 setMessage(null)
               }}
-              className="text-[#c9a96e] hover:text-[#ddc08a]"
+              className="text-[#8ea2ff] hover:text-[#a8b8ff]"
             >
               {isResetMode
                 ? 'Вернуться ко входу'

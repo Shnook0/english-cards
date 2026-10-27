@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Folder } from '@/types/database'
 import { CEFR_LEVELS, CEFR_WORDS, type CefrLevel } from '@/data/cefr'
 import {
@@ -15,7 +15,7 @@ import {
 
 export default function LevelsPage() {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
 
   const [levelFolders, setLevelFolders] = useState<Record<string, Folder>>({})
   const [loadingData, setLoadingData] = useState(true)
@@ -97,7 +97,7 @@ export default function LevelsPage() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#948e82]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#8a8a96]">
         <span className="eyebrow">Загрузка уровней</span>
       </div>
     )
@@ -107,22 +107,22 @@ export default function LevelsPage() {
     <div className="min-h-screen p-4 md:p-7 lg:p-10">
       <div className="page-in mx-auto max-w-5xl">
         <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+          <Link href="/" className="link-muted text-xs">
             ← На главную
           </Link>
           <span className="eyebrow">CEFR</span>
         </div>
 
-        <header className="border-b border-[#24221e] pb-6">
+        <header className="border-b border-[#24242b] pb-6">
           <p className="eyebrow mb-3">Готовые наборы</p>
           <h1 className="display text-4xl md:text-5xl">Подборки по уровням</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#948e82]">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#8a8a96]">
             Начните с подходящего уровня — слова и примеры уже собраны.
           </p>
         </header>
 
         {error && (
-          <div className="mt-5 border border-[#bb7464]/50 bg-[#bb7464]/10 px-4 py-3 text-sm text-[#d9a093]">
+          <div className="mt-5 border border-[#e5786f]/50 bg-[#e5786f]/10 px-4 py-3 text-sm text-[#f0a39b]">
             {error}
           </div>
         )}
@@ -140,19 +140,19 @@ export default function LevelsPage() {
                 disabled={Boolean(creatingLevel)}
                 className={`group flex min-h-28 flex-col justify-between border p-4 text-left transition disabled:opacity-50 ${
                   exists
-                    ? 'border-[#c9a96e]/45 bg-[#c9a96e]/[0.06] hover:border-[#c9a96e]'
-                    : 'border-[#24221e] bg-[#111110] hover:border-[#c9a96e]/60'
+                    ? 'border-[#8ea2ff]/45 bg-[#8ea2ff]/[0.06] hover:border-[#8ea2ff]'
+                    : 'border-[#24242b] bg-[#15151a] hover:border-[#8ea2ff]/60'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <span className="display text-2xl">{level}</span>
-                  <span className="text-[#c9a96e] transition group-hover:translate-x-0.5">→</span>
+                  <span className="text-[#8ea2ff] transition group-hover:translate-x-0.5">→</span>
                 </div>
                 <div>
                   <p className="text-sm">
                     {busy ? 'Создаём...' : exists ? 'Открыть набор' : 'Создать набор'}
                   </p>
-                  <p className="mt-1 text-[10px] text-[#948e82]">
+                  <p className="mt-1 text-xs text-[#8a8a96]">
                     {CEFR_WORDS[level].length} слов
                   </p>
                 </div>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0d10" />
+    <title>English Cards — офлайн</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #0d0d10;
+        color: #ececf1;
+        font-family:
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      main {
+        width: 100%;
+        max-width: 420px;
+        border: 1px solid #24242b;
+        border-radius: 20px;
+        background: #15151a;
+        padding: 28px 24px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: #8ea2ff;
+        font-size: 13px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      p {
+        margin: 14px 0 0;
+        color: #b0b0bb;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .hint {
+        margin-top: 18px;
+        color: #8a8a96;
+        font-size: 12px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 24px;
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid #8ea2ff;
+        border-radius: 12px;
+        color: #0d0d10;
+        background: #8ea2ff;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">English Cards</p>
+      <h1>Нет подключения</h1>
+      <p>Эта страница ещё не сохранена на устройстве.</p>
+      <p>Откройте её один раз с интернетом — и она будет доступна офлайн.</p>
+      <a class="button" href="/">На главную</a>
+      <p class="hint">Когда интернет вернётся, страница попробует загрузиться снова.</p>
+    </main>
+    <script>
+      window.addEventListener("online", function () {
+        window.location.reload();
+      });
+    </script>
+  </body>
+</html>

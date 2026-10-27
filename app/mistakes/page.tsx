@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card } from '@/types/database'
 import {
   fetchCards,
@@ -16,7 +16,7 @@ type CardWithFolder = Card & { folders?: { name: string } | null }
 
 export default function MistakesPage() {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
   const [cards, setCards] = useState<CardWithFolder[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -59,24 +59,24 @@ export default function MistakesPage() {
   }
 
   if (authLoading || loading) {
-    return <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">Загрузка...</div>
+    return <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">Загрузка...</div>
   }
 
   return (
     <div className="min-h-screen px-5 py-8 md:px-10 md:py-14">
       <div className="page-in mx-auto max-w-6xl">
         <div className="mb-10 flex items-center justify-between">
-          <Link href="/" className="link-muted text-xs uppercase tracking-[0.18em]">
+          <Link href="/" className="link-muted text-xs">
             ← На главную
           </Link>
           <span className="eyebrow">Личный лексикон</span>
         </div>
 
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24221e] pb-8">
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-6 border-b border-[#24242b] pb-8">
           <div>
             <p className="eyebrow mb-3">Разбор ошибок</p>
             <h1 className="display text-5xl md:text-6xl">Частые ошибки</h1>
-            <p className="mt-4 text-sm text-[#948e82]">
+            <p className="mt-4 text-sm text-[#8a8a96]">
               Слова с двумя и более ошибками: {cards.length}
             </p>
           </div>
@@ -90,7 +90,7 @@ export default function MistakesPage() {
         {cards.length === 0 ? (
           <div className="panel p-14 text-center">
             <p className="display text-3xl mb-3">Чисто</p>
-            <p className="text-sm text-[#948e82]">
+            <p className="text-sm text-[#8a8a96]">
               Отличная работа! У вас нет слов с частыми ошибками.
             </p>
           </div>
@@ -107,8 +107,8 @@ export default function MistakesPage() {
                       onClick={() => toggleFav(card.id, card.is_favorite)}
                       className={`text-lg transition ${
                         card.is_favorite
-                          ? 'text-[#c9a96e]'
-                          : 'text-[#514c44] hover:text-[#948e82]'
+                          ? 'text-[#8ea2ff]'
+                          : 'text-[#4c4c57] hover:text-[#8a8a96]'
                       }`}
                       title="Избранное"
                     >
@@ -116,31 +116,31 @@ export default function MistakesPage() {
                     </button>
                   </div>
                   {card.transcription && (
-                    <p className="mb-2 text-sm text-[#948e82]">{card.transcription}</p>
+                    <p className="mb-2 text-sm text-[#8a8a96]">{card.transcription}</p>
                   )}
-                  <p className="mb-4 text-base text-[#f2eee5]">{card.translation}</p>
+                  <p className="mb-4 text-base text-[#ececf1]">{card.translation}</p>
                   {card.sentences && card.sentences.length > 0 && (
-                    <div className="mb-4 space-y-2 border-l border-[#c9a96e]/30 pl-4 text-xs leading-6 text-[#948e82]">
+                    <div className="mb-4 space-y-2 border-l border-[#8ea2ff]/30 pl-4 text-xs leading-6 text-[#8a8a96]">
                       {card.sentences.map((s, i) => (
                         <p key={i}>{s}</p>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between gap-3 border-t border-[#24221e] pt-4 text-xs text-[#948e82]">
+                <div className="flex items-center justify-between gap-3 border-t border-[#24242b] pt-4 text-xs text-[#8a8a96]">
                   <span className="max-w-[140px] truncate">
                     Папка:{' '}
-                    <strong className="font-medium text-[#f2eee5]">
+                    <strong className="font-medium text-[#ececf1]">
                       {card.folders?.name || '—'}
                     </strong>
                   </span>
                   <div className="flex items-center gap-4">
-                    <span className="font-medium text-[#bb7464]">
+                    <span className="font-medium text-[#e5786f]">
                       Ошибок: {card.wrong_count}
                     </span>
                     <button
                       onClick={() => removeFromMistakes(card.id)}
-                      className="text-[#bb7464] transition hover:opacity-75"
+                      className="text-[#e5786f] transition hover:opacity-75"
                       title="Убрать из частых ошибок"
                     >
                       Убрать

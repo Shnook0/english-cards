@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card, Folder } from '@/types/database'
 import TrainSession from '@/components/TrainSession'
 import { buildStudyQueue } from '@/lib/study'
@@ -19,7 +20,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function TrainFolderPage() {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
   const params = useParams()
   const folderId = params.id as string
 
@@ -92,7 +93,7 @@ export default function TrainFolderPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
         Загрузка тренировки...
       </div>
     )
@@ -100,9 +101,9 @@ export default function TrainFolderPage() {
 
   if (error || !folder) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#bb7464]">{error || 'Ошибка'}</p>
-        <button onClick={handleExit} className="text-sm text-[#c9a96e] hover:underline">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#e5786f]">{error || 'Ошибка'}</p>
+        <button onClick={handleExit} className="text-sm text-[#8ea2ff] hover:underline">
           ← Вернуться в папку
         </button>
       </div>

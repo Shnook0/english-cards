@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 
 export default function ResetPasswordPage() {
-  const router = useRouter()
+  const router = useOfflineRouter()
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
 
   if (isChecking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#090909] text-[#f2eee5]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0d0d10] text-[#ececf1]">
         <p>Проверка ссылки...</p>
       </div>
     )
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
         <div className="panel p-7 md:p-9">
         {!isRecoveryValid ? (
           <div className="text-center">
-            <p className="mb-6 text-sm leading-6 text-[#bb7464]">
+            <p className="mb-6 text-sm leading-6 text-[#e5786f]">
               Ссылка недействительна или устарела. Запросите письмо заново.
             </p>
             <Link href="/login" className="btn btn-primary">
@@ -103,13 +103,13 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handlePasswordReset} className="space-y-5">
             {error && (
-              <div className="border border-[#bb7464]/50 bg-[#bb7464]/10 p-4 text-sm text-[#e3b4a8]">
+              <div className="border border-[#e5786f]/50 bg-[#e5786f]/10 p-4 text-sm text-[#f4b8b1]">
                 {error}
               </div>
             )}
 
             {message && (
-              <div className="border border-[#9fb59f]/40 bg-[#9fb59f]/10 p-4 text-sm text-[#c2d2c1]">
+              <div className="border border-[#7fc8a0]/40 bg-[#7fc8a0]/10 p-4 text-sm text-[#a9ddc0]">
                 {message}
               </div>
             )}
@@ -130,7 +130,7 @@ export default function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#948e82] hover:text-[#f2eee5] transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8a8a96] hover:text-[#ececf1] transition"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
@@ -162,7 +162,7 @@ export default function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   aria-label={showConfirmPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#948e82] hover:text-[#f2eee5] transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8a8a96] hover:text-[#ececf1] transition"
                 >
                   {showConfirmPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card } from '@/types/database'
 import { GeneralProgress } from '@/types/general'
 import { buildQueue } from '@/lib/general'
@@ -18,7 +18,7 @@ type Props = {
 
 export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref }: Props) {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
 
   const [queue, setQueue] = useState<Card[]>([])
   const [progress, setProgress] = useState<Record<string, GeneralProgress>>({})
@@ -61,7 +61,7 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
         Загрузка тренировки...
       </div>
     )
@@ -69,9 +69,9 @@ export default function GeneralTrainLoader({ trainingId, onlyMistakes, exitHref 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#bb7464]">{error}</p>
-        <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#e5786f]">{error}</p>
+        <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
       </div>
     )
   }

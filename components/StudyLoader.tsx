@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card } from '@/types/database'
 import { buildStudyQueue, patchCorrect, patchWrong } from '@/lib/study'
 import { fetchCards, fetchFolder, saveCardAnswer } from '@/lib/offline/repo'
@@ -21,7 +21,7 @@ type Props = {
 
 export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
+  const router = useOfflineRouter()
 
   const [queue, setQueue] = useState<Card[]>([])
   const [roundKey, setRoundKey] = useState(0)
@@ -103,7 +103,7 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex items-center justify-center">
         Загрузка...
       </div>
     )
@@ -111,19 +111,19 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
-        <p className="mb-4 text-[#bb7464]">{error}</p>
-        <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
+        <p className="mb-4 text-[#e5786f]">{error}</p>
+        <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
       </div>
     )
   }
 
   if (queue.length === 0) {
     return (
-      <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4 text-center">
+      <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4 text-center">
         <p className="mb-2 text-lg font-semibold">В этой папке нет слов</p>
-        <p className="mb-6 text-sm text-[#948e82]">Добавьте карточки и возвращайтесь.</p>
-        <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
+        <p className="mb-6 text-sm text-[#8a8a96]">Добавьте карточки и возвращайтесь.</p>
+        <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
       </div>
     )
   }
@@ -182,9 +182,9 @@ export default function StudyLoader({ kind, folderId, mode, exitHref }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-[#090909] text-[#f2eee5] flex flex-col items-center justify-center p-4">
-      <p className="mb-4 text-[#bb7464]">Неизвестный режим</p>
-      <Link href={exitHref} className="text-sm text-[#c9a96e] hover:underline">← Назад</Link>
+    <div className="min-h-screen bg-[#0d0d10] text-[#ececf1] flex flex-col items-center justify-center p-4">
+      <p className="mb-4 text-[#e5786f]">Неизвестный режим</p>
+      <Link href={exitHref} className="text-sm text-[#8ea2ff] hover:underline">← Назад</Link>
     </div>
   )
 }
