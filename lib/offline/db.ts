@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie'
 import { Card, Folder } from '@/types/database'
 import { GeneralProgress, GeneralTraining } from '@/types/general'
 import { ConflictItem, OutboxItem } from '@/types/offline'
+import { clearSnapshotMark } from '@/lib/offline/connectivity'
 
 export type GeneralTrainingFolder = {
   training_id: string
@@ -89,6 +90,7 @@ export async function deleteMeta(key: string): Promise<void> {
 }
 
 export async function clearLocalData(): Promise<void> {
+  clearSnapshotMark()
   const db = getDb()
   await db.transaction(
     'rw',

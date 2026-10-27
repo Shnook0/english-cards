@@ -31,4 +31,7 @@ function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: { fetch: fetchWithTimeout },
+  // Встроенные повторы умножали ожидание: 4 попытки по таймауту — больше 30 с на экране загрузки.
+  // При сбое приложение и так берёт локальные данные, а синхронизация повторится сама.
+  db: { retry: false },
 })

@@ -33,14 +33,42 @@ const appShellEntries: PrecacheEntry[] = [
 ].map(url => ({ url, revision: buildId ?? 'app-shell' }))
 
 const RSC_TIMEOUT_MS = 2000
-const appPagesCache =`app-pages-${buildId ?? 'app-shell'}`
+const OFFLINE_MEMORY_MS = 30000
+const appPagesCache = `app-pages-${buildId ?? 'app-shell'}`
 const networkOnly = new NetworkOnly()
+
+// Помним, что сеть недавно не ответила: следующие переходы не ждут таймаут,
+// а сразу уходят на полную загрузку страницы из кэша. Сеть проверяем в фоне.
+let networkFailedAt = 0
+const networkRecentlyFailed = () => Date.now() - networkFailedAt < OFFLINE_MEMORY_MS
+const networkStatePlugin = {
+  fetchDidFail: async () => {
+    networkFailedAt = Date.now()
+  },
+  fetchDidSucceed: async ({ response }: { response: Response }) => {
+    networkFailedAt = 0
+    return response
+  },
+}
+
+async function fetchRsc(request: Request): Promise<Response> {
+  try {
+    const response = await fetch(request, { signal: AbortSignal.timeout(RSC_TIMEOUT_MS) })
+    networkFailedAt = 0
+    return response
+  } catch {
+    networkFailedAt = Date.now()
+    return Response.error()
+  }
+}
 
 const serwist = new Serwist({
   precacheEntries: [...manifest, ...appShellEntries],
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  // Предзагрузка навигации заставляла ждать сеть даже для страниц из кэша:
+  // в авиарежиме на iOS запуск висел десятки секунд.
+  navigationPreload: false,
   runtimeCaching: [
     {
       // Клиентские переходы Next запрашивают RSC. Встроенное правило ждёт сеть 10 с,
@@ -52,11 +80,11 @@ const serwist = new Serwist({
         request.mode !== 'navigate' &&
         (request.headers.get('RSC') === '1' || url.searchParams.has('_rsc')),
       handler: async ({ request }: { request: Request }) => {
-        try {
-          return await fetch(request, { signal: AbortSignal.timeout(RSC_TIMEOUT_MS) })
-        } catch {
+        if (networkRecentlyFailed()) {
+          void fetchRsc(request.clone())
           return Response.error()
         }
+        return fetchRsc(request)
       },
     },
     {
@@ -68,6 +96,7 @@ const serwist = new Serwist({
         cacheName: appPagesCache,
         matchOptions: { ignoreVary: true },
         plugins: [
+          networkStatePlugin,
           new ExpirationPlugin({
             maxEntries: 200,
             maxAgeSeconds: 30 * 24 * 60 * 60,

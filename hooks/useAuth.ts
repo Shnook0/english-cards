@@ -51,14 +51,17 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION без сессии не значит «не вошёл»: пользователя с устройства
+      // подхватывает init(), поэтому здесь loading снимаем только по точным событиям.
       if (event === 'SIGNED_OUT') {
         void clearCachedUser()
         setUser(null)
+        setLoading(false)
       } else if (session?.user) {
         void cacheUser(session.user)
         setUser(session.user)
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     return () => {

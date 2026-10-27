@@ -36,11 +36,16 @@ export function isOnline(): boolean {
 }
 
 const SNAPSHOT_KEY = 'english-cards:snapshot-at'
-const SNAPSHOT_FRESH_MS = 5 * 60000
 
 export function markSnapshotFresh(): void {
   try {
     localStorage.setItem(SNAPSHOT_KEY, String(Date.now()))
+  } catch {}
+}
+
+export function clearSnapshotMark(): void {
+  try {
+    localStorage.removeItem(SNAPSHOT_KEY)
   } catch {}
 }
 
@@ -54,10 +59,11 @@ export function isSnapshotFresh(maxAgeMs: number): boolean {
   }
 }
 
-// Чтение: пока полная копия данных на устройстве свежая, не ждём сеть вообще.
-// Это главное, что делает страницы быстрыми, когда iOS в авиарежиме говорит «онлайн».
+// Offline-first: если полная копия данных уже есть на устройстве, страницы читают только её,
+// а свежие данные подтягивает фоновая синхронизация. Сеть при чтении нужна лишь до первой
+// успешной синхронизации — иначе в авиарежиме на iOS («онлайн», но запросы висят) страницы ждут.
 export function isReadOnline(): boolean {
-  return isOnline() && !isSnapshotFresh(SNAPSHOT_FRESH_MS)
+  return isOnline() && !isSnapshotFresh(Number.POSITIVE_INFINITY)
 }
 
 export function noteNetworkFailure(): void {

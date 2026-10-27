@@ -1,13 +1,16 @@
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getMeta, setMeta } from '@/lib/offline/db'
-import { isOnline } from '@/lib/offline/connectivity'
+import { clearSnapshotMark, isOnline } from '@/lib/offline/connectivity'
 import { CachedUser } from '@/types/offline'
 
 const AUTH_CACHE_KEY = 'cached_user'
 
 export async function cacheUser(user: User | null): Promise<void> {
   if (!user) return
+  const previous = await getMeta<CachedUser>(AUTH_CACHE_KEY)
+  // Локальная копия принадлежит другому аккаунту — читать её нельзя до новой синхронизации.
+  if (previous && previous.id !== user.id) clearSnapshotMark()
   const cached: CachedUser = { id: user.id, email: user.email ?? null }
   await setMeta(AUTH_CACHE_KEY, cached)
 }
