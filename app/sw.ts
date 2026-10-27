@@ -62,7 +62,20 @@ async function fetchRsc(request: Request): Promise<Response> {
   }
 }
 
-const serwist = new Serwist({
+const PAGE_TIMEOUT_MS = 4000
+const pagesStrategy = new StaleWhileRevalidate({
+  cacheName: appPagesCache,
+  matchOptions: { ignoreVary: true },
+  plugins: [
+    networkStatePlugin,
+    new ExpirationPlugin({
+      maxEntries: 200,
+      maxAgeSeconds: 30 * 24 * 60 * 60,
+    }),
+  ],
+})
+
+const serwist: Serwist = new Serwist({
   precacheEntries: [...manifest, ...appShellEntries],
   skipWaiting: true,
   clientsClaim: true,
@@ -92,17 +105,32 @@ const serwist = new Serwist({
         sameOrigin &&
         !url.pathname.startsWith('/api/') &&
         (request.mode === 'navigate' || request.destination === 'document'),
-      handler: new StaleWhileRevalidate({
-        cacheName: appPagesCache,
-        matchOptions: { ignoreVary: true },
-        plugins: [
-          networkStatePlugin,
-          new ExpirationPlugin({
-            maxEntries: 200,
-            maxAgeSeconds: 30 * 24 * 60 * 60,
-          }),
-        ],
-      }),
+      // Страница из кэша отдаётся сразу. Если её в кэше нет, сеть ждём не дольше
+      // PAGE_TIMEOUT_MS, иначе на iOS в авиарежиме был долгий чёрный экран; дальше — /offline.html.
+      handler: async ({ event, request }: { event: ExtendableEvent; request: Request }): Promise<Response> => {
+        const cached = await caches
+          .open(appPagesCache)
+          .then(cache => cache.match(request, { ignoreVary: true }))
+        // Есть в кэше — стратегия отдаст его сразу и обновит в фоне.
+        if (cached) return pagesStrategy.handle({ event, request })
+        try {
+          if (networkRecentlyFailed()) throw new Error('offline')
+          return await Promise.race([
+            pagesStrategy.handle({ event, request }),
+            new Promise<Response>((_, reject) =>
+              setTimeout(() => {
+                networkFailedAt = Date.now()
+                reject(new Error('page timeout'))
+              }, PAGE_TIMEOUT_MS)
+            ),
+          ])
+        } catch (error) {
+          // Встроенный fallback Serwist работает только для стратегий, а не для функций.
+          const fallback: Response | undefined = await serwist.matchPrecache('/offline.html')
+          if (fallback) return fallback
+          throw error
+        }
+      },
     },
     {
       matcher: ({ url }) =>

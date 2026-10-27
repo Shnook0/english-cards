@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase'
+import { getAccessToken } from '@/lib/offline/authCache'
+import { isOnline } from '@/lib/offline/connectivity'
 import { Card } from '@/types/database'
 
 // Интервалы повторения для карточек в папках (дни), как в обычной тренировке
@@ -155,13 +156,14 @@ export function patchWrong(card: Card, isLevel: boolean, at: number = Date.now()
 // Ставит слово в обычные запланированные повторы Telegram-бота.
 // Это не ветка «Не знаю» внутри бота, а очередь, которую бот присылает по расписанию.
 export async function queueBotRepeat(cardId: string): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return false
+  if (!isOnline()) return false
   try {
-    const { data } = await supabase.auth.getSession()
-    const token = data.session?.access_token
+    const token = await getAccessToken()
     if (!token) return false
 
+    // На iOS в авиарежиме запрос может висеть бесконечно — тренировка не должна его ждать.
     const response = await fetch('/api/telegram/repeat', {
+      signal: AbortSignal.timeout(5000),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

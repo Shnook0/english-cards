@@ -3,36 +3,38 @@ import { setMeta } from '@/lib/offline/db'
 const CONNECTIVITY_EVENT = 'english-cards:connectivity'
 
 const FAILURE_KEY = 'english-cards:net-failure'
-const FAILURE_TTL_MS = 60000
+// Сколько считаем, что сети нет, после неудачного запроса. Потом снова пробуем сеть —
+// на iOS событие «online» приходит не всегда, поэтому флаг обязан истекать сам.
+const FAILURE_TTL_MS = 30000
 
-let forcedOffline = false
+let failedAt = 0
 
 export function isBrowser(): boolean {
   return typeof window !== 'undefined'
 }
 
-// Офлайн-переходы перезагружают страницу целиком, поэтому «сети нет» помним в sessionStorage,
+// Офлайн-переходы перезагружают страницу целиком, поэтому время сбоя храним и в sessionStorage,
 // иначе каждая страница заново ждала бы таймаут запроса.
-function rememberFailure(failed: boolean): void {
+function setFailedAt(value: number): void {
+  failedAt = value
   try {
-    if (failed) sessionStorage.setItem(FAILURE_KEY, String(Date.now()))
+    if (value) sessionStorage.setItem(FAILURE_KEY, String(value))
     else sessionStorage.removeItem(FAILURE_KEY)
   } catch {}
 }
 
 function recentFailure(): boolean {
-  try {
-    const at = Number(sessionStorage.getItem(FAILURE_KEY))
-    return at > 0 && Date.now() - at < FAILURE_TTL_MS
-  } catch {
-    return false
+  if (!failedAt) {
+    try {
+      failedAt = Number(sessionStorage.getItem(FAILURE_KEY)) || 0
+    } catch {}
   }
+  return failedAt > 0 && Date.now() - failedAt < FAILURE_TTL_MS
 }
 
 export function isOnline(): boolean {
   if (!isBrowser()) return false
-  if (!forcedOffline && recentFailure()) forcedOffline = true
-  return navigator.onLine && !forcedOffline
+  return navigator.onLine && !recentFailure()
 }
 
 const SNAPSHOT_KEY = 'english-cards:snapshot-at'
@@ -68,35 +70,26 @@ export function isReadOnline(): boolean {
 
 export function noteNetworkFailure(): void {
   if (!isBrowser()) return
-  rememberFailure(true)
-  if (!forcedOffline) {
-    forcedOffline = true
-    window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
-  }
+  const wasOnline = !recentFailure()
+  setFailedAt(Date.now())
+  if (wasOnline) window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
 }
 
 export function noteNetworkSuccess(): void {
   if (!isBrowser()) return
-  rememberFailure(false)
-  if (forcedOffline) {
-    forcedOffline = false
-    window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
-  }
+  const wasOffline = recentFailure()
+  setFailedAt(0)
+  if (wasOffline) window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
 }
 
 export function resetForcedOffline(): void {
-  rememberFailure(false)
-  if (forcedOffline) {
-    forcedOffline = false
-    if (isBrowser()) window.dispatchEvent(new Event(CONNECTIVITY_EVENT))
-  }
+  noteNetworkSuccess()
 }
 
 export function subscribeConnectivity(listener: () => void): () => void {
   if (!isBrowser()) return () => {}
   const onOnline = () => {
-    forcedOffline = false
-    rememberFailure(false)
+    setFailedAt(0)
     listener()
   }
   const onOffline = () => listener()

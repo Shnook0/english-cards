@@ -145,6 +145,7 @@ function AddCardModalContent({
       try {
         const res = await fetch(`/api/translate?word=${encodeURIComponent(term)}`, {
           cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
         })
         const data = (await res.json().catch(() => null)) as
           | { translations?: unknown }

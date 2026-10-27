@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getAccessToken } from '@/lib/offline/authCache'
+import { isOnline } from '@/lib/offline/connectivity'
 import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 
@@ -29,14 +30,13 @@ export default function TelegramBanner() {
     const load = async () => {
       setChecking(true)
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        if (!session) return
+        const token = await getAccessToken()
+        if (!token) return
 
         const res = await fetch('/api/telegram/link', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
+          signal: AbortSignal.timeout(6000),
         })
         const data = await res.json()
         if (!cancelled && res.ok) {
@@ -72,18 +72,21 @@ export default function TelegramBanner() {
     const popup = window.open('about:blank', '_blank')
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
+      const token = await getAccessToken()
+      if (!token) {
         popup?.close()
+        if (!isOnline()) {
+          setError('Нужен интернет, чтобы подключить бота.')
+          return
+        }
         router.push('/login')
         return
       }
 
       const res = await fetch('/api/telegram/link', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10000),
       })
       const data = await res.json()
       if (!res.ok || !data.botUrl) {
@@ -121,17 +124,20 @@ export default function TelegramBanner() {
     setNotice(null)
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
+      const token = await getAccessToken()
+      if (!token) {
+        if (!isOnline()) {
+          setError('Нужен интернет, чтобы отвязать бота.')
+          return
+        }
         router.push('/login')
         return
       }
 
       const res = await fetch('/api/telegram/link', {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(10000),
       })
       const data = await res.json()
       if (!res.ok) {

@@ -39,6 +39,20 @@ export async function getSessionUser(): Promise<User | null> {
   }
 }
 
+// Токен для запросов к нашим /api. Без сети или если supabase завис на обновлении токена — null.
+export async function getAccessToken(): Promise<string | null> {
+  if (!isOnline()) return null
+  try {
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), SESSION_TIMEOUT_MS)),
+    ])
+    return result?.data.session?.access_token ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function resolveUserId(): Promise<string | null> {
   const user = await getSessionUser()
   if (user) {

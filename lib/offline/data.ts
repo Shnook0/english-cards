@@ -16,18 +16,14 @@ import { recordConflict } from '@/lib/offline/conflicts'
 import { resolveUserId } from '@/lib/offline/authCache'
 import {
   isMissingColumn,
-  remoteApplyCardAnswer,
-  remoteApplyGeneralAnswer,
   remoteCreateCardIfMissing,
   remoteCreateTraining,
   remoteDeleteCard,
   remoteDeleteCardGroup,
   remoteDeleteFolder,
   remoteDeleteTraining,
-  remoteResetWrong,
   remoteSaveBlocksRecord,
   remoteSaveMatchRecord,
-  remoteSetFavorite,
   remoteUpdateCardContent,
 } from '@/lib/offline/remotes'
 import { patchCorrect, patchWrong } from '@/lib/study'
@@ -418,16 +414,6 @@ export async function setFavorite(cardId: string, value: boolean): Promise<boole
   const local = await db.cards.get(cardId)
 
   if (local) await db.cards.put({ ...local, is_favorite: value })
-
-  if (isOnline()) {
-    try {
-      await remoteSetFavorite(cardId, value)
-      return true
-    } catch (error) {
-      if (!isNetworkError(error)) return false
-    }
-  }
-
   await enqueue('card_favorite', 'card', cardId, { value })
   return true
 }
@@ -437,16 +423,6 @@ export async function resetWrongCount(cardId: string): Promise<boolean> {
   const local = await db.cards.get(cardId)
 
   if (local) await db.cards.put({ ...local, wrong_count: 0 })
-
-  if (isOnline()) {
-    try {
-      await remoteResetWrong(cardId)
-      return true
-    } catch (error) {
-      if (!isNetworkError(error)) return false
-    }
-  }
-
   await enqueue('card_wrong_reset', 'card', cardId, {})
   return true
 }
@@ -498,26 +474,8 @@ export async function saveCardAnswer(
   const eventId = newId()
   const patch = correct ? patchCorrect(local, isLevel, now) : patchWrong(local, isLevel, now)
 
-  if (isOnline()) {
-    try {
-      const row = await remoteApplyCardAnswer({
-        eventId,
-        cardId: card.id,
-        correct,
-        isLevel,
-        answeredAt,
-        patch,
-      })
-      if (row) {
-        await db.cards.put(row)
-        return true
-      }
-      return false
-    } catch (error) {
-      if (!isNetworkError(error)) return false
-    }
-  }
-
+  // Ответ сохраняем на устройстве сразу, на сервер его отправит фоновая синхронизация.
+  // Иначе на iOS в авиарежиме («онлайн», но запросы висят) тренировка ждала сеть.
   const merged = { ...local, ...patch }
   await db.cards.put(merged)
   await enqueue(
@@ -922,26 +880,7 @@ export async function saveGeneralAnswer(
   const base = current ?? defaultGeneralProgress(trainingId, userId, card, now)
   const row = computeGeneralProgress(base, correct, now)
 
-  if (isOnline()) {
-    try {
-      const saved = await remoteApplyGeneralAnswer({
-        eventId,
-        trainingId,
-        wordKey: row.word_key,
-        correct,
-        answeredAt,
-        fallback: row,
-      })
-      if (saved) {
-        await db.general_progress.put(saved)
-        return saved
-      }
-      return null
-    } catch (error) {
-      if (!isNetworkError(error)) return null
-    }
-  }
-
+  // Как и в saveCardAnswer: сначала устройство, сервер — через фоновую синхронизацию.
   await db.general_progress.put(row)
   await enqueue('general_answer', 'progress', `${trainingId}:${row.word_key}`, {
     eventId,
