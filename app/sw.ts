@@ -12,10 +12,30 @@ declare global {
 
 declare const self: ServiceWorkerGlobalScope
 
+const manifest = self.__SW_MANIFEST ?? []
+const buildId = manifest
+  .map(entry => (typeof entry === 'string' ? entry : entry.url))
+  .map(url => /\/_next\/static\/([^/]+)\/_buildManifest\.js/.exec(url)?.[1])
+  .find((value): value is string => Boolean(value))
+
+const appShellEntries: PrecacheEntry[] = [
+  '/',
+  '/login',
+  '/folders',
+  '/favorites',
+  '/favorites/train',
+  '/mistakes',
+  '/mistakes/train',
+  '/levels',
+  '/general',
+  '/settings',
+  '/reset-password',
+].map(url => ({ url, revision: buildId ?? 'app-shell' }))
+
 const networkOnly = new NetworkOnly()
 
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  precacheEntries: [...manifest, ...appShellEntries],
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,

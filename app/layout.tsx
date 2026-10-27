@@ -43,7 +43,7 @@ export default function RootLayout({
       <body className="bg-[#090909] text-[#f2eee5] min-h-screen font-sans antialiased">
         <SerwistProvider
           swUrl="/serwist/sw.js"
-          cacheOnNavigation={false}
+          cacheOnNavigation={true}
           reloadOnOnline={false}
         >
           <ScrollRestorer />
