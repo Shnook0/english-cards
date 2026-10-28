@@ -249,12 +249,12 @@ export function debugText(
 export function debugKeyboard(): InlineKeyboard {
   return [
     [
-      { text: 'Последние', callback_data: 'set:debug' },
-      { text: 'Следующие', callback_data: 'set:upcoming' },
+      { text: '🕘 Последние', callback_data: 'set:debug' },
+      { text: '🗓 Следующие', callback_data: 'set:upcoming' },
     ],
     [
-      { text: 'Обновить', callback_data: 'set:debug' },
-      { text: 'Настройки', callback_data: 'set:menu' },
+      { text: '🔄 Обновить', callback_data: 'set:debug' },
+      { text: '← Настройки', callback_data: 'set:menu' },
     ],
   ]
 }
@@ -388,111 +388,139 @@ export function upcomingText(
 export function upcomingKeyboard(): InlineKeyboard {
   return [
     [
-      { text: 'Последние', callback_data: 'set:debug' },
-      { text: 'Обновить', callback_data: 'set:upcoming' },
+      { text: '🕘 Последние', callback_data: 'set:debug' },
+      { text: '🔄 Обновить', callback_data: 'set:upcoming' },
     ],
     [
-      { text: 'Прислать слово', callback_data: 'set:next' },
-      { text: 'Настройки', callback_data: 'set:menu' },
+      { text: '📖 Слово', callback_data: 'set:next' },
+      { text: '🏠 Меню', callback_data: 'set:home' },
     ],
   ]
 }
 
+const LINE = '━━━━━━━━━━━━━━'
+
+function windowLabel(settings: TelegramSettings): string {
+  return `${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}`
+}
+
+function statusIcon(settings: TelegramSettings): string {
+  return settings.paused ? '⏸ на паузе' : '🟢 активен'
+}
+
+function revealLabel(settings: TelegramSettings): string {
+  return settings.reveal_mode === 'spoiler' ? '🙈 скрыт' : '👁 виден'
+}
+
+// ───────── Главное меню ─────────
+
+export function homeText(settings: TelegramSettings): string {
+  return [
+    '<b>📚 English Cards</b>',
+    LINE,
+    `${statusIcon(settings)}`,
+    `⏰ Приношу слова: <b>${windowLabel(settings)}</b>`,
+    `🔁 Не чаще, чем раз в <b>${formatInterval(settings.interval_minutes)}</b>`,
+    LINE,
+    '<i>Выберите действие кнопками ниже 👇</i>',
+  ].join('\n')
+}
+
+export function homeKeyboard(settings: TelegramSettings): InlineKeyboard {
+  return [
+    [{ text: '📖 Слово прямо сейчас', callback_data: 'set:next' }],
+    [
+      { text: '📊 Прогресс', callback_data: 'set:stats' },
+      { text: '🗓 Расписание', callback_data: 'set:upcoming' },
+    ],
+    [
+      { text: '⚙️ Настройки', callback_data: 'set:menu' },
+      {
+        text: settings.paused ? '▶️ Продолжить' : '⏸ Пауза',
+        callback_data: 'set:toggle:home',
+      },
+    ],
+    [
+      { text: '❓ Как работает бот', callback_data: 'set:help' },
+    ],
+  ]
+}
+
+export function welcomeText(settings: TelegramSettings): string {
+  return homeText(settings)
+}
+
+export function mainReplyKeyboard(): ReplyKeyboard {
+  return {
+    keyboard: [
+      [{ text: '📖 Слово' }],
+      [{ text: '📊 Прогресс' }, { text: '🗓 Расписание' }],
+      [{ text: '⚙️ Настройки' }, { text: '❓ Помощь' }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+    input_field_placeholder: 'Выберите действие или нажмите /start',
+  }
+}
+
+// ───────── Настройки ─────────
+
 export function settingsText(settings: TelegramSettings): string {
   return [
-    '<b>⚙️ Настройки бота</b>',
-    '',
-    `⏰ Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
-    `🔁 Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
-    `👀 Формат: <b>${settings.reveal_mode === 'spoiler' ? 'перевод скрыт' : 'перевод виден'}</b>`,
-    `📌 Статус: <b>${statusLabel(settings)}</b>`,
+    '<b>⚙️ Настройки</b>',
+    LINE,
+    `📌 Статус: <b>${statusIcon(settings)}</b>`,
+    `⏰ Окно: <b>${windowLabel(settings)}</b>`,
+    `🔁 Интервал: <b>раз в ${formatInterval(settings.interval_minutes)}</b>`,
+    `🈯 Перевод: <b>${revealLabel(settings)}</b>`,
     `🌍 Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
-    '',
-    '<i>Обычные слова приходят только в окне.</i>',
-    '<i>«Не знаю»: 15 минут, 2 и 5 часов, затем 1, 2, 4, 7, 15 и 30 дней.</i>',
-    '<i>«Знаю»: через 4 дня, затем реже. Без ответа — через 1–2 дня, затем реже.</i>',
-    '<i>Повторы, выпавшие вне окна, переносятся на следующее открытие.</i>',
+    LINE,
+    '<i>Нажмите на пункт, который хотите изменить. Изменения применяются сразу.</i>',
   ].join('\n')
 }
 
 export function settingsKeyboard(settings: TelegramSettings): InlineKeyboard {
   return [
     [
-      { text: 'Интервал', callback_data: 'set:interval' },
-      { text: 'Время', callback_data: 'set:time' },
+      { text: '⏰ Окно', callback_data: 'set:time' },
+      { text: '🔁 Интервал', callback_data: 'set:interval' },
+    ],
+    [
+      { text: '🈯 Перевод', callback_data: 'set:fmt' },
+      { text: '🌍 Часовой пояс', callback_data: 'set:tz' },
     ],
     [
       {
-        text: settings.paused ? 'Продолжить' : 'Пауза',
+        text: settings.paused ? '▶️ Продолжить' : '⏸ Пауза',
         callback_data: 'set:toggle',
       },
-      { text: 'Статистика', callback_data: 'set:stats' },
+      { text: '🛠 Диагностика', callback_data: 'set:debug' },
     ],
-    [
-      { text: 'Формат перевода', callback_data: 'set:fmt' },
-      { text: 'Часовой пояс', callback_data: 'set:tz' },
-    ],
-    [
-      { text: 'Обновить', callback_data: 'set:menu' },
-      { text: 'Прислать слово сейчас', callback_data: 'set:next' },
-    ],
+    [{ text: '🏠 Главное меню', callback_data: 'set:home' }],
   ]
-}
-
-export function welcomeText(settings: TelegramSettings): string {
-  return [
-    '<b>📚 English Cards</b>',
-    '',
-    'Здравствуйте! Я бот для повторения английских слов.',
-    'Присылаю слова из ваших папок — новые и те, где были ошибки.',
-    '',
-    '<b>Сейчас</b>',
-    `⏰ Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b> — время, когда приходят слова.`,
-    `🔁 Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b> — пауза между обычными словами.`,
-    `📌 Статус: <b>${statusLabel(settings)}</b>`,
-    '',
-    '<b>Как работают кнопки</b>',
-    '• «Знаю» — верну слово через 4 дня, затем реже.',
-    '• «Не знаю» — верну через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.',
-    '• Если не нажать кнопку, повторю через 1–2 дня, затем реже.',
-    '• «Пропустить» — то же, что не нажать кнопку.',
-    '• «Больше не повторять» — уберу из обычной очереди, но напомню через 30 и 70 дней.',
-    '',
-    'Обычные слова приходят только в окне. Повторы, выпавшие вне окна, переносятся на следующее открытие.',
-    '',
-    'Если нужна помощь, отправьте /help.',
-    '',
-    '<i>Настроить всё можно кнопками ниже или командой /settings.</i>',
-  ].join('\n')
-}
-
-export function mainReplyKeyboard(): ReplyKeyboard {
-  return {
-    keyboard: [
-      [{ text: 'Слово' }],
-      [{ text: 'Настройки' }, { text: 'Статистика' }],
-      [{ text: 'Диагностика' }, { text: 'Помощь' }],
-    ],
-    resize_keyboard: true,
-    is_persistent: true,
-    input_field_placeholder: 'Выбери действие или напиши команду',
-  }
 }
 
 export function helpKeyboard(): InlineKeyboard {
   return [
-    [{ text: 'Настройки', callback_data: 'set:menu' }],
-    [{ text: 'Прислать слово сейчас', callback_data: 'set:next' }],
+    [
+      { text: '📖 Слово', callback_data: 'set:next' },
+    ],
+    [
+      { text: '⚙️ Настройки', callback_data: 'set:menu' },
+      { text: '🏠 Меню', callback_data: 'set:home' },
+    ],
   ]
 }
 
 export function intervalText(settings: TelegramSettings): string {
   return [
-    '<b>Интервал отправки</b>',
+    '<b>🔁 Как часто присылать слова</b>',
+    LINE,
+    `Сейчас: <b>раз в ${formatInterval(settings.interval_minutes)}</b>`,
     '',
-    `Сейчас: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
+    'Это пауза между обычными словами. Повторы «Не знаю» приходят по своему графику.',
     '',
-    '<i>Выбери готовый вариант или задай своё количество минут.</i>',
+    '<i>Выберите вариант или задайте своё число минут (от 5 до 1440).</i>',
   ].join('\n')
 }
 
@@ -505,8 +533,8 @@ export function intervalKeyboard(settings: TelegramSettings): InlineKeyboard {
   return [
     buttons.slice(0, 3),
     buttons.slice(3),
-    [{ text: 'Самому выбрать время', callback_data: 'set:ivc' }],
-    [{ text: 'Назад', callback_data: 'set:menu' }],
+    [{ text: '✏️ Своё значение', callback_data: 'set:ivc' }],
+    [{ text: '← Назад', callback_data: 'set:menu' }],
   ]
 }
 
@@ -515,30 +543,27 @@ export const CUSTOM_INTERVAL_PROMPT =
 
 export function customIntervalText(settings: TelegramSettings): string {
   return [
-    '<b>Свой интервал</b>',
+    '<b>✏️ Свой интервал</b>',
+    LINE,
+    `Сейчас: <b>раз в ${formatInterval(settings.interval_minutes)}</b>`,
     '',
-    `Сейчас: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
-    '',
-    'Напиши количество минут числом, например <b>5</b> или <b>45</b>.',
-    'Допустимо от 5 до 1440 минут.',
+    'Напишите количество минут числом, например <b>5</b> или <b>45</b>.',
+    '<i>Допустимо от 5 до 1440 минут.</i>',
   ].join('\n')
 }
 
 export function customIntervalKeyboard(): InlineKeyboard {
-  return [[{ text: 'Отмена', callback_data: 'set:interval' }]]
+  return [[{ text: '✖️ Отмена', callback_data: 'set:interval' }]]
 }
 
 export function formatText(settings: TelegramSettings): string {
   return [
-    '<b>Формат напоминаний</b>',
+    '<b>🈯 Как показывать перевод</b>',
+    LINE,
+    `Сейчас: <b>${revealLabel(settings)}</b>`,
     '',
-    'Перевод можно показывать сразу или скрывать под спойлером.',
-    '',
-    `Сейчас: <b>${
-      settings.reveal_mode === 'spoiler' ? 'перевод скрыт' : 'перевод виден'
-    }</b>`,
-    '',
-    '<i>Спойлер открывается нажатием на перевод.</i>',
+    '👁 <b>Виден</b> — перевод сразу под словом.',
+    '🙈 <b>Скрыт</b> — сначала вспомните сами, а потом коснитесь перевода, чтобы проверить себя. Так запоминается лучше.',
   ].join('\n')
 }
 
@@ -546,27 +571,29 @@ export function formatKeyboard(settings: TelegramSettings): InlineKeyboard {
   return [
     [
       {
-        text: `${tick(settings.reveal_mode === 'open')}Перевод виден`,
+        text: `${tick(settings.reveal_mode === 'open')}👁 Перевод виден`,
         callback_data: 'set:fmt:open',
       },
     ],
     [
       {
-        text: `${tick(settings.reveal_mode === 'spoiler')}Перевод скрыт`,
+        text: `${tick(settings.reveal_mode === 'spoiler')}🙈 Перевод скрыт`,
         callback_data: 'set:fmt:spoiler',
       },
     ],
-    [{ text: 'Назад', callback_data: 'set:menu' }],
+    [{ text: '← Назад', callback_data: 'set:menu' }],
   ]
 }
 
 export function timeText(settings: TelegramSettings): string {
   return [
-    '<b>Окно отправки</b>',
+    '<b>⏰ Окно отправки</b>',
+    LINE,
+    `Сейчас: <b>${windowLabel(settings)}</b>`,
     '',
-    `Сейчас: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
+    'Только в эти часы я присылаю слова. Всё, что выпало на ночь, перенесётся на утро.',
     '',
-    '<i>Выбери готовый вариант или настрой вручную.</i>',
+    '<i>Выберите вариант или настройте вручную.</i>',
   ].join('\n')
 }
 
@@ -582,54 +609,54 @@ export function timeKeyboard(settings: TelegramSettings): InlineKeyboard {
   return [
     presetButtons.slice(0, 2),
     presetButtons.slice(2),
-    [{ text: 'Настроить вручную', callback_data: 'set:tw:f' }],
-    [{ text: 'Назад', callback_data: 'set:menu' }],
+    [{ text: '🎚 Настроить вручную', callback_data: 'set:tw:f' }],
+    [{ text: '← Назад', callback_data: 'set:menu' }],
   ]
 }
 
 export function timeFineText(settings: TelegramSettings): string {
   return [
-    '<b>Точная настройка окна</b>',
+    '<b>🎚 Точная настройка окна</b>',
+    LINE,
+    `🌅 Начало: <b>${normalizeTime(settings.window_start)}</b>`,
+    `🌙 Конец: <b>${normalizeTime(settings.window_end)}</b>`,
     '',
-    `Начало: <b>${normalizeTime(settings.window_start)}</b>`,
-    `Конец: <b>${normalizeTime(settings.window_end)}</b>`,
-    '',
-    '<i>Меняй кнопками — изменения сохраняются сразу.</i>',
+    '<i>Меняйте кнопками — всё сохраняется сразу.</i>',
   ].join('\n')
 }
 
 export function timeFineKeyboard(): InlineKeyboard {
   return [
     [
-      { text: 'Начало −30 мин', callback_data: 'set:ts:-30' },
-      { text: 'Начало +30 мин', callback_data: 'set:ts:30' },
+      { text: '🌅 −30 мин', callback_data: 'set:ts:-30' },
+      { text: '🌅 +30 мин', callback_data: 'set:ts:30' },
     ],
     [
-      { text: 'Конец −30 мин', callback_data: 'set:te:-30' },
-      { text: 'Конец +30 мин', callback_data: 'set:te:30' },
+      { text: '🌙 −30 мин', callback_data: 'set:te:-30' },
+      { text: '🌙 +30 мин', callback_data: 'set:te:30' },
     ],
     [
-      { text: 'Начало −1 ч', callback_data: 'set:ts:-60' },
-      { text: 'Начало +1 ч', callback_data: 'set:ts:60' },
+      { text: '🌅 −1 ч', callback_data: 'set:ts:-60' },
+      { text: '🌅 +1 ч', callback_data: 'set:ts:60' },
     ],
     [
-      { text: 'Конец −1 ч', callback_data: 'set:te:-60' },
-      { text: 'Конец +1 ч', callback_data: 'set:te:60' },
+      { text: '🌙 −1 ч', callback_data: 'set:te:-60' },
+      { text: '🌙 +1 ч', callback_data: 'set:te:60' },
     ],
     [
-      { text: 'Готово', callback_data: 'set:menu' },
-      { text: 'Назад', callback_data: 'set:time' },
+      { text: '✅ Готово', callback_data: 'set:menu' },
+      { text: '← Назад', callback_data: 'set:time' },
     ],
   ]
 }
 
 export function timezoneText(settings: TelegramSettings): string {
   return [
-    '<b>Часовой пояс</b>',
-    '',
+    '<b>🌍 Часовой пояс</b>',
+    LINE,
     `Сейчас: <b>${escapeHtml(settings.timezone)}</b>`,
     '',
-    '<i>Окно отправки работает по этому времени.</i>',
+    'По этому времени работает окно отправки. Выберите свой город:',
   ].join('\n')
 }
 
@@ -643,29 +670,34 @@ export function timezoneKeyboard(settings: TelegramSettings): InlineKeyboard {
     buttons.slice(0, 2),
     buttons.slice(2, 4),
     buttons.slice(4),
-    [{ text: 'Назад', callback_data: 'set:menu' }],
+    [{ text: '← Назад', callback_data: 'set:menu' }],
   ]
 }
 
 export function statsText(stats: BotStats): string {
   return [
-    '<b>📊 Статистика</b>',
-    '',
-    `Сложных слов: <b>${stats.hard}</b>`,
-    `Всего слов: <b>${stats.total}</b>`,
-    `В очереди повторов: <b>${stats.pending + stats.reviews}</b>`,
-    `Отправлено за 7 дней: <b>${stats.sentWeek}</b>`,
+    '<b>📊 Прогресс</b>',
+    LINE,
+    `🔥 Сложных слов: <b>${stats.hard}</b>`,
+    `📚 Всего слов: <b>${stats.total}</b>`,
+    `🔁 В очереди повторов: <b>${stats.pending + stats.reviews}</b>`,
+    `📬 Отправлено за 7 дней: <b>${stats.sentWeek}</b>`,
+    LINE,
+    '<i>«Сложные» — слова с ошибками и те, что ещё не выучены.</i>',
   ].join('\n')
 }
 
 export function statsKeyboard(): InlineKeyboard {
   return [
     [
-      { text: 'Прислать слово', callback_data: 'set:next' },
-      { text: 'Назад', callback_data: 'set:menu' },
+      { text: '📖 Слово', callback_data: 'set:next' },
+      { text: '🗓 Расписание', callback_data: 'set:upcoming' },
     ],
+    [{ text: '🏠 Главное меню', callback_data: 'set:home' }],
   ]
 }
+
+// ───────── Карточка слова ─────────
 
 export function cardText(card: BotCard, mode: RevealMode = 'open'): string {
   const translation =
@@ -673,7 +705,8 @@ export function cardText(card: BotCard, mode: RevealMode = 'open'): string {
       ? `<tg-spoiler>${escapeHtml(card.translation)}</tg-spoiler>`
       : escapeHtml(card.translation)
   const lines: string[] = []
-  lines.push(`<b>${escapeHtml(card.word.trim().toUpperCase())}</b> - ${translation}`)
+  lines.push(`📖 <b>${escapeHtml(card.word.trim().toUpperCase())}</b>`)
+  lines.push(`🇷🇺 ${translation}`)
 
   const sentences = (card.sentences ?? [])
     .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
@@ -681,14 +714,14 @@ export function cardText(card: BotCard, mode: RevealMode = 'open'): string {
 
   if (sentences.length > 0) {
     lines.push('')
-    lines.push('Примеры:')
+    lines.push('💬 <b>Примеры</b>')
     for (const sentence of sentences) {
       lines.push(`• ${escapeHtml(truncate(sentence, 350))}`)
     }
   }
 
   lines.push('')
-  lines.push(`Папка: «${escapeHtml(card.folder_name)}»`)
+  lines.push(`📁 «${escapeHtml(card.folder_name)}»`)
 
   return lines.join('\n')
 }
@@ -696,20 +729,22 @@ export function cardText(card: BotCard, mode: RevealMode = 'open'): string {
 export function cardKeyboard(cardId: string): InlineKeyboard {
   return [
     [
-      { text: 'Знаю', callback_data: `know:${cardId}` },
-      { text: 'Не знаю', callback_data: `dont:${cardId}` },
-      { text: 'Пропустить', callback_data: `skip:${cardId}` },
+      { text: '✅ Знаю', callback_data: `know:${cardId}` },
+      { text: '❌ Не знаю', callback_data: `dont:${cardId}` },
     ],
-    [{ text: 'Больше не повторять', callback_data: `mute:${cardId}` }],
-    [{ text: 'Удалить из папки', callback_data: `del:${cardId}` }],
+    [
+      { text: '⏭ Пропустить', callback_data: `skip:${cardId}` },
+      { text: '🔕 Не повторять', callback_data: `mute:${cardId}` },
+    ],
+    [{ text: '🗑 Удалить из папки', callback_data: `del:${cardId}` }],
   ]
 }
 
 export function deleteConfirmKeyboard(cardId: string): InlineKeyboard {
   return [
     [
-      { text: 'Да, удалить', callback_data: `delyes:${cardId}` },
-      { text: 'Отмена', callback_data: `delno:${cardId}` },
+      { text: '🗑 Да, удалить', callback_data: `delyes:${cardId}` },
+      { text: '← Отмена', callback_data: `delno:${cardId}` },
     ],
   ]
 }

@@ -12,6 +12,8 @@ import {
   formatKeyboard,
   formatText,
   helpKeyboard,
+  homeKeyboard,
+  homeText,
   intervalKeyboard,
   intervalText,
   mainReplyKeyboard,
@@ -28,7 +30,6 @@ import {
   timezoneText,
   upcomingKeyboard,
   upcomingText,
-  welcomeText,
 } from './format'
 import { syncBotMenu } from './menu'
 import {
@@ -98,6 +99,12 @@ export type TelegramUpdate = {
 }
 
 const REPLY_BUTTON_COMMANDS: Record<string, string> = {
+  '📖 Слово': '/next',
+  '📊 Прогресс': '/stats',
+  '🗓 Расписание': '/upcoming',
+  '⚙️ Настройки': '/settings',
+  '❓ Помощь': '/help',
+  // Старые подписи — у тех, у кого осталась прежняя клавиатура
   'Настройки': '/settings',
   'Слово': '/next',
   'Статистика': '/stats',
@@ -107,36 +114,33 @@ const REPLY_BUTTON_COMMANDS: Record<string, string> = {
 
 function helpText(): string {
   return [
-    '<b>❓ Помощь</b>',
+    '<b>❓ Как работает бот</b>',
+    '━━━━━━━━━━━━━━',
+    '<b>Что я делаю</b>',
+    'Присылаю слова из ваших папок на сайте: новые, с ошибками и те, которым пора на повтор. Папки чередую, чтобы старые не забывались.',
     '',
-    'Я присылаю слова из ваших папок на сайте и помогаю повторять их в Telegram.',
-    'Беру новые слова, слова с ошибками и те, у которых подошёл срок повтора. Папки чередую, чтобы старые тоже не забывались.',
-    '',
-    '<b>Как приходят слова</b>',
-    'Обычные слова приходят только в окне.',
-    'Слова «Не знаю» повторяются через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Если повтор выпадает вне окна, он переносится на следующее открытие окна.',
-    'После «Знаю» слово возвращается через 4 дня, затем реже.',
-    'Если кнопку не нажали, повторю через 1–2 дня, затем реже.',
+    '<b>Когда приходят слова</b>',
+    '⏰ Только в вашем окне отправки. Что выпало вне окна — придёт на следующее открытие.',
     '',
     '<b>Кнопки под словом</b>',
-    '• <b>Знаю</b> — отмечает правильный ответ.',
-    '• <b>Не знаю</b> — записывает ошибку и запускает частые повторы.',
-    '• <b>Пропустить</b> — то же, что не нажать кнопку.',
-    '• <b>Больше не повторять</b> — убирает слово из обычной очереди, но напоминает через 30 и 70 дней.',
-    '• <b>Удалить из папки</b> — удаляет слово с сайта.',
+    '✅ <b>Знаю</b> — вернусь через 4 дня, затем реже.',
+    '❌ <b>Не знаю</b> — повтор через 15 мин, 2 и 5 ч, затем 1, 2, 4, 7, 15 и 30 дней.',
+    '⏭ <b>Пропустить</b> — как будто не нажали: напомню через 1–2 дня.',
+    '🔕 <b>Не повторять</b> — уберу из очереди, напомню через 30 и 70 дней.',
+    '🗑 <b>Удалить</b> — удалит слово из папки на сайте.',
     '',
     '<b>Команды</b>',
-    '/settings — настройки бота',
-    '/next — прислать слово сейчас',
-    '/stats — статистика',
+    '/start — главное меню',
+    '/next — слово прямо сейчас',
+    '/stats — прогресс',
+    '/upcoming — ближайшие отправки',
+    '/settings — настройки',
     '/time 09:00-21:00 — окно отправки',
-    '/every 1h — частота отправки сообщений',
-    '/pause — поставить бота на паузу',
-    '/resume — возобновить отправку',
+    '/every 1h — как часто присылать',
+    '/pause и /resume — пауза и возобновление',
     '/debug — диагностика',
-    '/help — эта справка',
-    '',
-    '<i>Все отправки приходят только в окне. Повторы, выпавшие вне окна, переносятся на следующее открытие.</i>',
+    '━━━━━━━━━━━━━━',
+    '<i>Совет: большинство действий доступно кнопками — команды нужны только для быстрого доступа.</i>',
   ].join('\n')
 }
 
@@ -148,6 +152,19 @@ function parseCommand(text: string): { command: string; args: string } | null {
     command: head.split('@')[0].toLowerCase(),
     args: rest.join(' '),
   }
+}
+
+function daysWord(days: number): string {
+  const mod100 = days % 100
+  const mod10 = days % 10
+  if (mod100 >= 11 && mod100 <= 14) return 'дней'
+  if (mod10 === 1) return 'день'
+  if (mod10 >= 2 && mod10 <= 4) return 'дня'
+  return 'дней'
+}
+
+function nextWordKeyboard(): InlineKeyboard {
+  return [[{ text: '📖 Ещё слово', callback_data: 'set:next' }]]
 }
 
 async function isOwner(chatId: number): Promise<{ ok: boolean; settings: TelegramSettings | null }> {
@@ -177,11 +194,13 @@ async function sendNoFolders(chatId: number): Promise<void> {
   await sendMessage(
     chatId,
     [
-      'Сначала создайте папку со словами на нашем сайте' + (url ? `: ${url}` : '.'),
+      '<b>📁 Пока нет папок со словами</b>',
       '',
-      'После этого повторение через бота станет доступно.',
+      'Создайте папку на сайте и добавьте в неё слова — после этого я начну их присылать.',
+      '',
+      '<i>Это делается один раз, потом всё работает само.</i>',
     ].join('\n'),
-    url ? [[{ text: 'Открыть сайт', url }]] : undefined
+    url ? [[{ text: '🌐 Открыть сайт', url }]] : undefined
   )
 }
 
@@ -225,7 +244,11 @@ export async function sendNextCard(
 
   const card = await pickNextCard(userId)
   if (!card) {
-    await sendMessage(chatId, 'Пока нет сложных слов в ваших папках.')
+    await sendMessage(
+      chatId,
+      '🎉 <b>Пока нет сложных слов</b>\n\nВсе слова в ваших папках выучены или их там ещё нет. Добавьте новые на сайте — и я их пришлю.',
+      [[{ text: '🏠 Меню', callback_data: 'set:home' }]]
+    )
     return
   }
   await sendCard(chatId, card, kind, settings)
@@ -283,7 +306,7 @@ async function safeEdit(
 
 async function sendWelcome(chatId: number, settings: TelegramSettings): Promise<void> {
   await syncBotMenu()
-  await sendMessage(chatId, welcomeText(settings), undefined, mainReplyKeyboard())
+  await sendMessage(chatId, homeText(settings), homeKeyboard(settings), mainReplyKeyboard())
 
   const folders = await getCustomFolders(settings.user_id)
   if (folders.length === 0) {
@@ -346,12 +369,14 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
   await sendMessage(
     chatId,
     [
-      '<b>Здравствуйте!</b>',
+      '<b>👋 Здравствуйте!</b>',
       '',
-      'Я бот для повторения английских слов.',
-      `Чтобы подключиться, откройте сайт ${siteLabel}, найдите блок «Бот в Telegram» и нажмите «Подключить бота».`,
+      'Я помогаю учить английские слова: присылаю их сюда и напоминаю, когда пора повторить.',
       '',
-      'После этого я смогу присылать слова из ваших папок.',
+      '<b>Как подключиться</b>',
+      `1️⃣ Откройте сайт ${siteLabel}`,
+      '2️⃣ Найдите блок «Бот в Telegram»',
+      '3️⃣ Нажмите «Подключить бота» — и вы вернётесь сюда уже подключённым',
     ].join('\n')
   )
 }
@@ -365,7 +390,7 @@ async function handleCustomIntervalInput(
   if (!minutes) {
     await sendMessage(
       chatId,
-      'Нужно число от 5 до 1440. Например: 5 или 45.',
+      '🤔 Нужно число от 5 до 1440. Например: 5 или 45.',
       customIntervalKeyboard(),
     )
     return
@@ -378,7 +403,7 @@ async function handleCustomIntervalInput(
   const next = { ...settings, interval_minutes: minutes, awaiting_input: null }
   await sendMessage(
     chatId,
-    `Готово. Теперь слова приходят каждые ${formatInterval(minutes)}.\n\n${intervalText(next)}`,
+    `✅ Готово! Теперь слова приходят раз в ${formatInterval(minutes)}.\n\n${intervalText(next)}`,
     intervalKeyboard(next),
   )
 }
@@ -391,10 +416,20 @@ async function handleCommand(
 ): Promise<void> {
   switch (command) {
     case '/start':
+    case '/menu':
+      await sendMessage(chatId, homeText(settings), homeKeyboard(settings), mainReplyKeyboard())
+      return
+
     case '/help':
       await syncBotMenu()
-      await sendMessage(chatId, helpText(), undefined, mainReplyKeyboard())
+      await sendMessage(chatId, helpText(), helpKeyboard(), mainReplyKeyboard())
       return
+
+    case '/upcoming': {
+      const view = await upcomingView(settings)
+      await sendMessage(chatId, view.text, view.keyboard)
+      return
+    }
 
     case '/settings':
       if (!(await requireFolders(chatId, settings.user_id))) return
@@ -409,7 +444,7 @@ async function handleCommand(
       }
       const range = parseTimeRange(args)
       if (!range) {
-        await sendMessage(chatId, 'Не понял время. Пример: /time 09:00-21:00')
+        await sendMessage(chatId, '🤔 Не понял время. Пример: <code>/time 09:00-21:00</code>')
         return
       }
       await updateSettings(chatId, { window_start: range.start, window_end: range.end })
@@ -426,7 +461,10 @@ async function handleCommand(
       }
       const minutes = parseInterval(args)
       if (!minutes) {
-        await sendMessage(chatId, 'Не понял интервал. Пример: /every 1h или /every 30m (от 5 минут).')
+        await sendMessage(
+          chatId,
+          '🤔 Не понял интервал. Примеры: <code>/every 1h</code> или <code>/every 30m</code> (от 5 минут).'
+        )
         return
       }
       await updateSettings(chatId, { interval_minutes: minutes })
@@ -470,7 +508,7 @@ async function handleCommand(
     }
 
     default:
-      await sendMessage(chatId, `Не понял команду.\n\n${helpText()}`, helpKeyboard())
+      await sendMessage(chatId, `🤔 Не знаю такую команду.\n\n${helpText()}`, helpKeyboard())
   }
 }
 
@@ -526,7 +564,11 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
         await handleCustomIntervalInput(chatId, settings, text)
         return
       }
-      await sendMessage(chatId, `Не понял.\n\n${helpText()}`, helpKeyboard())
+      await sendMessage(
+        chatId,
+        '🤔 Не понял. Воспользуйтесь кнопками меню или откройте /help.',
+        helpKeyboard()
+      )
       return
     }
 
@@ -554,6 +596,11 @@ async function handleSettingsCallback(
   const value = parts[2] ?? ''
 
   switch (section) {
+    case 'home':
+      await safeEdit(chatId, messageId, homeText(settings), homeKeyboard(settings))
+      await answerCallbackQuery(query.id)
+      return
+
     case 'menu':
       await safeEdit(chatId, messageId, settingsText(settings), settingsKeyboard(settings))
       await answerCallbackQuery(query.id)
@@ -677,8 +724,12 @@ async function handleSettingsCallback(
       const paused = !settings.paused
       await updateSettings(chatId, { paused })
       const next = { ...settings, paused }
-      await safeEdit(chatId, messageId, settingsText(next), settingsKeyboard(next))
-      await answerCallbackQuery(query.id, paused ? 'Пауза включена' : 'Бот снова активен')
+      if (value === 'home') {
+        await safeEdit(chatId, messageId, homeText(next), homeKeyboard(next))
+      } else {
+        await safeEdit(chatId, messageId, settingsText(next), settingsKeyboard(next))
+      }
+      await answerCallbackQuery(query.id, paused ? '⏸ Пауза включена' : '▶️ Бот снова активен')
       return
     }
 
@@ -709,7 +760,7 @@ async function handleSettingsCallback(
         return
       }
       await sendNextCard(chatId, settings.user_id, 'manual', settings)
-      await answerCallbackQuery(query.id, 'Отправил слово')
+      await answerCallbackQuery(query.id, '📖 Вот слово!')
       return
 
     case 'help':
@@ -792,10 +843,15 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       await safeEdit(
         chatId,
         messageId,
-        `${cardText(card)}\n\nОтмечено: знаю. Следующий повтор запланирован.`,
-        []
+        [
+          cardText(card),
+          '',
+          '✅ <b>Знаю!</b> Отлично.',
+          `<i>Вернусь к этому слову примерно через ${days} ${daysWord(days)}.</i>`,
+        ].join('\n'),
+        nextWordKeyboard()
       )
-      await answerCallbackQuery(query.id, 'Записал')
+      await answerCallbackQuery(query.id, '✅ Записал')
       return
     }
 
@@ -815,14 +871,17 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
         [
           cardText(card),
           '',
-          'Отмечено: не знаю. Ошибка записана, слово будет приходить чаще.',
-          'Повторю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней.',
-          'Если повтор выпадает вне окна, перенесу его на следующее открытие окна.',
-          'Очередь повторов видна в «Диагностика» → «Следующие».',
+          '❌ <b>Не знаю</b> — ничего страшного, так и запоминают.',
+          '<i>Повторю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Что выпадет вне окна — перенесу на утро.</i>',
         ].join('\n'),
-        []
+        [
+          [
+            { text: '🗓 Расписание', callback_data: 'set:upcoming' },
+            { text: '📖 Следующее слово', callback_data: 'set:next' },
+          ],
+        ]
       )
-      await answerCallbackQuery(query.id, 'Запланировал повторы')
+      await answerCallbackQuery(query.id, '🔁 Запланировал повторы')
       return
     }
 
@@ -847,13 +906,12 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
         [
           cardText(card),
           '',
-          'Убрал слово из обычной очереди.',
-          'Но через 30 и 70 дней напомню — чтобы совсем не забыть.',
-          'В папке слово останется, прогресс и ошибки не изменятся.',
+          '🔕 <b>Убрал из обычной очереди.</b>',
+          '<i>Напомню через 30 и 70 дней, чтобы слово не забылось совсем. В папке оно остаётся, прогресс не меняется.</i>',
         ].join('\n'),
-        []
+        nextWordKeyboard()
       )
-      await answerCallbackQuery(query.id, 'Убрал из обычной очереди')
+      await answerCallbackQuery(query.id, '🔕 Убрал из очереди')
       return
     }
 
@@ -867,8 +925,13 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       const dueAt = followUpDueAt(settings, days)
       await insertFollowUp(chatId, card.id, dueAt.toISOString(), IGNORED_FOLLOW_UP_STAGE)
 
-      await safeEdit(chatId, messageId, `${cardText(card)}\n\nПропущено. Повторю позже.`, [])
-      await answerCallbackQuery(query.id, 'Пропущено')
+      await safeEdit(
+        chatId,
+        messageId,
+        `${cardText(card)}\n\n⏭ <b>Пропущено.</b>\n<i>Напомню через ${days} ${daysWord(days)}.</i>`,
+        nextWordKeyboard()
+      )
+      await answerCallbackQuery(query.id, '⏭ Пропущено')
       return
     }
 
@@ -876,7 +939,7 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       await safeEdit(
         chatId,
         messageId,
-        `Удалить слово «${escapeHtml(card.word)}» из папки «${escapeHtml(card.folder_name)}»?`,
+        `🗑 <b>Удалить слово «${escapeHtml(card.word)}»</b> из папки «${escapeHtml(card.folder_name)}»?\n\n<i>Слово пропадёт и на сайте. Это нельзя отменить.</i>`,
         deleteConfirmKeyboard(card.id)
       )
       await answerCallbackQuery(query.id)
@@ -887,8 +950,8 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
       await safeEdit(
         chatId,
         messageId,
-        `Слово «${escapeHtml(card.word)}» удалено из папки «${escapeHtml(card.folder_name)}».`,
-        []
+        `🗑 Слово «${escapeHtml(card.word)}» удалено из папки «${escapeHtml(card.folder_name)}».`,
+        nextWordKeyboard()
       )
       await answerCallbackQuery(query.id, 'Удалено')
       return

@@ -50,6 +50,15 @@ async function runTick(request: Request): Promise<Response> {
     sentKeys.add(cardKey(chatId, card.id))
     sentKeys.add(wordKey(chatId, card.word))
   }
+  // Не вываливаем накопившееся после простоя: одна карточка на чат за тик,
+  // а просроченные повторы идут с обычным интервалом между словами.
+  const LATE_MS = 10 * 60 * 1000
+  const throttled = (setting: TelegramSettings, dueAt: string) => {
+    if (sentChats.has(setting.chat_id)) return true
+    if (now.getTime() - new Date(dueAt).getTime() <= LATE_MS) return false
+    const last = setting.last_sent_at ? new Date(setting.last_sent_at).getTime() : 0
+    return last > 0 && now.getTime() - last < setting.interval_minutes * 60 * 1000
+  }
   const markDelivered = async (chatId: number) => {
     try {
       await updateSettings(chatId, { last_sent_at: new Date().toISOString() })
@@ -90,6 +99,7 @@ async function runTick(request: Request): Promise<Response> {
     for (const review of due) {
       const setting = settingsByUser.get(review.user_id)
       if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
+      if (throttled(setting, review.due_at)) continue
 
       const card = await getCard(review.card_id)
       if (!card || card.user_id !== setting.user_id) {
@@ -125,6 +135,7 @@ async function runTick(request: Request): Promise<Response> {
     for (const pending of due) {
       const setting = settingsByUser.get(pending.user_id)
       if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
+      if (throttled(setting, pending.due_at)) continue
 
       const card = await getCard(pending.card_id)
       if (!card || card.user_id !== setting.user_id) {

@@ -7,23 +7,24 @@ import {
 } from './api'
 
 export const BOT_COMMANDS: BotCommand[] = [
-  { command: 'start', description: 'Открыть меню' },
-  { command: 'next', description: 'Прислать слово сейчас' },
-  { command: 'stats', description: 'Статистика' },
-  { command: 'settings', description: 'Настройки бота' },
-  { command: 'time', description: 'Окно отправки' },
-  { command: 'every', description: 'Частота отправки сообщений' },
-  { command: 'pause', description: 'Поставить бота на паузу' },
-  { command: 'resume', description: 'Возобновить отправку' },
-  { command: 'debug', description: 'Диагностика' },
-  { command: 'help', description: 'Помощь' },
+  { command: 'start', description: '🏠 Главное меню' },
+  { command: 'next', description: '📖 Слово прямо сейчас' },
+  { command: 'stats', description: '📊 Прогресс' },
+  { command: 'upcoming', description: '🗓 Ближайшие отправки' },
+  { command: 'settings', description: '⚙️ Настройки' },
+  { command: 'time', description: '⏰ Окно отправки' },
+  { command: 'every', description: '🔁 Как часто присылать слова' },
+  { command: 'pause', description: '⏸ Поставить на паузу' },
+  { command: 'resume', description: '▶️ Продолжить отправку' },
+  { command: 'help', description: '❓ Как работает бот' },
+  { command: 'debug', description: '🛠 Диагностика' },
 ]
 
 const DESCRIPTION =
-  'Присылаю сложные слова из ваших папок на сайте, помогаю повторять их и настраивать расписание. Начните с /start.'
+  '📚 Учите английские слова без усилий: присылаю слова из ваших папок в удобное время и сам напоминаю, когда пора повторить. Нажмите «Старт» — и за минуту всё настроим.'
 
 const SHORT_DESCRIPTION =
-  'Сложные слова из ваших папок с повторением и настройками.'
+  '📚 Английские слова из ваших папок — вовремя и без усилий.'
 
 export async function syncBotMenu(): Promise<void> {
   const results = await Promise.allSettled([
