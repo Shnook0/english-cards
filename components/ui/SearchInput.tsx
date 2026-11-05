@@ -1,7 +1,5 @@
 'use client'
 
-import Icon from '@/components/ui/Icon'
-
 type Props = {
   value: string
   onChange: (value: string) => void
