@@ -8,6 +8,7 @@ import { Folder } from '@/types/database'
 import { createFolder as createFolderLocal, fetchFolders } from '@/lib/offline/repo'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 
 export default function FoldersPage() {
   const { user, loading: authLoading } = useAuth()
@@ -19,6 +20,7 @@ export default function FoldersPage() {
   const [creating, setCreating] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -115,6 +117,10 @@ export default function FoldersPage() {
         <span className="font-normal text-[#6b6b76]">{folders.length}</span>
       </h2>
 
+      {folders.length > 0 && (
+        <SearchInput value={query} onChange={setQuery} placeholder="Поиск папок…" label="Поиск папок" />
+      )}
+
       {folders.length === 0 ? (
         <div className="hint">
           <Icon name="info" size={18} />
@@ -122,7 +128,7 @@ export default function FoldersPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {folders.map(folder => (
+          {folders.filter(f => matchesQuery(query, f.name)).map(folder => (
             <Link
               key={folder.id}
               href={`/folder/${folder.id}`}
@@ -137,6 +143,9 @@ export default function FoldersPage() {
               <Icon name="arrowRight" size={18} className="shrink-0 text-[#6b6b76]" />
             </Link>
           ))}
+          {query.trim() && !folders.some(f => matchesQuery(query, f.name)) && (
+            <p className="text-sm text-[#8a8a96]">Ничего не найдено.</p>
+          )}
         </div>
       )}
     </div>

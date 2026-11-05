@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { Card } from '@/types/database'
 import { GeneralProgress, GeneralTraining } from '@/types/general'
 import { isMistakeActive, wordKey } from '@/lib/general'
@@ -23,6 +24,7 @@ export default function GeneralMistakesPage() {
   const [training, setTraining] = useState<GeneralTraining | null>(null)
   const [items, setItems] = useState<MistakeItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -137,8 +139,9 @@ export default function GeneralMistakesPage() {
       ) : (
         <>
           <h2 className="section-label">Слова в ошибках</h2>
+          <SearchInput value={query} onChange={setQuery} />
           <div className="flex flex-col gap-3">
-            {items.map(({ card, progress }) => (
+            {items.filter(({ card }) => matchesQuery(query, card.word, card.translation, card.sentences)).map(({ card, progress }) => (
               <div key={card.id} className="card p-4">
                 <div className="flex flex-wrap items-baseline gap-x-2">
                   <span className="text-lg font-semibold">{card.word}</span>

@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { Folder } from '@/types/database'
 import { GeneralTraining } from '@/types/general'
 import {
@@ -31,6 +32,7 @@ export default function GeneralPage() {
   const [scope, setScope] = useState<'all' | 'custom'>('all')
   const [selected, setSelected] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -244,8 +246,10 @@ export default function GeneralPage() {
           )}
         </div>
       ) : (
+        <>
+        <SearchInput value={query} onChange={setQuery} placeholder="Поиск тренировок…" label="Поиск тренировок" />
         <div className="flex flex-col gap-3">
-          {trainings.map(t => {
+          {trainings.filter(t => matchesQuery(query, t.name)).map(t => {
             const folderNames = (trainingFolders[t.id] ?? [])
               .map(id => folders.find(f => f.id === id)?.name)
               .filter(Boolean)
@@ -275,7 +279,11 @@ export default function GeneralPage() {
               </div>
             )
           })}
+          {query.trim() && !trainings.some(t => matchesQuery(query, t.name)) && (
+            <p className="text-sm text-[#8a8a96]">Ничего не найдено.</p>
+          )}
         </div>
+        </>
       )}
     </div>
   )

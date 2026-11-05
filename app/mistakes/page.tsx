@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { Card } from '@/types/database'
 import {
   fetchCards,
@@ -21,6 +22,7 @@ export default function MistakesPage() {
   const router = useOfflineRouter()
   const [cards, setCards] = useState<CardWithFolder[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -98,8 +100,9 @@ export default function MistakesPage() {
       ) : (
         <>
           <h2 className="section-label">Слова</h2>
+          <SearchInput value={query} onChange={setQuery} />
           <div className="flex flex-col gap-3">
-            {cards.map(card => (
+            {cards.filter(c => matchesQuery(query, c.word, c.translation, c.sentences, c.folders?.name)).map(card => (
               <div key={card.id} className="card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

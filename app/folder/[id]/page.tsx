@@ -10,6 +10,7 @@ import AddCardModal from '@/components/AddCardModal'
 import MatchRecord from '@/components/MatchRecord'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import {
   deleteCard,
   deleteCardsByGroup,
@@ -30,6 +31,7 @@ export default function FolderPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [cardToEdit, setCardToEdit] = useState<Card | null>(null)
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [wordSort, setWordSort] = useState<WordSort>(readWordSort)
 
@@ -334,6 +336,8 @@ export default function FolderPage() {
         </div>
       )}
 
+      {cards.length > 0 && <SearchInput value={query} onChange={setQuery} />}
+
       {cards.length === 0 ? (
         <div className="card flex flex-col items-center px-6 py-10 text-center">
           <p className="text-sm text-[#8a8a96]">
@@ -348,7 +352,7 @@ export default function FolderPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {sortWords(cards, wordSort, isLearnedFolder).map(card => (
+          {sortWords(cards.filter(c => matchesQuery(query, c.word, c.translation, c.sentences)), wordSort, isLearnedFolder).map(card => (
             <article key={card.id} className="card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
