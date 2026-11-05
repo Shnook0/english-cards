@@ -15,6 +15,7 @@ import { getPendingCount, enqueue } from '@/lib/offline/outbox'
 import { resolveUserId } from '@/lib/offline/authCache'
 import { remoteCreateCardIfMissing } from '@/lib/offline/remotes'
 import { patchCorrect, patchWrong } from '@/lib/study'
+import { HARD_CLEARED } from '@/lib/hard'
 import {
   INTERVALS_DAYS,
   MISTAKE_DAYS,
@@ -322,6 +323,15 @@ export async function resetWrongCount(cardId: string): Promise<boolean> {
 
   if (local) await db.cards.put({ ...local, wrong_count: 0 })
   await enqueue('card_wrong_reset', 'card', cardId, {})
+  return true
+}
+
+export async function clearHardWord(cardId: string): Promise<boolean> {
+  const db = getDb()
+  const local = await db.cards.get(cardId)
+
+  if (local) await db.cards.put({ ...local, ...HARD_CLEARED })
+  await enqueue('card_hard_clear', 'card', cardId, {})
   return true
 }
 

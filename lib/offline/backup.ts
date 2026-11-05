@@ -29,6 +29,10 @@ function stripNewCardColumns(card: Card): Record<string, unknown> {
   const next: Record<string, unknown> = { ...card }
   delete next.content_updated_at
   delete next.last_answer_at
+  delete next.hard_since
+  delete next.hard_misses
+  delete next.hard_run
+  delete next.hard_confirmed_at
   return next
 }
 

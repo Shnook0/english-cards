@@ -9,6 +9,7 @@ export {
   updateCardContent,
   setFavorite,
   resetWrongCount,
+  clearHardWord,
   deleteCard,
   deleteCardsByGroup,
   saveCardAnswer,

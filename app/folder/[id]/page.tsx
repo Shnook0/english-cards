@@ -11,6 +11,7 @@ import MatchRecord from '@/components/MatchRecord'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
+import { isHard } from '@/lib/hard'
 import {
   deleteCard,
   deleteCardsByGroup,
@@ -157,6 +158,7 @@ export default function FolderPage() {
   const isLevelFolder = folder.type === 'level'
 
   const learnedCards = cards.filter(c => c.learned_at)
+  const hardCards = cards.filter(isHard)
   const unlearnedCards = cards.filter(c => !c.learned_at)
   const learnedPercent = cards.length > 0 ? Math.round((learnedCards.length / cards.length) * 100) : 0
 
@@ -245,6 +247,22 @@ export default function FolderPage() {
           </p>
         )}
       </section>
+
+      {hardCards.length > 0 && (
+        <Link
+          href={`/folder/${folderId}/hard`}
+          className="card card-link mt-3 flex items-center gap-4 p-4"
+        >
+          <span className="tile-icon tile-icon-danger">
+            <Icon name="target" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="tile-title">Сложные слова · {hardCards.length}</p>
+            <p className="tile-text">Слова, которые вызвали трудности в этой папке.</p>
+          </div>
+          <Icon name="arrowRight" size={18} className="shrink-0 text-[#6b6b76]" />
+        </Link>
+      )}
 
       {!isLearnedFolder && learnedCards.length > 0 && (
         <Link

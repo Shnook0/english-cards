@@ -14,7 +14,7 @@ const REPEAT_MIN_MINUTES = 15
 const REPEAT_MAX_MINUTES = 20
 
 const CARD_SELECT =
-  'id, user_id, folder_id, word, transcription, translation, sentences, is_favorite, known_streak, wrong_count, srs_level, next_review_at, learned_at, created_at, sync_group_id, folders(name)'
+  'id, user_id, folder_id, word, transcription, translation, sentences, is_favorite, known_streak, wrong_count, srs_level, next_review_at, learned_at, created_at, sync_group_id, hard_since, hard_misses, hard_run, hard_confirmed_at, folders(name)'
 
 export type RevealMode = 'open' | 'spoiler'
 

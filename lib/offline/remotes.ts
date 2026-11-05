@@ -1,3 +1,4 @@
+import { HARD_CLEARED } from '@/lib/hard'
 import { Card, Folder } from '@/types/database'
 import { GeneralProgress, GeneralTraining } from '@/types/general'
 import { supabase } from '@/lib/supabase'
@@ -56,6 +57,10 @@ function stripNewCardColumns(card: Record<string, unknown>): Record<string, unkn
   const next = { ...card }
   delete next.content_updated_at
   delete next.last_answer_at
+  delete next.hard_since
+  delete next.hard_misses
+  delete next.hard_run
+  delete next.hard_confirmed_at
   return next
 }
 
@@ -157,6 +162,15 @@ export async function remoteSetFavorite(cardId: string, value: boolean): Promise
 
 export async function remoteResetWrong(cardId: string): Promise<void> {
   const { error } = await supabase.from('cards').update({ wrong_count: 0 }).eq('id', cardId)
+  if (error) {
+    rethrowNetwork(error)
+    throw error
+  }
+  noteNetworkSuccess()
+}
+
+export async function remoteClearHard(cardId: string): Promise<void> {
+  const { error } = await supabase.from('cards').update({ ...HARD_CLEARED }).eq('id', cardId)
   if (error) {
     rethrowNetwork(error)
     throw error

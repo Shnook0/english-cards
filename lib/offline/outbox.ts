@@ -1,3 +1,4 @@
+import { HARD_CLEARED } from '@/lib/hard'
 import { Card } from '@/types/database'
 import { OutboxEntity, OutboxItem, OutboxOp } from '@/types/offline'
 import { getDb } from '@/lib/offline/db'
@@ -104,6 +105,14 @@ export async function enqueue(
       return
     }
 
+    if (op === 'card_hard_clear' && pendingCreate && isSameCard(pendingCreate, entityId)) {
+      await db.outbox.update(
+        pendingCreate.seq!,
+        changesWithoutSeq(patchCreateCard(pendingCreate, { ...HARD_CLEARED }))
+      )
+      return
+    }
+
     if (op === 'card_favorite' && pendingFavorite) {
       await db.outbox.update(
         pendingFavorite.seq!,
@@ -136,9 +145,14 @@ export async function enqueue(
       const removable = items.filter(
         item =>
           item.status === 'pending' &&
-          ['card_create', 'card_update', 'card_answer', 'card_favorite', 'card_wrong_reset'].includes(
-            item.op
-          )
+          [
+            'card_create',
+            'card_update',
+            'card_answer',
+            'card_favorite',
+            'card_wrong_reset',
+            'card_hard_clear',
+          ].includes(item.op)
       )
       if (removable.some(item => item.op === 'card_create')) {
         await db.outbox.bulkDelete(removable.map(item => item.seq!))

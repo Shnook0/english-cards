@@ -1,3 +1,4 @@
+import { hardAfterCorrect, hardAfterWrong } from '@/lib/hard'
 import { getAccessToken } from '@/lib/offline/authCache'
 import { isOnline } from '@/lib/offline/connectivity'
 import { Card } from '@/types/database'
@@ -128,7 +129,7 @@ export function patchCorrect(
     patch.learned_at = answeredAt
   }
 
-  return patch as Partial<Card>
+  return { ...patch, ...hardAfterCorrect(card, at) } as Partial<Card>
 }
 
 // Что записать в карточку после ошибки (логика как в обычной «Учить»)
@@ -150,7 +151,7 @@ export function patchWrong(card: Card, isLevel: boolean, at: number = Date.now()
     last_answer_at: answeredAt,
   }
   if (wasLearned) patch.learned_at = null
-  return patch
+  return { ...patch, ...hardAfterWrong(card, at) }
 }
 
 // Ставит слово в обычные запланированные повторы Telegram-бота.

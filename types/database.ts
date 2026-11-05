@@ -31,4 +31,9 @@ export type Card = {
   sync_group_id?: string | null
   content_updated_at?: string | null
   last_answer_at?: string | null
+  // «Сложные слова» папки (см. lib/hard.ts). hard_since != null — слово в списке.
+  hard_since?: string | null
+  hard_misses?: number | null
+  hard_run?: number | null
+  hard_confirmed_at?: string | null
 }

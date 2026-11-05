@@ -10,6 +10,7 @@ export type OutboxOp =
   | 'card_delete_group'
   | 'card_favorite'
   | 'card_wrong_reset'
+  | 'card_hard_clear'
   | 'card_answer'
   | 'general_create'
   | 'general_delete'

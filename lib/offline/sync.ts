@@ -24,6 +24,7 @@ import {
   remoteDeleteFolder,
   remoteDeleteTraining,
   remoteResetWrong,
+  remoteClearHard,
   remoteSaveBlocksRecord,
   remoteSaveMatchRecord,
   remoteSetFavorite,
@@ -98,6 +99,10 @@ async function applyOutboxItem(item: OutboxItem): Promise<'ok' | 'conflict'> {
     }
     case 'card_favorite': {
       await remoteSetFavorite(item.entityId, Boolean(payload.value))
+      return 'ok'
+    }
+    case 'card_hard_clear': {
+      await remoteClearHard(item.entityId)
       return 'ok'
     }
     case 'card_wrong_reset': {
