@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Card } from '@/types/database'
 import Icon from '@/components/ui/Icon'
+import { useRuPronunciation } from '@/hooks/useRuPronunciation'
+import { ipaToRussian } from '@/lib/pronounce'
 import {
   createCards,
   deleteCard,
@@ -24,6 +26,7 @@ type ParsedCard = {
   transcription: string | null
   translation: string
   sentences: string[]
+  pronunciation_ru?: string | null
 }
 
 type ExistingCard = Card
@@ -107,6 +110,11 @@ function AddCardModalContent({
   const [word, setWord] = useState(() => cardToEdit?.word ?? '')
   const [transcription, setTranscription] = useState(() => cardToEdit?.transcription ?? '')
   const [translation, setTranslation] = useState(() => cardToEdit?.translation ?? '')
+  const [ruEnabled] = useRuPronunciation()
+  const [pronRu, setPronRu] = useState(() => cardToEdit?.pronunciation_ru ?? '')
+  // Если пользователь правил поле сам (или оно уже было у карточки), не перезаписываем его
+  const pronEditedRef = useRef(Boolean(cardToEdit?.pronunciation_ru))
+  const pronRequestRef = useRef(0)
   const [sentencesText, setSentencesText] = useState(() =>
     cardToEdit?.sentences ? cardToEdit.sentences.join('\n') : ''
   )
@@ -184,6 +192,43 @@ function AddCardModalContent({
       if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current)
     }
   }, [cardToEdit, requestSuggestions])
+
+  // Автоподстановка произношения: из своей транскрипции, а если её нет, из словаря
+  useEffect(() => {
+    if (!ruEnabled || pronEditedRef.current) return
+
+    const term = word.trim()
+    const ipa = transcription.trim()
+    const requestId = ++pronRequestRef.current
+
+    if (ipa) {
+      const timer = setTimeout(() => setPronRu(ipaToRussian(ipa)), 300)
+      return () => clearTimeout(timer)
+    }
+
+    if (term.length < 2) {
+      const timer = setTimeout(() => setPronRu(''), 0)
+      return () => clearTimeout(timer)
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/pronounce?word=${encodeURIComponent(term)}`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(6000),
+        })
+        const data = (await res.json().catch(() => null)) as
+          | { pronunciation?: unknown }
+          | null
+        if (pronRequestRef.current !== requestId || pronEditedRef.current) return
+        setPronRu(typeof data?.pronunciation === 'string' ? data.pronunciation : '')
+      } catch {
+        if (pronRequestRef.current === requestId && !pronEditedRef.current) setPronRu('')
+      }
+    }, 700)
+
+    return () => clearTimeout(timer)
+  }, [word, transcription, ruEnabled])
 
   const handleWordChange = (val: string) => {
     setWord(val)
@@ -299,6 +344,12 @@ function AddCardModalContent({
       transcription: card.transcription,
       translation: card.translation,
       sentences: card.sentences ?? [],
+      // Ключ передаём, только когда есть что сохранить или стереть (старая схема БД без колонки не ломается)
+      ...(card.pronunciation_ru
+        ? { pronunciation_ru: card.pronunciation_ru }
+        : cardToEdit?.pronunciation_ru
+        ? { pronunciation_ru: null }
+        : {}),
     })
 
     const inserts: ParsedCard[] = []
@@ -382,6 +433,8 @@ function AddCardModalContent({
     setWord('')
     setTranscription('')
     setTranslation('')
+    setPronRu('')
+    pronEditedRef.current = false
     setSentencesText('')
     setSuggestions([])
     setSuggestionsOpen(false)
@@ -408,6 +461,7 @@ function AddCardModalContent({
       transcription: transcription.trim() || null,
       translation: translation.trim(),
       sentences: sentencesArray,
+      pronunciation_ru: ruEnabled ? pronRu.trim() || null : cardToEdit?.pronunciation_ru ?? null,
     }
 
     setCheckingDuplicates(true)
@@ -821,6 +875,25 @@ function AddCardModalContent({
                 placeholder="[ˈæp.əl]"
               />
             </div>
+
+            {ruEnabled && (
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">
+                  Произношение по-русски{' '}
+                  <span className="font-normal text-[#6b6b76]">— подставляется само</span>
+                </label>
+                <input
+                  type="text"
+                  value={pronRu}
+                  onChange={e => {
+                    pronEditedRef.current = true
+                    setPronRu(e.target.value)
+                  }}
+                  className="field"
+                  placeholder="сайтсиинг"
+                />
+              </div>
+            )}
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-[#b0b0bb]">

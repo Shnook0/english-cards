@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { Card } from '@/types/database'
 import { fetchCards, setFavorite } from '@/lib/offline/repo'
@@ -106,7 +107,10 @@ export default function FavoritesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-baseline gap-x-2">
-                      <h3 className="text-lg">{card.word}</h3>
+                      <h3 className="text-lg">
+                        {card.word}
+                        <RuPron value={card.pronunciation_ru} />
+                      </h3>
                       {card.transcription && (
                         <span className="font-mono text-[13px] text-[#8a8a96]">
                           {card.transcription}

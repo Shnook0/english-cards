@@ -32,6 +32,8 @@ export type Card = {
   content_updated_at?: string | null
   last_answer_at?: string | null
   // «Сложные слова» папки (см. lib/hard.ts). hard_since != null — слово в списке.
+  // Произношение русскими буквами, например «сайтсиинг»
+  pronunciation_ru?: string | null
   hard_since?: string | null
   hard_misses?: number | null
   hard_run?: number | null

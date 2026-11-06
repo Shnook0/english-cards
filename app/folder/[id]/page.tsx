@@ -10,6 +10,7 @@ import AddCardModal from '@/components/AddCardModal'
 import MatchRecord from '@/components/MatchRecord'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { isHard } from '@/lib/hard'
 import {
@@ -376,6 +377,7 @@ export default function FolderPage() {
                 <div className="min-w-0">
                   <h3 className="text-lg font-semibold leading-tight break-words text-[#ececf1]">
                     {card.word}
+                    <RuPron value={card.pronunciation_ru} />
                   </h3>
                   {card.transcription && (
                     <p className="mt-1 font-mono text-xs text-[#8a8a96]">{card.transcription}</p>

@@ -12,6 +12,7 @@
   "dependencies": {
     "@serwist/turbopack": "^9.5.13",
     "@supabase/supabase-js": "^2.116.0",
+    "cmu-pronouncing-dictionary": "^3.0.0",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "esbuild": "^0.28.2",

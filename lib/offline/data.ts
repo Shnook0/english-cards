@@ -217,6 +217,7 @@ export type NewCardInput = {
   transcription?: string | null
   translation: string
   sentences: string[]
+  pronunciation_ru?: string | null
 }
 
 export async function createCards(
@@ -246,6 +247,8 @@ export async function createCards(
     sync_group_id: options.syncGroupId ?? null,
     content_updated_at: now,
     last_answer_at: null,
+    // Ключ добавляем только если он есть: так старая схема БД без колонки не ломается.
+    ...(input.pronunciation_ru ? { pronunciation_ru: input.pronunciation_ru } : {}),
   }))
 
   if (rows.length === 0) return rows

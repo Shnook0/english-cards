@@ -6,6 +6,7 @@ import { GeneralProgress } from '@/types/general'
 import { REINSERT_OFFSETS, wordKey } from '@/lib/general'
 import { saveGeneralAnswer, setFavorite } from '@/lib/offline/repo'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 
 type Props = {
   trainingId: string
@@ -223,7 +224,10 @@ export default function GeneralTrainSession({
           </div>
 
           <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
-            <h2 className="break-words text-3xl font-bold sm:text-4xl">{currentCard.word}</h2>
+            <h2 className="break-words text-3xl font-bold sm:text-4xl">
+              {currentCard.word}
+              <RuPron value={currentCard.pronunciation_ru} />
+            </h2>
             {currentCard.transcription && (
               <p className="mt-2 text-base text-[#8a8a96]">{currentCard.transcription}</p>
             )}

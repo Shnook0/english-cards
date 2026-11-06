@@ -17,6 +17,7 @@ import {
 } from '@/lib/study'
 import { clearSession, loadSession, restoreQueue, saveSession } from '@/lib/session'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 
 const MAX_STAGE = 3
 const BATCH_SIZE = 10
@@ -573,7 +574,10 @@ export default function LearnGame({
                 onClick={() => setShowTranslation(true)}
                 className="block w-full select-none pt-10 text-center"
               >
-                <h2 className="break-words text-3xl font-bold sm:text-4xl">{current.word}</h2>
+                <h2 className="break-words text-3xl font-bold sm:text-4xl">
+                  {current.word}
+                  <RuPron value={current.pronunciation_ru} />
+                </h2>
                 {current.transcription && (
                   <p className="mt-2 text-base text-[#8a8a96]">{current.transcription}</p>
                 )}
@@ -631,7 +635,10 @@ export default function LearnGame({
           <main className="flex flex-1 flex-col justify-center py-6">
             <p className="mb-3 text-center text-sm text-[#8a8a96]">{STAGE_HINTS[1]}</p>
             <div className="card p-5 text-center sm:p-7">
-              <p className="break-words text-3xl font-bold sm:text-4xl">{current.word}</p>
+              <p className="break-words text-3xl font-bold sm:text-4xl">
+                {current.word}
+                <RuPron value={current.pronunciation_ru} />
+              </p>
               <div className="mt-2 flex items-center justify-center gap-3">
                 {current.transcription && (
                   <p className="text-base text-[#8a8a96]">{current.transcription}</p>

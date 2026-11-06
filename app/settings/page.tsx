@@ -28,6 +28,7 @@ import type { SyncResult } from '@/lib/offline/repo'
 import { subscribeOutbox } from '@/lib/offline/outbox'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon, { type IconName } from '@/components/ui/Icon'
+import { useRuPronunciation } from '@/hooks/useRuPronunciation'
 
 const EMPTY_SYNC: SyncState = {
   status: 'idle',
@@ -139,6 +140,7 @@ function SettingsRow({
 export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useOfflineRouter()
+  const [ruPronunciation, setRuPronunciation] = useRuPronunciation()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [sync, setSync] = useState<SyncState>(EMPTY_SYNC)
@@ -343,6 +345,33 @@ export default function SettingsPage() {
         title="Настройки"
         description="Синхронизация, резервная копия и установка на iPhone. Слова и тренировки работают и без интернета."
       />
+
+      {/* ── Слова ─────────────────────────────────────── */}
+      <h2 className="section-label">Слова</h2>
+      <section className="card divide-y divide-[#24242b]">
+        <SettingsRow
+          icon="book"
+          title="Произношение русскими буквами"
+          text="При добавлении слова подставляется запись вроде «sightseeing (сайтсиинг)», и она показывается рядом со словом. Настройка действует на этом устройстве."
+        >
+          <button
+            type="button"
+            role="switch"
+            aria-checked={ruPronunciation}
+            aria-label="Произношение русскими буквами"
+            onClick={() => setRuPronunciation(!ruPronunciation)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+              ruPronunciation ? 'bg-[#8ea2ff]' : 'bg-[#24242b]'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all ${
+                ruPronunciation ? 'left-[22px]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </SettingsRow>
+      </section>
 
       {/* ── Синхронизация ─────────────────────────────── */}
       <h2 className="section-label">Синхронизация</h2>

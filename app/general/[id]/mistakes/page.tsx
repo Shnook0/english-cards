@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { Card } from '@/types/database'
 import { GeneralProgress, GeneralTraining } from '@/types/general'
@@ -144,7 +145,10 @@ export default function GeneralMistakesPage() {
             {items.filter(({ card }) => matchesQuery(query, card.word, card.translation, card.sentences)).map(({ card, progress }) => (
               <div key={card.id} className="card p-4">
                 <div className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="text-lg font-semibold">{card.word}</span>
+                  <span className="text-lg font-semibold">
+                        {card.word}
+                        <RuPron value={card.pronunciation_ru} />
+                      </span>
                   {card.transcription && (
                     <span className="font-mono text-[13px] text-[#8a8a96]">{card.transcription}</span>
                   )}

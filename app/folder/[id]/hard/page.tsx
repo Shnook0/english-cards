@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { Card, Folder } from '@/types/database'
 import { isHard } from '@/lib/hard'
@@ -95,7 +96,10 @@ export default function HardWordsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="text-lg font-semibold">{card.word}</span>
+                        <span className="text-lg font-semibold">
+                        {card.word}
+                        <RuPron value={card.pronunciation_ru} />
+                      </span>
                         {card.transcription && (
                           <span className="font-mono text-[13px] text-[#8a8a96]">
                             {card.transcription}
