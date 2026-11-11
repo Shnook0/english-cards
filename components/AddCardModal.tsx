@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Card } from '@/types/database'
 import Icon from '@/components/ui/Icon'
 import { useRuPronunciation } from '@/hooks/useRuPronunciation'
-import { ipaToRussian } from '@/lib/pronounce'
+import { ipaToRussian, normalizeCardPron, splitWordPron } from '@/lib/pronounce'
+import { fetchPronunciation, fetchPronunciations } from '@/lib/pronounceClient'
 import {
   createCards,
   deleteCard,
@@ -37,6 +38,10 @@ type PendingCard = {
   parsed: ParsedCard
   existing: ExistingCard | null
   choice: ConflictChoice
+}
+
+function hasCyrillic(value: string): boolean {
+  return /[а-яё]/i.test(value)
 }
 
 function normalizeWord(value: string): string {
@@ -107,13 +112,15 @@ function AddCardModalContent({
 }: Omit<Props, 'isOpen'>) {
   const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual')
 
-  const [word, setWord] = useState(() => cardToEdit?.word ?? '')
+  // Старые карточки «bakery (бейкэри)»: слово и произношение разводим по своим полям
+  const editCard = cardToEdit ? normalizeCardPron(cardToEdit) : null
+  const [word, setWord] = useState(() => editCard?.word ?? '')
   const [transcription, setTranscription] = useState(() => cardToEdit?.transcription ?? '')
   const [translation, setTranslation] = useState(() => cardToEdit?.translation ?? '')
   const [ruEnabled] = useRuPronunciation()
-  const [pronRu, setPronRu] = useState(() => cardToEdit?.pronunciation_ru ?? '')
+  const [pronRu, setPronRu] = useState(() => editCard?.pronunciation_ru ?? '')
   // Если пользователь правил поле сам (или оно уже было у карточки), не перезаписываем его
-  const pronEditedRef = useRef(Boolean(cardToEdit?.pronunciation_ru))
+  const pronEditedRef = useRef(Boolean(editCard?.pronunciation_ru))
   const pronRequestRef = useRef(0)
   const [sentencesText, setSentencesText] = useState(() =>
     cardToEdit?.sentences ? cardToEdit.sentences.join('\n') : ''
@@ -197,35 +204,34 @@ function AddCardModalContent({
   useEffect(() => {
     if (!ruEnabled || pronEditedRef.current) return
 
-    const term = word.trim()
+    // «bakery (бейкэри)» прямо в поле слова: берём произношение из скобок
+    const typed = splitWordPron(word)
+    const term = typed.word
     const ipa = transcription.trim()
     const requestId = ++pronRequestRef.current
 
-    if (ipa) {
+    if (typed.pron) {
+      const pron = typed.pron
+      const timer = setTimeout(() => setPronRu(pron), 0)
+      return () => clearTimeout(timer)
+    }
+
+    if (ipa && ipaToRussian(ipa)) {
       const timer = setTimeout(() => setPronRu(ipaToRussian(ipa)), 300)
       return () => clearTimeout(timer)
     }
 
-    if (term.length < 2) {
+    if (term.length < 1) {
       const timer = setTimeout(() => setPronRu(''), 0)
       return () => clearTimeout(timer)
     }
 
+    // Словарь на сервере; без сети или для редкого слова — запись по написанию
     const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/pronounce?word=${encodeURIComponent(term)}`, {
-          cache: 'no-store',
-          signal: AbortSignal.timeout(6000),
-        })
-        const data = (await res.json().catch(() => null)) as
-          | { pronunciation?: unknown }
-          | null
-        if (pronRequestRef.current !== requestId || pronEditedRef.current) return
-        setPronRu(typeof data?.pronunciation === 'string' ? data.pronunciation : '')
-      } catch {
-        if (pronRequestRef.current === requestId && !pronEditedRef.current) setPronRu('')
-      }
-    }, 700)
+      const pron = await fetchPronunciation(term).catch(() => '')
+      if (pronRequestRef.current !== requestId || pronEditedRef.current) return
+      setPronRu(pron)
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [word, transcription, ruEnabled])
@@ -256,24 +262,36 @@ function AddCardModalContent({
       let w = ''
       let tr: string | null = null
       let tl = ''
+      let pron: string | null = null
       let sentences: string[] = []
 
       if (parts.length >= 2) {
-        w = parts[0]
-        const isTranscription =
-          parts[1].startsWith('/') ||
-          parts[1].startsWith('[') ||
-          parts[1].endsWith('/') ||
-          parts[1].endsWith(']')
+        // «bakery (бейкэри) | …» — произношение прямо в слове
+        const head = splitWordPron(parts[0])
+        w = head.word
+        pron = head.pron
+        let rest = parts.slice(1)
 
-        if (isTranscription && parts.length >= 3) {
-          tr = parts[1]
-          tl = parts[2]
-          sentences = parts.slice(3).filter(Boolean)
-        } else {
-          tl = parts[1]
-          sentences = parts.slice(2).filter(Boolean)
+        const isTranscription =
+          rest[0].startsWith('/') ||
+          rest[0].startsWith('[') ||
+          rest[0].endsWith('/') ||
+          rest[0].endsWith(']')
+
+        if (isTranscription && rest.length >= 2) {
+          tr = rest[0]
+          rest = rest.slice(1)
         }
+
+        // слово | [транскрипция] | произношение | перевод | примеры:
+        // две русские части подряд — первая это произношение.
+        if (ruEnabled && rest.length >= 2 && hasCyrillic(rest[0]) && hasCyrillic(rest[1])) {
+          pron = rest[0] || pron
+          rest = rest.slice(1)
+        }
+
+        tl = rest[0] ?? ''
+        sentences = rest.slice(1).filter(Boolean)
       }
 
       if (!w || !tl) {
@@ -286,6 +304,7 @@ function AddCardModalContent({
         transcription: tr,
         translation: tl,
         sentences,
+        pronunciation_ru: pron,
       }
       const key = normalizeWord(w)
       const existingIndex = indexByWord.get(key)
@@ -347,7 +366,7 @@ function AddCardModalContent({
       // Ключ передаём, только когда есть что сохранить или стереть (старая схема БД без колонки не ломается)
       ...(card.pronunciation_ru
         ? { pronunciation_ru: card.pronunciation_ru }
-        : cardToEdit?.pronunciation_ru
+        : cardToEdit?.pronunciation_ru || editCard?.pronunciation_ru
         ? { pronunciation_ru: null }
         : {}),
     })
@@ -456,12 +475,15 @@ function AddCardModalContent({
       .map(s => s.trim())
       .filter(Boolean)
 
+    const typed = splitWordPron(word)
     const parsed: ParsedCard = {
-      word: word.trim(),
+      word: typed.word,
       transcription: transcription.trim() || null,
       translation: translation.trim(),
       sentences: sentencesArray,
-      pronunciation_ru: ruEnabled ? pronRu.trim() || null : cardToEdit?.pronunciation_ru ?? null,
+      pronunciation_ru: ruEnabled
+        ? pronRu.trim() || typed.pron || null
+        : typed.pron ?? editCard?.pronunciation_ru ?? null,
     }
 
     setCheckingDuplicates(true)
@@ -513,7 +535,23 @@ function AddCardModalContent({
 
     if (!existingCards) return
 
-    const items = buildPendingCards(parsedCards, existingCards)
+    // Произношение не указано — подставляем сами (словарь, иначе по написанию)
+    let cardsToSave = parsedCards
+    if (ruEnabled) {
+      const missing = parsedCards.filter(card => !card.pronunciation_ru).map(card => card.word)
+      if (missing.length > 0) {
+        setCheckingDuplicates(true)
+        const found = await fetchPronunciations(missing).catch(() => ({}) as Record<string, string>)
+        setCheckingDuplicates(false)
+        cardsToSave = parsedCards.map(card =>
+          card.pronunciation_ru
+            ? card
+            : { ...card, pronunciation_ru: found[card.word.trim().toLowerCase()] || null }
+        )
+      }
+    }
+
+    const items = buildPendingCards(cardsToSave, existingCards)
     setPendingCards(items)
     setConflictIntent('import')
 
@@ -954,9 +992,15 @@ function AddCardModalContent({
                 <p>
                   Одна строка — одно слово. Части разделяйте знаком «|»:
                   <br />
-                  <span className="text-[#ececf1]">слово | транскрипция | перевод | примеры</span>
+                  <span className="text-[#ececf1]">
+                    {ruEnabled
+                      ? 'слово | транскрипция | произношение | перевод | примеры'
+                      : 'слово | транскрипция | перевод | примеры'}
+                  </span>
                   <br />
-                  Транскрипцию и примеры можно не писать.
+                  {ruEnabled
+                    ? 'Транскрипцию, произношение и примеры можно не писать — произношение подставится само.'
+                    : 'Транскрипцию и примеры можно не писать.'}
                 </p>
               </div>
               <textarea
@@ -967,7 +1011,11 @@ function AddCardModalContent({
                 aria-label="Список слов для импорта"
                 className="field resize-none font-mono"
                 style={{ fontSize: '0.875rem' }}
-                placeholder={`apple | /ˈæp.əl/ | яблоко | I eat an apple every day. | She bought two apples.\nbook | /bʊk/ | книга | This book is interesting. |`}
+                placeholder={
+                  ruEnabled
+                    ? `apple | /ˈæp.əl/ | эпл | яблоко | I eat an apple every day.\nbook | /bʊk/ | бук | книга | This book is interesting.\nbakery | пекарня | The bakery is near.`
+                    : `apple | /ˈæp.əl/ | яблоко | I eat an apple every day. | She bought two apples.\nbook | /bʊk/ | книга | This book is interesting. |`
+                }
               />
             </div>
 

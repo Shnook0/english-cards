@@ -109,7 +109,7 @@ export default function FavoritesPage() {
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <h3 className="text-lg">
                         {card.word}
-                        <RuPron value={card.pronunciation_ru} />
+                        <RuPron card={card} />
                       </h3>
                       {card.transcription && (
                         <span className="font-mono text-[13px] text-[#8a8a96]">

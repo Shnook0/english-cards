@@ -1,5 +1,7 @@
 'use client'
 
+import RuPron from '@/components/ui/RuPron'
+
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Card } from '@/types/database'
@@ -260,6 +262,7 @@ export default function DictationGame({ cards, recordResult, onNextRound, onExit
             <div className="mt-5 w-full rounded-xl bg-[#1b1b21] p-4">
               <p className="text-sm text-[#8a8a96]">Правильно:</p>
               <p className="mt-1 text-2xl font-bold text-[#ececf1]">{current.word}</p>
+              <RuPron card={current} size="md" />
               {current.transcription && (
                 <p className="mt-1 text-sm text-[#8a8a96]">{current.transcription}</p>
               )}

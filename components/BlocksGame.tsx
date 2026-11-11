@@ -1,5 +1,7 @@
 'use client'
 
+import RuPron from '@/components/ui/RuPron'
+
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Card } from '@/types/database'
@@ -405,6 +407,7 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
               <div className="card flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
                   <p className="break-words text-2xl font-bold">{current.word}</p>
+                  <RuPron card={current} size="md" />
                   {current.transcription && (
                     <p className="mt-0.5 text-sm text-[#8a8a96]">{current.transcription}</p>
                   )}
@@ -454,6 +457,7 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="card p-4">
                 <p className="text-sm text-[#8a8a96]">{current.word}</p>
+                <RuPron card={current} />
                 <p className="mt-1 text-sm text-[#8a8a96]">Правильный ответ:</p>
                 <p className="mt-0.5 text-2xl font-bold text-[#8ea2ff]">{current.translation}</p>
               </div>

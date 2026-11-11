@@ -5,17 +5,18 @@ import { Card } from '@/types/database'
 import { StudyGameProps, shuffle } from '@/lib/study'
 import { fetchBestTime, formatTime, saveBestTime } from '@/lib/records'
 import Icon from '@/components/ui/Icon'
+import RuPron from '@/components/ui/RuPron'
 
 const ROUND_SIZE = 6
 
 type Props = StudyGameProps & { recordScope: string }
 
-type Tile = { id: string; cardId: string; kind: 'en' | 'ru'; text: string }
+type Tile = { id: string; cardId: string; kind: 'en' | 'ru'; text: string; card?: Card }
 
 function makeTiles(cards: Card[]): Tile[] {
   const tiles: Tile[] = []
   for (const c of cards) {
-    tiles.push({ id: `${c.id}-en`, cardId: c.id, kind: 'en', text: c.word })
+    tiles.push({ id: `${c.id}-en`, cardId: c.id, kind: 'en', text: c.word, card: c })
     tiles.push({ id: `${c.id}-ru`, cardId: c.id, kind: 'ru', text: c.translation })
   }
   return shuffle(tiles)
@@ -279,11 +280,12 @@ export default function MatchGame({
               <button
                 key={t.id}
                 onClick={() => handleTile(t)}
-                className={`flex min-h-[92px] select-none items-center justify-center break-words rounded-[14px] border p-3 text-center text-sm font-medium leading-snug transition active:scale-[0.97] md:min-h-[112px] md:text-base ${state} ${
+                className={`flex min-h-[92px] select-none flex-col items-center justify-center break-words rounded-[14px] border p-3 text-center text-sm font-medium leading-snug transition active:scale-[0.97] md:min-h-[112px] md:text-base ${state} ${
                   isMatched ? 'invisible' : ''
                 }`}
               >
-                {t.text}
+                <span>{t.text}</span>
+                {t.kind === 'en' && <RuPron card={t.card} className="text-xs! md:text-sm!" />}
               </button>
             )
           })}

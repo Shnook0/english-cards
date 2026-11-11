@@ -576,7 +576,7 @@ export default function LearnGame({
               >
                 <h2 className="break-words text-3xl font-bold sm:text-4xl">
                   {current.word}
-                  <RuPron value={current.pronunciation_ru} />
+                  <RuPron card={current} size="lg" />
                 </h2>
                 {current.transcription && (
                   <p className="mt-2 text-base text-[#8a8a96]">{current.transcription}</p>
@@ -637,7 +637,7 @@ export default function LearnGame({
             <div className="card p-5 text-center sm:p-7">
               <p className="break-words text-3xl font-bold sm:text-4xl">
                 {current.word}
-                <RuPron value={current.pronunciation_ru} />
+                <RuPron card={current} size="lg" />
               </p>
               <div className="mt-2 flex items-center justify-center gap-3">
                 {current.transcription && (
@@ -734,6 +734,7 @@ export default function LearnGame({
               <div className="mt-5 rounded-xl bg-[#1b1b21] p-4">
                 <p className="text-sm text-[#8a8a96]">Правильно:</p>
                 <p className="mt-1 text-2xl font-bold text-[#ececf1]">{current.word}</p>
+                <RuPron card={current} size="md" />
                 {current.transcription && (
                   <p className="mt-1 text-sm text-[#8a8a96]">{current.transcription}</p>
                 )}

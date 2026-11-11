@@ -13,7 +13,8 @@ import {
 } from '@/lib/offline/connectivity'
 import { getPendingCount, enqueue } from '@/lib/offline/outbox'
 import { resolveUserId } from '@/lib/offline/authCache'
-import { remoteCreateCardIfMissing } from '@/lib/offline/remotes'
+import { isMissingColumn, remoteCreateCardIfMissing } from '@/lib/offline/remotes'
+import { normalizeCardPron, splitWordPron } from '@/lib/pronounce'
 import { patchCorrect, patchWrong } from '@/lib/study'
 import { HARD_CLEARED } from '@/lib/hard'
 import {
@@ -104,7 +105,13 @@ async function remoteCards(query: CardQuery): Promise<Card[]> {
   return rows
 }
 
+// Старые карточки «bakery (бейкэри)» отдаём уже разделёнными: слово + произношение.
 export async function fetchCards(query: CardQuery): Promise<Card[]> {
+  const cards = await fetchCardsRaw(query)
+  return cards.map(normalizeCardPron)
+}
+
+async function fetchCardsRaw(query: CardQuery): Promise<Card[]> {
   const db = getDb()
   const local = await localCards(query)
   const pending = await getPendingCount().catch(() => 0)
@@ -580,6 +587,14 @@ export async function fetchTrainingCards(
   training: GeneralTraining,
   userId: string
 ): Promise<Card[]> {
+  const cards = await fetchTrainingCardsRaw(training, userId)
+  return cards.map(normalizeCardPron)
+}
+
+async function fetchTrainingCardsRaw(
+  training: GeneralTraining,
+  userId: string
+): Promise<Card[]> {
   let folderIds: string[] = []
 
   if (training.scope === 'all') {
@@ -1030,6 +1045,36 @@ export async function pullSnapshot(userId: string): Promise<boolean> {
     if (isNetworkError(error)) noteNetworkFailure()
     return false
   }
+}
+
+// Разовая чистка старых карточек: «bakery (бейкэри)» → слово «bakery» и
+// отдельное произношение. Только если в базе уже есть колонка pronunciation_ru,
+// иначе произношение потерялось бы при синхронизации.
+let legacyPronMigrated = false
+
+export async function migrateLegacyPronunciations(userId: string): Promise<number> {
+  if (legacyPronMigrated || !isOnline()) return 0
+
+  const { error } = await supabase.from('cards').select('pronunciation_ru').limit(1)
+  if (error) {
+    if (isMissingColumn(error)) legacyPronMigrated = true
+    return 0
+  }
+  legacyPronMigrated = true
+
+  const db = getDb()
+  const cards = await db.cards.where('user_id').equals(userId).toArray()
+  let changed = 0
+  for (const card of cards) {
+    const { word, pron } = splitWordPron(card.word)
+    if (!pron) continue
+    await updateCardContent(card.id, userId, {
+      word,
+      pronunciation_ru: card.pronunciation_ru?.trim() || pron,
+    })
+    changed += 1
+  }
+  return changed
 }
 
 export async function appendMissingCards(

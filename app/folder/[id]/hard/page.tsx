@@ -98,7 +98,7 @@ export default function HardWordsPage() {
                       <div className="flex flex-wrap items-baseline gap-x-2">
                         <span className="text-lg font-semibold">
                         {card.word}
-                        <RuPron value={card.pronunciation_ru} />
+                        <RuPron card={card} />
                       </span>
                         {card.transcription && (
                           <span className="font-mono text-[13px] text-[#8a8a96]">

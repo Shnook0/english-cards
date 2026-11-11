@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { getSyncState, syncNow } from '@/lib/offline/sync'
 import { subscribeConnectivity } from '@/lib/offline/connectivity'
 import { subscribeOutbox } from '@/lib/offline/outbox'
+import { migrateLegacyPronunciations } from '@/lib/offline/data'
 import { SyncState } from '@/types/offline'
 
 const IDLE: SyncState = {
@@ -44,6 +45,8 @@ export default function SyncProvider() {
     setSyncing(true)
     try {
       const result = await syncNow(user.id)
+      // после удачной синхронизации разово переносим «слово (произношение)» в отдельное поле
+      if (result.ok) void migrateLegacyPronunciations(user.id).catch(() => 0)
       if (mountedRef.current) {
         setState(prev => ({
           ...prev,

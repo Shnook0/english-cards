@@ -377,7 +377,7 @@ export default function FolderPage() {
                 <div className="min-w-0">
                   <h3 className="text-lg font-semibold leading-tight break-words text-[#ececf1]">
                     {card.word}
-                    <RuPron value={card.pronunciation_ru} />
+                    <RuPron card={card} />
                   </h3>
                   {card.transcription && (
                     <p className="mt-1 font-mono text-xs text-[#8a8a96]">{card.transcription}</p>

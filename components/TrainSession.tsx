@@ -342,7 +342,7 @@ export default function TrainSession({ initialCards, mode, onExit }: Props) {
 
           <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
             <h2 className="break-words text-3xl font-bold sm:text-4xl">{currentCard.word}
-              <RuPron value={currentCard.pronunciation_ru} />
+              <RuPron card={currentCard} size="lg" />
             </h2>
             {currentCard.transcription && (
               <p className="mt-2 text-base text-[#8a8a96]">{currentCard.transcription}</p>

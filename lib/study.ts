@@ -2,6 +2,7 @@ import { hardAfterCorrect, hardAfterWrong } from '@/lib/hard'
 import { getAccessToken } from '@/lib/offline/authCache'
 import { isOnline } from '@/lib/offline/connectivity'
 import { Card } from '@/types/database'
+import { cleanWord } from '@/lib/pronounce'
 
 // Интервалы повторения для карточек в папках (дни), как в обычной тренировке
 export const SRS_INTERVALS_DAYS = [1, 3, 7, 14, 30, 60, 120, 240]
@@ -188,8 +189,9 @@ export function normalizeEnglish(s: string): string {
 }
 
 // Диктант: регистр и лишние пробелы не важны, опечатки не прощаются
+// Русская подсказка в скобках («bakery (бейкэри)») в ответе не нужна.
 export function isSpellingCorrect(input: string, word: string): boolean {
-  return normalizeEnglish(input) === normalizeEnglish(word)
+  return normalizeEnglish(cleanWord(input)) === normalizeEnglish(cleanWord(word))
 }
 
 export function normalizeRu(s: string): string {
