@@ -30,11 +30,14 @@ import {
   randInt,
 } from '@/lib/blocks'
 import Icon from '@/components/ui/Icon'
+import { useBlocksFocus } from '@/hooks/useBlocksFocus'
 
 type Phase = 'question' | 'placing' | 'revealed' | 'over' | 'finished'
 
 export default function BlocksGame({ cards, recordResult, onNextRound, onExit }: StudyGameProps) {
   warmUpVoices()
+
+  const [focusMode] = useBlocksFocus()
 
   // Рекорд хранится отдельно для каждой папки (ключ берём из адреса страницы)
   const pathname = usePathname()
@@ -141,20 +144,16 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
     setTurn(t => t + 1)
   }
 
-  // В наборе не больше одной особой фигуры (бомба или молния)
-  const makeTray = (count: number): Piece[] => {
-    const list: Piece[] = []
-    for (let i = 0; i < count; i++) {
-      list.push(makePiece(pieceIdRef.current++, !list.some(p => p.kind !== 'normal')))
-    }
-    return list
-  }
-
-  // Верный ответ: выдаём случайное число фигур (3–5), на поле видно до трёх сразу
+  // Верный ответ: следующее слово появится через случайное число ходов
+  // (3–5, а с включённым «Больше игры, меньше слов» — 7–10).
+  // Набор из трёх фигур не сбрасывается между словами: тут только добираем недостающие.
   const dealPieces = () => {
-    quotaRef.current = randInt(3, 5)
+    quotaRef.current = focusMode ? randInt(7, 10) : randInt(3, 5)
     placedRef.current = 0
-    const ps = makeTray(Math.min(3, quotaRef.current))
+    const ps = [...pieces]
+    while (ps.length < TRAY_SIZE) {
+      ps.push(makePiece(pieceIdRef.current++, !ps.some(p => p.kind !== 'normal')))
+    }
     setPieces(ps)
     if (!ps.some(p => fitsAnywhere(board, p))) {
       saveRecordIfNeeded(score)
@@ -271,27 +270,24 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
     setGain({ value: gained, key: gainKeyRef.current })
     if (newScore > bestSavedRef.current) setNewRecord(true)
 
-    if (placedRef.current >= quotaRef.current) {
-      // Нужное число фигур поставлено → сохраняем рекорд и идём к следующему слову
-      setPieces([])
-      saveRecordIfNeeded(newScore)
-      resetInput()
-      setPhase(queue.length === 0 ? 'finished' : 'question')
-      return
-    }
-
-    // Добираем новую фигуру в набор, пока не выдано всё нужное количество
-    if (placedRef.current + remaining.length < quotaRef.current) {
-      remaining = [
-        ...remaining,
-        makePiece(pieceIdRef.current++, !remaining.some(p => p.kind !== 'normal')),
-      ]
-    }
+    // Вместо поставленной фигуры сразу выдаётся новая: в наборе всегда три
+    remaining = [
+      ...remaining,
+      makePiece(pieceIdRef.current++, !remaining.some(p => p.kind !== 'normal')),
+    ]
     setPieces(remaining)
 
     if (!remaining.some(p => fitsAnywhere(nb, p))) {
       saveRecordIfNeeded(newScore)
       setPhase('over')
+      return
+    }
+
+    if (placedRef.current >= quotaRef.current) {
+      // Нужное число ходов сделано → сохраняем рекорд и идём к следующему слову
+      saveRecordIfNeeded(newScore)
+      resetInput()
+      setPhase(queue.length === 0 ? 'finished' : 'question')
     }
   }
 
@@ -504,7 +500,7 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
           {phase === 'question' && current && (
             <form onSubmit={handleSubmit} className="space-y-3">
               <p className="text-sm text-[#8a8a96]">
-                Переведите слово — за верный ответ получите фигуры для поля
+                Переведите слово — за верный ответ можно поиграть несколько ходов
               </p>
               <div className="card flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -592,8 +588,8 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
           )}
         </div>
 
-        <div className="mx-auto w-full max-w-[420px] md:mx-0">
-          <div className={`card p-1.5 ${shake ? 'blk-shake' : ''}`}>
+        <div className="mx-auto w-full max-w-[540px] max-sm:-mx-2 max-sm:w-[calc(100%+1rem)] md:mx-0">
+          <div className={`card p-1 ${shake ? 'blk-shake' : ''}`}>
             <div ref={boardRef} className="grid grid-cols-8 select-none">
               {board.map((row, r) =>
                 row.map((value, c) => {
@@ -634,7 +630,7 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
           </div>
 
           {phase === 'placing' && (
-            <div className="mt-5 flex min-h-[7.5rem] items-center justify-center gap-3">
+            <div className="mt-5 flex min-h-[8.5rem] items-center justify-center gap-3">
               {pieces.map(p => (
                 <button
                   key={p.id}
@@ -647,14 +643,14 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
                 >
                   {p.kind !== 'normal' ? (
                     <div
-                      className={`blk-glow flex h-[34px] w-[34px] items-center justify-center rounded-lg text-xl ${SPECIAL_STYLE[p.kind].cls}`}
+                      className={`blk-glow flex h-[40px] w-[40px] items-center justify-center rounded-lg text-2xl ${SPECIAL_STYLE[p.kind].cls}`}
                     >
                       {SPECIAL_STYLE[p.kind].icon}
                     </div>
                   ) : (
                     <div
                       className="grid gap-0.5"
-                      style={{ gridTemplateColumns: `repeat(${p.w}, 22px)` }}
+                      style={{ gridTemplateColumns: `repeat(${p.w}, 26px)` }}
                     >
                       {Array.from({ length: p.h * p.w }, (_, i) => {
                         const r = Math.floor(i / p.w)
@@ -663,7 +659,7 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
                         return (
                           <div
                             key={i}
-                            className={`h-[22px] w-[22px] rounded ${
+                            className={`h-[26px] w-[26px] rounded ${
                               filled ? `${COLORS[p.color]} ${BLOCK_FX}` : ''
                             }`}
                           />
@@ -722,6 +718,8 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
     </div>
   )
 }
+
+const TRAY_SIZE = 3
 
 const SCREEN =
   'mx-auto flex w-full max-w-4xl flex-col px-4 min-h-[calc(100dvh_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))]'

@@ -29,6 +29,7 @@ import { subscribeOutbox } from '@/lib/offline/outbox'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon, { type IconName } from '@/components/ui/Icon'
 import { useRuPronunciation } from '@/hooks/useRuPronunciation'
+import { useBlocksFocus } from '@/hooks/useBlocksFocus'
 
 const EMPTY_SYNC: SyncState = {
   status: 'idle',
@@ -141,6 +142,7 @@ export default function SettingsPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useOfflineRouter()
   const [ruPronunciation, setRuPronunciation] = useRuPronunciation()
+  const [blocksFocus, setBlocksFocus] = useBlocksFocus()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [sync, setSync] = useState<SyncState>(EMPTY_SYNC)
@@ -367,6 +369,33 @@ export default function SettingsPage() {
             <span
               className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all ${
                 ruPronunciation ? 'left-[22px]' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </SettingsRow>
+      </section>
+
+      {/* ── Игры ──────────────────────────────────────── */}
+      <h2 className="section-label">Игры</h2>
+      <section className="card divide-y divide-[#24242b]">
+        <SettingsRow
+          icon="target"
+          title="Больше игры, меньше слов"
+          text="В «Блоках» английское слово появляется раз в 7–10 ходов. Если выключено — раз в 3–5 ходов. Настройка действует на этом устройстве."
+        >
+          <button
+            type="button"
+            role="switch"
+            aria-checked={blocksFocus}
+            aria-label="Больше игры, меньше слов"
+            onClick={() => setBlocksFocus(!blocksFocus)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${
+              blocksFocus ? 'bg-[#8ea2ff]' : 'bg-[#24242b]'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all ${
+                blocksFocus ? 'left-[22px]' : 'left-0.5'
               }`}
             />
           </button>
