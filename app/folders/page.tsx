@@ -10,6 +10,9 @@ import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 
+// Сколько недавних папок показываем сразу; остальные открываются кнопкой
+const VISIBLE_FOLDERS = 10
+
 export default function FoldersPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useOfflineRouter()
@@ -21,6 +24,7 @@ export default function FoldersPage() {
   const [reloadKey, setReloadKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -70,6 +74,13 @@ export default function FoldersPage() {
     setCreating(false)
     setReloadKey(value => value + 1)
   }
+
+  // Новые папки сверху, старые ниже. Во время поиска ищем по всем папкам.
+  const sortedFolders = [...folders].sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const searching = query.trim().length > 0
+  const matched = sortedFolders.filter(f => matchesQuery(query, f.name))
+  const visible = searching || showAll ? matched : matched.slice(0, VISIBLE_FOLDERS)
+  const hiddenCount = matched.length - visible.length
 
   if (authLoading || loadingData) {
     return (
@@ -128,7 +139,7 @@ export default function FoldersPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {folders.filter(f => matchesQuery(query, f.name)).map(folder => (
+          {visible.map(folder => (
             <Link
               key={folder.id}
               href={`/folder/${folder.id}`}
@@ -143,7 +154,17 @@ export default function FoldersPage() {
               <Icon name="arrowRight" size={18} className="shrink-0 text-[#6b6b76]" />
             </Link>
           ))}
-          {query.trim() && !folders.some(f => matchesQuery(query, f.name)) && (
+          {hiddenCount > 0 && (
+            <button type="button" onClick={() => setShowAll(true)} className="btn btn-secondary btn-block">
+              Показать все папки ({matched.length})
+            </button>
+          )}
+          {showAll && !searching && folders.length > VISIBLE_FOLDERS && (
+            <button type="button" onClick={() => setShowAll(false)} className="btn btn-ghost btn-block">
+              Свернуть список
+            </button>
+          )}
+          {searching && matched.length === 0 && (
             <p className="text-sm text-[#8a8a96]">Ничего не найдено.</p>
           )}
         </div>

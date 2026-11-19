@@ -2,7 +2,16 @@ export const SIZE = 8
 export const TOUCH_LIFT = 64 // на сколько пикселей фигура поднимается над пальцем
 
 export type Cell = [number, number]
-export type Piece = { id: number; cells: Cell[]; w: number; h: number; color: number }
+// normal — обычная фигура; bomb — взрывает область 3×3; bolt — стирает ряд и столбец
+export type PieceKind = 'normal' | 'bomb' | 'bolt'
+export type Piece = {
+  id: number
+  cells: Cell[]
+  w: number
+  h: number
+  color: number
+  kind: PieceKind
+}
 export type Drag = {
   pieceId: number
   left: number
@@ -11,14 +20,27 @@ export type Drag = {
   target: Cell | null
 }
 
+// Блоки с градиентом и лёгким объёмом
+export const BLOCK_FX =
+  'shadow-[inset_0_1px_0_rgba(255,255,255,0.4),inset_0_-3px_0_rgba(0,0,0,0.22)]'
+
 export const COLORS = [
   '',
-  'bg-[#6c7cff]',
-  'bg-cyan-400',
-  'bg-pink-500',
-  'bg-indigo-400',
-  'bg-emerald-400',
+  'bg-gradient-to-br from-[#8b9bff] to-[#5566ee]',
+  'bg-gradient-to-br from-cyan-300 to-sky-500',
+  'bg-gradient-to-br from-pink-400 to-rose-600',
+  'bg-gradient-to-br from-violet-400 to-indigo-600',
+  'bg-gradient-to-br from-emerald-300 to-teal-500',
 ]
+
+export const SPECIAL_STYLE: Record<Exclude<PieceKind, 'normal'>, { icon: string; cls: string }> = {
+  bomb: { icon: '💣', cls: 'bg-gradient-to-br from-amber-300 to-orange-600' },
+  bolt: { icon: '⚡', cls: 'bg-gradient-to-br from-yellow-200 to-amber-500' },
+}
+
+export function randInt(min: number, max: number): number {
+  return min + Math.floor(Math.random() * (max - min + 1))
+}
 
 function normalize(cells: Cell[]): Cell[] {
   const minR = Math.min(...cells.map(c => c[0]))
@@ -78,7 +100,20 @@ export function emptyBoard(): number[][] {
   return Array.from({ length: SIZE }, () => Array<number>(SIZE).fill(0))
 }
 
-export function makePiece(id: number): Piece {
+// Особая одиночная фигура: бомба или молния
+function makeSpecial(id: number): Piece {
+  return {
+    id,
+    cells: [[0, 0]],
+    h: 1,
+    w: 1,
+    color: 0,
+    kind: Math.random() < 0.6 ? 'bomb' : 'bolt',
+  }
+}
+
+export function makePiece(id: number, allowSpecial = false): Piece {
+  if (allowSpecial && Math.random() < SPECIAL_CHANCE) return makeSpecial(id)
   const total = GROUPS.reduce((sum, g) => sum + g.weight, 0)
   let x = Math.random() * total
   let group = GROUPS[0]
@@ -96,8 +131,12 @@ export function makePiece(id: number): Piece {
     h: Math.max(...cells.map(c => c[0])) + 1,
     w: Math.max(...cells.map(c => c[1])) + 1,
     color: 1 + Math.floor(Math.random() * 5),
+    kind: 'normal',
   }
 }
+
+// Шанс, что новая фигура окажется бомбой или молнией
+const SPECIAL_CHANCE = 0.16
 
 export function canPlace(board: number[][], piece: Piece, r0: number, c0: number): boolean {
   for (const [dr, dc] of piece.cells) {
@@ -110,6 +149,8 @@ export function canPlace(board: number[][], piece: Piece, r0: number, c0: number
 }
 
 export function fitsAnywhere(board: number[][], piece: Piece): boolean {
+  // Бомбу и молнию можно бросить на любую клетку
+  if (piece.kind !== 'normal') return true
   for (let r = 0; r <= SIZE - piece.h; r++) {
     for (let c = 0; c <= SIZE - piece.w; c++) {
       if (canPlace(board, piece, r, c)) return true
@@ -131,10 +172,52 @@ export function placeOnBoard(board: number[][], piece: Piece, r0: number, c0: nu
   for (let c = 0; c < SIZE; c++) {
     if (nb.every(row => row[c] !== 0)) fullCols.push(c)
   }
+
+  // Запоминаем цвет сгоревших клеток для анимации
+  const burst = new Map<string, number>()
+  for (const r of fullRows) for (let c = 0; c < SIZE; c++) burst.set(`${r},${c}`, nb[r][c])
+  for (const c of fullCols) for (let r = 0; r < SIZE; r++) burst.set(`${r},${c}`, nb[r][c])
   for (const r of fullRows) for (let c = 0; c < SIZE; c++) nb[r][c] = 0
   for (const c of fullCols) for (let r = 0; r < SIZE; r++) nb[r][c] = 0
 
-  return { board: nb, cleared: fullRows.length + fullCols.length }
+  return {
+    board: nb,
+    cleared: fullRows.length + fullCols.length,
+    burst: [...burst].map(([key, color]) => ({ key, color })),
+  }
+}
+
+// Клетки, которые заденет бомба или молния в клетке (r0, c0)
+export function blastCells(kind: PieceKind, r0: number, c0: number): Cell[] {
+  const out: Cell[] = []
+  if (kind === 'bomb') {
+    for (let r = r0 - 1; r <= r0 + 1; r++) {
+      for (let c = c0 - 1; c <= c0 + 1; c++) {
+        if (r >= 0 && c >= 0 && r < SIZE && c < SIZE) out.push([r, c])
+      }
+    }
+  } else if (kind === 'bolt') {
+    for (let i = 0; i < SIZE; i++) {
+      out.push([r0, i])
+      if (i !== r0) out.push([i, c0])
+    }
+  }
+  return out
+}
+
+// Применяет бомбу или молнию: стирает клетки, возвращает поле и что именно сгорело
+export function detonate(board: number[][], kind: PieceKind, r0: number, c0: number) {
+  const nb = board.map(row => [...row])
+  const hit = blastCells(kind, r0, c0)
+  const burst: { key: string; color: number }[] = []
+  let destroyed = 0
+  for (const [r, c] of hit) {
+    if (nb[r][c] !== 0) destroyed += 1
+    // color 0 = пустая клетка: покажем только вспышку
+    burst.push({ key: `${r},${c}`, color: nb[r][c] })
+    nb[r][c] = 0
+  }
+  return { board: nb, destroyed, burst }
 }
 
 // Положение «призрака» фигуры под пальцем и клетка, куда она встанет (ближайшая подходящая)
@@ -158,7 +241,11 @@ export function computeDrag(
     let best = Infinity
     for (const r of [Math.floor(fr), Math.ceil(fr)]) {
       for (const c of [Math.floor(fc), Math.ceil(fc)]) {
-        if (!canPlace(board, piece, r, c)) continue
+        const ok =
+          piece.kind === 'normal'
+            ? canPlace(board, piece, r, c)
+            : r >= 0 && c >= 0 && r < SIZE && c < SIZE
+        if (!ok) continue
         const d = (r - fr) * (r - fr) + (c - fc) * (c - fc)
         if (d < best) {
           best = d

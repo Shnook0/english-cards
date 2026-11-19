@@ -13,6 +13,7 @@ import Icon from '@/components/ui/Icon'
 import RuPron from '@/components/ui/RuPron'
 import SearchInput, { matchesQuery } from '@/components/ui/SearchInput'
 import { isHard } from '@/lib/hard'
+import { speak, warmUpVoices } from '@/lib/study'
 import {
   deleteCard,
   deleteCardsByGroup,
@@ -26,6 +27,10 @@ export default function FolderPage() {
   const { user, loading: authLoading } = useAuth()
   const params = useParams()
   const router = useOfflineRouter()
+
+  useEffect(() => {
+    warmUpVoices()
+  }, [])
   const folderId = params.id as string
 
   const [folder, setFolder] = useState<Folder | null>(null)
@@ -384,6 +389,15 @@ export default function FolderPage() {
                   )}
                   <p className="mt-1.5 text-[15px] leading-6 text-[#8ea2ff]">{card.translation}</p>
                 </div>
+                <div className="flex shrink-0 items-center gap-1">
+                <button
+                  onClick={() => speak(card.word)}
+                  className="icon-btn text-[#8ea2ff]!"
+                  title="Озвучить"
+                  aria-label={`Озвучить слово ${card.word}`}
+                >
+                  <Icon name="speaker" size={20} />
+                </button>
                 <button
                   onClick={() => toggleFav(card)}
                   className="icon-btn shrink-0"
@@ -397,6 +411,7 @@ export default function FolderPage() {
                     className={card.is_favorite ? 'fill-current text-[#e8c27a]' : 'text-[#6b6b76]'}
                   />
                 </button>
+                </div>
               </div>
 
               {card.sentences && card.sentences.length > 0 && (

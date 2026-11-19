@@ -14,15 +14,20 @@ import {
 } from '@/lib/study'
 import { fetchBestScore, saveBestScore } from '@/lib/blocksRecord'
 import {
+  BLOCK_FX,
   COLORS,
   Drag,
   Piece,
+  SPECIAL_STYLE,
+  blastCells,
   canPlace,
   computeDrag,
+  detonate,
   emptyBoard,
   fitsAnywhere,
   makePiece,
   placeOnBoard,
+  randInt,
 } from '@/lib/blocks'
 import Icon from '@/components/ui/Icon'
 
@@ -51,7 +56,20 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
   const [drag, setDrag] = useState<Drag | null>(null)
   const [lastAnswer, setLastAnswer] = useState<{ word: string; translation: string } | null>(null)
   const [saveError, setSaveError] = useState(false)
+  const [combo, setCombo] = useState(0)
+  const [shake, setShake] = useState(false)
+  // Анимации: что только что поставили и что сгорело (color 0 — пустая клетка во взрыве)
+  const [popKeys, setPopKeys] = useState<Set<string>>(new Set())
+  const [bursts, setBursts] = useState<{
+    id: number
+    blast: boolean
+    cells: { key: string; color: number }[]
+  } | null>(null)
 
+  // Сколько фигур нужно поставить до следующего слова (случайно 3–5) и сколько уже поставлено
+  const quotaRef = useRef(3)
+  const placedRef = useRef(0)
+  const burstIdRef = useRef(0)
   const pieceIdRef = useRef(1)
   const gainKeyRef = useRef(0)
   const bestSavedRef = useRef(0)
@@ -85,6 +103,18 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
     return () => clearTimeout(id)
   }, [gain])
 
+  useEffect(() => {
+    if (!bursts) return
+    const id = setTimeout(() => setBursts(null), 600)
+    return () => clearTimeout(id)
+  }, [bursts])
+
+  useEffect(() => {
+    if (!shake) return
+    const id = setTimeout(() => setShake(false), 450)
+    return () => clearTimeout(id)
+  }, [shake])
+
   const report = (card: Card, correct: boolean) => {
     recordResult(card, correct).then(ok => {
       if (!ok) setSaveError(true)
@@ -111,9 +141,20 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
     setTurn(t => t + 1)
   }
 
-  // Верный ответ: выдаём 3 фигуры
+  // В наборе не больше одной особой фигуры (бомба или молния)
+  const makeTray = (count: number): Piece[] => {
+    const list: Piece[] = []
+    for (let i = 0; i < count; i++) {
+      list.push(makePiece(pieceIdRef.current++, !list.some(p => p.kind !== 'normal')))
+    }
+    return list
+  }
+
+  // Верный ответ: выдаём случайное число фигур (3–5), на поле видно до трёх сразу
   const dealPieces = () => {
-    const ps = [0, 1, 2].map(() => makePiece(pieceIdRef.current++))
+    quotaRef.current = randInt(3, 5)
+    placedRef.current = 0
+    const ps = makeTray(Math.min(3, quotaRef.current))
     setPieces(ps)
     if (!ps.some(p => fitsAnywhere(board, p))) {
       saveRecordIfNeeded(score)
@@ -184,29 +225,70 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
   }
 
   const placePiece = (piece: Piece, r0: number, c0: number) => {
-    if (!canPlace(board, piece, r0, c0)) return
+    let nb: number[][]
+    let gained: number
+    let cleared: number
+    let burstCells: { key: string; color: number }[]
+    const blast = piece.kind !== 'normal'
 
-    const { board: nb, cleared } = placeOnBoard(board, piece, r0, c0)
-    const remaining = pieces.filter(p => p.id !== piece.id)
+    if (!blast) {
+      if (!canPlace(board, piece, r0, c0)) return
+      const res = placeOnBoard(board, piece, r0, c0)
+      nb = res.board
+      cleared = res.cleared
+      burstCells = res.burst
+      // Очки: 1 за клетку + бонус за линии (1 линия = 10, 2 = 40, 3 = 90)
+      gained = piece.cells.length + cleared * cleared * 10
+      setPopKeys(new Set(piece.cells.map(([dr, dc]) => `${r0 + dr},${c0 + dc}`)))
+    } else {
+      const res = detonate(board, piece.kind, r0, c0)
+      nb = res.board
+      cleared = res.destroyed > 0 ? 1 : 0
+      burstCells = res.burst
+      // Взрыв: 2 очка за каждый уничтоженный блок
+      gained = res.destroyed * 2
+      setPopKeys(new Set())
+      setShake(true)
+    }
 
-    // Очки: 1 за клетку + бонус за линии (1 линия = 10, 2 = 40, 3 = 90)
-    const gained = piece.cells.length + cleared * cleared * 10
+    // Комбо: линии (или взрыв блоков) в нескольких ходах подряд
+    const nextCombo = cleared > 0 ? combo + 1 : 0
+    if (nextCombo >= 2) gained += (nextCombo - 1) * 10
+    setCombo(nextCombo)
+
+    if (burstCells.length > 0) {
+      burstIdRef.current += 1
+      setBursts({ id: burstIdRef.current, blast, cells: burstCells })
+    }
+
     const newScore = score + gained
+    placedRef.current += 1
+    let remaining = pieces.filter(p => p.id !== piece.id)
 
     setBoard(nb)
     setScore(newScore)
-    setPieces(remaining)
     gainKeyRef.current += 1
     setGain({ value: gained, key: gainKeyRef.current })
     if (newScore > bestSavedRef.current) setNewRecord(true)
 
-    if (remaining.length === 0) {
-      // Все три фигуры поставлены → сохраняем рекорд и идём к следующему слову
+    if (placedRef.current >= quotaRef.current) {
+      // Нужное число фигур поставлено → сохраняем рекорд и идём к следующему слову
+      setPieces([])
       saveRecordIfNeeded(newScore)
       resetInput()
       setPhase(queue.length === 0 ? 'finished' : 'question')
       return
     }
+
+    // Добираем новую фигуру в набор, пока не выдано всё нужное количество
+    if (placedRef.current + remaining.length < quotaRef.current) {
+      remaining = [
+        ...remaining,
+        makePiece(pieceIdRef.current++, !remaining.some(p => p.kind !== 'normal')),
+      ]
+    }
+    setPieces(remaining)
+
     if (!remaining.some(p => fitsAnywhere(nb, p))) {
       saveRecordIfNeeded(newScore)
       setPhase('over')
@@ -275,6 +357,10 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
     setPieces([])
     setDrag(null)
     setLastAnswer(null)
+    setCombo(0)
+    setBursts(null)
+    setPopKeys(new Set())
+    placedRef.current = 0
     resetInput()
     setPhase(queue.length === 0 ? 'finished' : 'question')
   }
@@ -347,11 +433,19 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
   // Какие клетки подсветить, пока фигуру тащат над полем
   const draggedPiece = drag ? pieces.find(p => p.id === drag.pieceId) : undefined
   const previewCells = new Set<string>()
+  const previewIsBlast = draggedPiece ? draggedPiece.kind !== 'normal' : false
   if (drag?.target && draggedPiece) {
-    for (const [dr, dc] of draggedPiece.cells) {
-      previewCells.add(`${drag.target[0] + dr},${drag.target[1] + dc}`)
+    if (previewIsBlast) {
+      for (const [r, c] of blastCells(draggedPiece.kind, drag.target[0], drag.target[1])) {
+        previewCells.add(`${r},${c}`)
+      }
+    } else {
+      for (const [dr, dc] of draggedPiece.cells) {
+        previewCells.add(`${drag.target[0] + dr},${drag.target[1] + dc}`)
+      }
     }
   }
+  const burstMap = new Map((bursts?.cells ?? []).map(b => [b.key, b.color]))
 
   return (
     <div className={`${SCREEN} pb-6`}>
@@ -372,11 +466,19 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
             <p className="text-3xl font-bold leading-tight tabular-nums">
               {score}
               {gain && (
-                <span key={gain.key} className="ml-2 text-base font-semibold text-[#7fc8a0]">
+                <span
+                  key={gain.key}
+                  className="blk-float ml-2 inline-block text-base font-semibold text-[#7fc8a0]"
+                >
                   +{gain.value}
                 </span>
               )}
             </p>
+            {combo >= 2 && (
+              <span key={combo} className="blk-combo chip chip-accent mt-1 inline-flex">
+                Комбо ×{combo}
+              </span>
+            )}
           </div>
           <div className="text-right">
             <p className="text-xs text-[#8a8a96]">Рекорд</p>
@@ -402,7 +504,7 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
           {phase === 'question' && current && (
             <form onSubmit={handleSubmit} className="space-y-3">
               <p className="text-sm text-[#8a8a96]">
-                Переведите слово — за верный ответ получите 3 фигуры
+                Переведите слово — за верный ответ получите фигуры для поля
               </p>
               <div className="card flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
@@ -481,22 +583,49 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
                 </div>
               )}
               <p className="text-sm text-[#b0b0bb]">
-                Перетащите фигуры на поле. Осталось: {pieces.length}
+                Перетащите фигуры на поле. Следующее слово появится само — через несколько фигур.
+              </p>
+              <p className="text-xs leading-5 text-[#8a8a96]">
+                💣 взрывает область 3×3 · ⚡ стирает ряд и столбец
               </p>
             </>
           )}
         </div>
 
         <div className="mx-auto w-full max-w-[420px] md:mx-0">
-          <div className="card p-1.5">
+          <div className={`card p-1.5 ${shake ? 'blk-shake' : ''}`}>
             <div ref={boardRef} className="grid grid-cols-8 select-none">
               {board.map((row, r) =>
                 row.map((value, c) => {
-                  let cls = value !== 0 ? COLORS[value] : 'bg-[#1b1b21]'
-                  if (previewCells.has(`${r},${c}`)) cls = 'bg-[#8ea2ff]/50'
+                  const key = `${r},${c}`
+                  let cls = value !== 0 ? `${COLORS[value]} ${BLOCK_FX}` : 'bg-[#1b1b21]'
+                  if (previewCells.has(key)) {
+                    cls = previewIsBlast ? 'bg-orange-400/60' : 'bg-[#8ea2ff]/50'
+                  }
+                  const burstColor = burstMap.get(key)
                   return (
-                    <div key={`${r}-${c}`} className="aspect-square p-[2px]">
-                      <div className={`h-full w-full rounded-md transition-colors ${cls}`} />
+                    <div key={key} className="relative aspect-square p-[2px]">
+                      <div
+                        className={`h-full w-full rounded-md transition-colors ${cls} ${
+                          value !== 0 && popKeys.has(key) ? 'blk-pop' : ''
+                        }`}
+                      />
+                      {burstColor !== undefined && (
+                        <>
+                          <div
+                            key={`b${bursts?.id}`}
+                            className={`blk-burst pointer-events-none absolute inset-[2px] rounded-md ${
+                              burstColor > 0 ? COLORS[burstColor] : 'bg-orange-400'
+                            }`}
+                          />
+                          {bursts?.blast && (
+                            <div
+                              key={`f${bursts.id}`}
+                              className="blk-flash pointer-events-none absolute inset-0 rounded-full bg-amber-300/70"
+                            />
+                          )}
+                        </>
+                      )}
                     </div>
                   )
                 })
@@ -516,22 +645,32 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
                     drag?.pieceId === p.id ? 'opacity-30' : 'hover:border-[#8ea2ff]'
                   }`}
                 >
-                  <div
-                    className="grid gap-0.5"
-                    style={{ gridTemplateColumns: `repeat(${p.w}, 22px)` }}
-                  >
-                    {Array.from({ length: p.h * p.w }, (_, i) => {
-                      const r = Math.floor(i / p.w)
-                      const c = i % p.w
-                      const filled = p.cells.some(([dr, dc]) => dr === r && dc === c)
-                      return (
-                        <div
-                          key={i}
-                          className={`h-[22px] w-[22px] rounded ${filled ? COLORS[p.color] : ''}`}
-                        />
-                      )
-                    })}
-                  </div>
+                  {p.kind !== 'normal' ? (
+                    <div
+                      className={`blk-glow flex h-[34px] w-[34px] items-center justify-center rounded-lg text-xl ${SPECIAL_STYLE[p.kind].cls}`}
+                    >
+                      {SPECIAL_STYLE[p.kind].icon}
+                    </div>
+                  ) : (
+                    <div
+                      className="grid gap-0.5"
+                      style={{ gridTemplateColumns: `repeat(${p.w}, 22px)` }}
+                    >
+                      {Array.from({ length: p.h * p.w }, (_, i) => {
+                        const r = Math.floor(i / p.w)
+                        const c = i % p.w
+                        const filled = p.cells.some(([dr, dc]) => dr === r && dc === c)
+                        return (
+                          <div
+                            key={i}
+                            className={`h-[22px] w-[22px] rounded ${
+                              filled ? `${COLORS[p.color]} ${BLOCK_FX}` : ''
+                            }`}
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -562,9 +701,18 @@ export default function BlocksGame({ cards, recordResult, onNextRound, onExit }:
               const filled = draggedPiece.cells.some(([dr, dc]) => dr === r && dc === c)
               return (
                 <div key={i} className="p-[2px]">
-                  {filled && (
-                    <div className={`h-full w-full rounded-md opacity-90 ${COLORS[draggedPiece.color]}`} />
-                  )}
+                  {filled &&
+                    (draggedPiece.kind !== 'normal' ? (
+                      <div
+                        className={`flex h-full w-full items-center justify-center rounded-md text-xl ${SPECIAL_STYLE[draggedPiece.kind].cls}`}
+                      >
+                        {SPECIAL_STYLE[draggedPiece.kind].icon}
+                      </div>
+                    ) : (
+                      <div
+                        className={`h-full w-full rounded-md opacity-90 ${COLORS[draggedPiece.color]} ${BLOCK_FX}`}
+                      />
+                    ))}
                 </div>
               )
             })}
