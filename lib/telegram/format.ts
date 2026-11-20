@@ -1,7 +1,9 @@
 import type { InlineKeyboard, ReplyKeyboard } from './api'
 import {
   canSendRegular,
-  DONT_KNOW_MIN_GAP_MS,
+  DONT_KNOW_GAP_OPTIONS,
+  dontKnowGapMinutes,
+  dontKnowGapMs,
   DONT_KNOW_STAGE_LABELS,
   formatInterval,
   IGNORED_FOLLOW_UP_STAGE,
@@ -172,10 +174,10 @@ function debugReason(
   const notes: string[] = []
 
   if (queue.dontKnow.due > 0) {
-    const left = Math.ceil((DONT_KNOW_MIN_GAP_MS - (now - lastDontKnowAt)) / 60000)
+    const left = Math.ceil((dontKnowGapMs(settings) - (now - lastDontKnowAt)) / 60000)
     notes.push(
       left > 0
-        ? `«Не знаю»: ждёт ${queue.dontKnow.due} слов, следующее придёт примерно через ${left} мин (пауза между ними 7 мин).`
+        ? `«Не знаю»: ждёт ${queue.dontKnow.due} слов, следующее придёт примерно через ${left} мин (пауза между ними ${formatInterval(dontKnowGapMinutes(settings))}).`
         : `«Не знаю»: ждёт ${queue.dontKnow.due} слов, придёт на ближайшем запуске бота.`
     )
   }
@@ -238,7 +240,7 @@ export function debugText(
     group('Повторы из папок в очереди', queue.folder),
     '',
     '<b>Слова, на которые вы нажали «Не знаю»</b>',
-    'Не зависят от интервала, приходят не чаще раза в 7 мин',
+    `Не зависят от интервала, приходят не чаще раза в ${formatInterval(dontKnowGapMinutes(settings))} (меняется в настройках)`,
     `Последняя отправка: <b>${
       lastDontKnowAt > 0 ? formatDateTime(new Date(lastDontKnowAt).toISOString(), tz) : 'ещё не было'
     }</b>`,
@@ -491,6 +493,7 @@ export function settingsText(settings: TelegramSettings): string {
     `📌 Статус: <b>${statusIcon(settings)}</b>`,
     `⏰ Окно: <b>${windowLabel(settings)}</b>`,
     `🔁 Интервал: <b>раз в ${formatInterval(settings.interval_minutes)}</b>`,
+    `⏳ «Не знаю»: <b>раз в ${formatInterval(dontKnowGapMinutes(settings))}</b>`,
     `🈯 Перевод: <b>${revealLabel(settings)}</b>`,
     `🌍 Часовой пояс: <b>${escapeHtml(settings.timezone)}</b>`,
     LINE,
@@ -504,6 +507,7 @@ export function settingsKeyboard(settings: TelegramSettings): InlineKeyboard {
       { text: '⏰ Окно', callback_data: 'set:time' },
       { text: '🔁 Интервал', callback_data: 'set:interval' },
     ],
+    [{ text: '⏳ Пауза «Не знаю»', callback_data: 'set:dk' }],
     [
       { text: '🈯 Перевод', callback_data: 'set:fmt' },
       { text: '🌍 Часовой пояс', callback_data: 'set:tz' },
@@ -537,7 +541,7 @@ export function intervalText(settings: TelegramSettings): string {
     LINE,
     `Сейчас: <b>раз в ${formatInterval(settings.interval_minutes)}</b>`,
     '',
-    'Это пауза между обычными словами. Повторы «Не знаю» приходят по своему графику.',
+    'Это пауза между обычными словами. Повторы «Не знаю» приходят по своему графику — их паузу можно поменять в «⏳ Пауза «Не знаю»».',
     '',
     '<i>Выберите вариант или задайте своё число минут (от 5 до 1440).</i>',
   ].join('\n')
@@ -574,6 +578,64 @@ export function customIntervalText(settings: TelegramSettings): string {
 export function customIntervalKeyboard(): InlineKeyboard {
   return [[{ text: '✖️ Отмена', callback_data: 'set:interval' }]]
 }
+
+// ───────── Пауза между словами «Не знаю» ─────────
+
+export function dontKnowGapText(
+  settings: TelegramSettings,
+  waiting: number | null = null,
+  notice: string | null = null,
+): string {
+  return [
+    '<b>⏳ Пауза между словами «Не знаю»</b>',
+    LINE,
+    `Сейчас: <b>одно слово раз в ${formatInterval(dontKnowGapMinutes(settings))}</b>`,
+    ...(waiting !== null ? [`В очереди «Не знаю» сейчас: <b>${waiting}</b>`] : []),
+    '',
+    'Если «Не знаю» накопилось много — увеличьте паузу, чтобы они не сыпались подряд. Если хотите разобрать их быстрее — уменьшите.',
+    'Обычные слова из папок идут по своему интервалу и от этой паузы не зависят.',
+    ...(notice ? ['', notice] : []),
+    '',
+    '<i>Выберите вариант или задайте своё число минут (от 1 до 1440).</i>',
+  ].join('\n')
+}
+
+export function dontKnowGapKeyboard(settings: TelegramSettings): InlineKeyboard {
+  const current = dontKnowGapMinutes(settings)
+  const buttons = DONT_KNOW_GAP_OPTIONS.map(minutes => ({
+    text: `${tick(minutes === current)}${formatInterval(minutes)}`,
+    callback_data: `set:dkv:${minutes}`,
+  }))
+
+  return [
+    buttons.slice(0, 4),
+    buttons.slice(4, 8),
+    buttons.slice(8),
+    [{ text: '✏️ Своё значение', callback_data: 'set:dkc' }],
+    [{ text: '← Назад', callback_data: 'set:menu' }],
+  ]
+}
+
+export const CUSTOM_DONT_KNOW_GAP_PROMPT =
+  'Жду паузу для «Не знаю» в минутах. Отправь число одним сообщением, например 25.'
+
+export function customDontKnowGapText(settings: TelegramSettings): string {
+  return [
+    '<b>✏️ Своя пауза для «Не знаю»</b>',
+    LINE,
+    `Сейчас: <b>раз в ${formatInterval(dontKnowGapMinutes(settings))}</b>`,
+    '',
+    'Напишите количество минут числом, например <b>25</b> или <b>90</b>. Можно и так: <b>2 ч</b>.',
+    '<i>Допустимо от 1 до 1440 минут.</i>',
+  ].join('\n')
+}
+
+export function customDontKnowGapKeyboard(): InlineKeyboard {
+  return [[{ text: '✖️ Отмена', callback_data: 'set:dk' }]]
+}
+
+export const DONT_KNOW_GAP_NEEDS_SQL =
+  '⚠️ Не сохранилось: в базе ещё нет нужной колонки. Выполните один раз supabase/dont-know-gap.sql в Supabase SQL Editor.'
 
 export function formatText(settings: TelegramSettings): string {
   return [

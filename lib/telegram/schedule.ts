@@ -5,6 +5,25 @@ export const DONT_KNOW_FIRST_MINUTES = 15
 // но приходят не чаще, чем раз в столько минут (бот опрашивается раз в 1–2 минуты).
 export const DONT_KNOW_MIN_GAP_MS = 7 * 60 * 1000
 
+// Паузу между словами «Не знаю» можно поменять в настройках бота
+// (например, растянуть, если их накопилось много).
+export const DONT_KNOW_GAP_DEFAULT_MINUTES = 7
+export const DONT_KNOW_GAP_OPTIONS = [3, 5, 7, 10, 15, 20, 30, 45, 60, 120] as const
+
+export function dontKnowGapMinutes(
+  settings: Pick<TelegramSettings, 'dont_know_gap_minutes'>,
+): number {
+  const value = Number(settings.dont_know_gap_minutes)
+  if (!settings.dont_know_gap_minutes || !Number.isFinite(value) || value < 1) {
+    return DONT_KNOW_GAP_DEFAULT_MINUTES
+  }
+  return Math.min(1440, Math.round(value))
+}
+
+export function dontKnowGapMs(settings: Pick<TelegramSettings, 'dont_know_gap_minutes'>): number {
+  return dontKnowGapMinutes(settings) * 60 * 1000
+}
+
 export function normalizeTime(value: string): string {
   return value.slice(0, 5)
 }
@@ -325,7 +344,7 @@ export function parseTimeRange(input: string): { start: string; end: string } | 
 const INTERVAL_UNITS =
   'm|min|mins|minute|minutes|мин\\.?|минут[аы]?|h|hour|hours|ч|час|часа|часов'
 
-export function parseInterval(input: string): number | null {
+export function parseInterval(input: string, min = 5): number | null {
   const match = input
     .trim()
     .match(new RegExp(`^(\\d+)\\s*(${INTERVAL_UNITS})?$`, 'i'))
@@ -336,8 +355,13 @@ export function parseInterval(input: string): number | null {
   const hours = ['h', 'hour', 'hours', 'ч', 'час', 'часа', 'часов']
   const minutes = hours.includes(unit) ? value * 60 : value
 
-  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 1440) return null
+  if (!Number.isFinite(minutes) || minutes < min || minutes > 1440) return null
   return minutes
+}
+
+// Пауза «Не знаю»: от 1 минуты до суток, понимает «25», «25 мин», «2 ч»
+export function parseDontKnowGap(input: string): number | null {
+  return parseInterval(input, 1)
 }
 
 export function formatInterval(minutes: number): string {

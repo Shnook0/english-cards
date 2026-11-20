@@ -32,6 +32,8 @@ export type TelegramSettings = {
   awaiting_input: string | null
   linked: boolean
   reveal_mode: RevealMode
+  // Пауза между словами «Не знаю», минут (null — по умолчанию 7)
+  dont_know_gap_minutes?: number | null
 }
 
 export type BotCard = Card & {
@@ -376,6 +378,7 @@ export async function updateSettings(
 
   const fallback = { ...patch }
   delete fallback.awaiting_input
+  delete fallback.dont_know_gap_minutes
 
   if (Object.keys(fallback).length === 0) return
 
@@ -384,6 +387,21 @@ export async function updateSettings(
     .update({ ...fallback, updated_at: new Date().toISOString() })
     .eq('chat_id', chatId)
   if (fallbackError) throw fallbackError
+}
+
+// false — в базе ещё нет колонки dont_know_gap_minutes (нужен SQL из supabase/dont-know-gap.sql)
+export async function setDontKnowGap(chatId: number, minutes: number): Promise<boolean> {
+  const { error } = await db()
+    .from('telegram_settings')
+    .update({
+      dont_know_gap_minutes: minutes,
+      awaiting_input: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('chat_id', chatId)
+  if (!error) return true
+  if (isMissingBotSchema(error)) return false
+  throw error
 }
 
 export async function listSettings(): Promise<TelegramSettings[]> {

@@ -5,6 +5,12 @@ import {
   CUSTOM_INTERVAL_PROMPT,
   customIntervalKeyboard,
   customIntervalText,
+  CUSTOM_DONT_KNOW_GAP_PROMPT,
+  customDontKnowGapKeyboard,
+  customDontKnowGapText,
+  DONT_KNOW_GAP_NEEDS_SQL,
+  dontKnowGapKeyboard,
+  dontKnowGapText,
   debugKeyboard,
   debugText,
   deleteConfirmKeyboard,
@@ -56,6 +62,7 @@ import {
   pickNextCard,
   recordDelivery,
   replaceDontKnowQueue,
+  setDontKnowGap,
   updateSettings,
   type BotCard,
   type RevealMode,
@@ -72,6 +79,7 @@ import {
   nextIgnoredIntervalDays,
   nextKnownIntervalDays,
   normalizeTime,
+  parseDontKnowGap,
   parseInterval,
   parseTimeRange,
   shiftTime,
@@ -383,6 +391,45 @@ async function handleStart(chatId: number, arg: string): Promise<void> {
   )
 }
 
+async function dontKnowWaiting(settings: TelegramSettings): Promise<number | null> {
+  try {
+    const queue = await getQueueSummary(settings.user_id)
+    return queue.dontKnow.count
+  } catch {
+    return null
+  }
+}
+
+async function handleCustomDontKnowGapInput(
+  chatId: number,
+  settings: TelegramSettings,
+  text: string,
+): Promise<void> {
+  const minutes = parseDontKnowGap(text)
+  if (!minutes) {
+    await sendMessage(
+      chatId,
+      '🤔 Нужно число минут от 1 до 1440. Например: 25 или 2 ч.',
+      customDontKnowGapKeyboard(),
+    )
+    return
+  }
+
+  const saved = await setDontKnowGap(chatId, minutes)
+  if (!saved) await updateSettings(chatId, { awaiting_input: null })
+  const next = saved ? { ...settings, dont_know_gap_minutes: minutes, awaiting_input: null } : settings
+  const waiting = await dontKnowWaiting(next)
+  await sendMessage(
+    chatId,
+    dontKnowGapText(
+      next,
+      waiting,
+      saved ? `✅ Готово! «Не знаю» теперь приходят раз в ${formatInterval(minutes)}.` : DONT_KNOW_GAP_NEEDS_SQL,
+    ),
+    dontKnowGapKeyboard(next),
+  )
+}
+
 async function handleCustomIntervalInput(
   chatId: number,
   settings: TelegramSettings,
@@ -562,6 +609,13 @@ async function handleMessageInner(message: TelegramMessage): Promise<void> {
       const isIntervalReply = Boolean(
         repliedTo?.from?.is_bot && repliedTo.text?.includes(CUSTOM_INTERVAL_PROMPT)
       )
+      const isDontKnowGapReply = Boolean(
+        repliedTo?.from?.is_bot && repliedTo.text?.includes(CUSTOM_DONT_KNOW_GAP_PROMPT)
+      )
+      if (settings.awaiting_input === 'dkgap' || isDontKnowGapReply) {
+        await handleCustomDontKnowGapInput(chatId, settings, text)
+        return
+      }
       if (settings.awaiting_input === 'interval' || isIntervalReply) {
         await handleCustomIntervalInput(chatId, settings, text)
         return
@@ -623,6 +677,46 @@ async function handleSettingsCallback(
       })
       await answerCallbackQuery(query.id, 'Напиши число минут')
       return
+
+    case 'dk': {
+      await updateSettings(chatId, { awaiting_input: null })
+      const waiting = await dontKnowWaiting(settings)
+      await safeEdit(chatId, messageId, dontKnowGapText(settings, waiting), dontKnowGapKeyboard(settings))
+      await answerCallbackQuery(query.id)
+      return
+    }
+
+    case 'dkc':
+      await updateSettings(chatId, { awaiting_input: 'dkgap' })
+      await safeEdit(chatId, messageId, customDontKnowGapText(settings), customDontKnowGapKeyboard())
+      await sendMessage(chatId, CUSTOM_DONT_KNOW_GAP_PROMPT, undefined, {
+        force_reply: true,
+        input_field_placeholder: 'Число минут',
+      })
+      await answerCallbackQuery(query.id, 'Напиши число минут')
+      return
+
+    case 'dkv': {
+      const minutes = Number(value)
+      if (!Number.isFinite(minutes) || minutes < 1 || minutes > 1440) {
+        await answerCallbackQuery(query.id, 'Неверная пауза')
+        return
+      }
+      const saved = await setDontKnowGap(chatId, minutes)
+      const next = saved ? { ...settings, dont_know_gap_minutes: minutes } : settings
+      const waiting = await dontKnowWaiting(next)
+      await safeEdit(
+        chatId,
+        messageId,
+        dontKnowGapText(next, waiting, saved ? null : DONT_KNOW_GAP_NEEDS_SQL),
+        dontKnowGapKeyboard(next),
+      )
+      await answerCallbackQuery(
+        query.id,
+        saved ? `«Не знаю» раз в ${formatInterval(minutes)}` : 'Нужен SQL в Supabase',
+      )
+      return
+    }
 
     case 'iv': {
       const minutes = Number(value)

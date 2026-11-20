@@ -1,7 +1,7 @@
 import { sendCard } from '@/lib/telegram/bot'
 import {
   canSendRegular,
-  DONT_KNOW_MIN_GAP_MS,
+  dontKnowGapMs,
   isWithinWindow,
 } from '@/lib/telegram/schedule'
 import {
@@ -68,11 +68,13 @@ async function runTick(request: Request): Promise<Response> {
 
   // Слова с «Не знаю»: свой отсчёт, не зависит от интервала и не сдвигает его.
   const lastDontKnow = new Map<number, number>()
-  const dontKnowReady = async (chatId: number): Promise<boolean> => {
+  // Пауза между ними берётся из настроек бота (по умолчанию 7 минут).
+  const dontKnowReady = async (setting: TelegramSettings): Promise<boolean> => {
+    const chatId = setting.chat_id
     if (!lastDontKnow.has(chatId)) {
       lastDontKnow.set(chatId, await getLastDontKnowSentAt(chatId))
     }
-    return now.getTime() - (lastDontKnow.get(chatId) ?? 0) >= DONT_KNOW_MIN_GAP_MS
+    return now.getTime() - (lastDontKnow.get(chatId) ?? 0) >= dontKnowGapMs(setting)
   }
 
   // Повторы из папок и новые слова: строго по интервалу из настроек.
@@ -137,7 +139,7 @@ async function runTick(request: Request): Promise<Response> {
       if (sentChats.has(setting.chat_id)) continue
 
       if (kind === 'dontknow') {
-        if (!(await dontKnowReady(setting.chat_id))) continue
+        if (!(await dontKnowReady(setting))) continue
       } else if (!intervalReady(setting)) {
         continue
       }
