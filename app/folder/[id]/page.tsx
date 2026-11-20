@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOfflineRouter } from '@/hooks/useOfflineRouter'
 import { Card, Folder } from '@/types/database'
 import AddCardModal from '@/components/AddCardModal'
+import ExportWords from '@/components/ExportWords'
 import MatchRecord from '@/components/MatchRecord'
 import PageHeader from '@/components/ui/PageHeader'
 import Icon from '@/components/ui/Icon'
@@ -359,6 +360,8 @@ export default function FolderPage() {
           ))}
         </div>
       )}
+
+      <ExportWords cards={sortWords(cards, wordSort, isLearnedFolder)} folderName={folder.name} />
 
       {cards.length > 0 && <SearchInput value={query} onChange={setQuery} />}
 
