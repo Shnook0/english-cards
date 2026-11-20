@@ -44,6 +44,8 @@ import {
   getCustomFolders,
   getDeliveryGapDays,
   getSettings,
+  getLastDontKnowSentAt,
+  getQueueSummary,
   getStats,
   getWordCards,
   insertFollowUp,
@@ -124,7 +126,7 @@ function helpText(): string {
     '',
     '<b>Кнопки под словом</b>',
     '✅ <b>Знаю</b> — вернусь через 4 дня, затем реже.',
-    '❌ <b>Не знаю</b> — повтор через 15 мин, 2 и 5 ч, затем 1, 2, 4, 7, 15 и 30 дней.',
+    '❌ <b>Не знаю</b> — повтор через 15 мин, 2 и 5 ч, затем 2, 3, 5, 10, 20 и 30 дней.',
     '⏭ <b>Пропустить</b> — как будто не нажали: напомню через 1–2 дня.',
     '🔕 <b>Не повторять</b> — уберу из очереди, напомню через 30 и 70 дней.',
     '🗑 <b>Удалить</b> — удалит слово из папки на сайте.',
@@ -260,14 +262,14 @@ export async function sendNextCard(
 async function debugView(
   settings: TelegramSettings
 ): Promise<{ text: string; keyboard: InlineKeyboard }> {
-  const [deliveries, pending, reviews, stats] = await Promise.all([
+  const [deliveries, queue, lastDontKnowAt, stats] = await Promise.all([
     listRecentDeliveries(settings.user_id, 8),
-    listPendingForUser(settings.user_id),
-    listUpcomingReviews(settings.user_id, 20),
+    getQueueSummary(settings.user_id),
+    getLastDontKnowSentAt(settings.chat_id),
     getStats(settings.user_id),
   ])
   return {
-    text: debugText(settings, deliveries, pending, reviews, stats),
+    text: debugText(settings, deliveries, queue, lastDontKnowAt, stats),
     keyboard: debugKeyboard(),
   }
 }
@@ -872,7 +874,7 @@ async function handleCallbackInner(query: TelegramCallbackQuery): Promise<void> 
           cardText(card),
           '',
           '❌ <b>Не знаю</b> — ничего страшного, так и запоминают.',
-          '<i>Повторю через 15 минут, 2 и 5 часов, затем через 1, 2, 4, 7, 15 и 30 дней. Что выпадет вне окна — перенесу на утро.</i>',
+          '<i>Повторю через 15 минут, 2 и 5 часов, затем через 2, 3, 5, 10, 20 и 30 дней. Что выпадет вне окна — перенесу на утро.</i>',
         ].join('\n'),
         [
           [

@@ -1,6 +1,9 @@
 import type { TelegramSettings } from './store'
 
 export const DONT_KNOW_FIRST_MINUTES = 15
+// Слова, на которые нажали «Не знаю», не зависят от интервала бота,
+// но приходят не чаще, чем раз в столько минут (бот опрашивается раз в 1–2 минуты).
+export const DONT_KNOW_MIN_GAP_MS = 7 * 60 * 1000
 
 export function normalizeTime(value: string): string {
   return value.slice(0, 5)
@@ -168,6 +171,10 @@ export function clampToWindow(settings: TelegramSettings, date: Date): Date {
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export const KNOWN_FOLLOW_UP_STAGE = 100
+// stage < 100 — повторы после «Не знаю»; всё остальное — плановые повторы из папок
+export function isDontKnowStage(stage: number | null | undefined): boolean {
+  return typeof stage === 'number' && stage < KNOWN_FOLLOW_UP_STAGE
+}
 // Обычный повтор, поставленный с сайта после частых «Не знаю»
 export const SITE_FOLLOW_UP_STAGE = 150
 export const IGNORED_FOLLOW_UP_STAGE = 200
@@ -219,18 +226,26 @@ function windowPoint(settings: TelegramSettings, fraction: number): string {
   return timeFromMinutes(start + Math.round(duration * fraction))
 }
 
-export const DONT_KNOW_STAGE_LABELS = [
-  'через 15 минут',
-  'через 2 часа',
-  'через 5 часов',
-  'через 1 день',
-  'через 2 дня',
-  'через 4 дня',
-  'через 7 дней · первый раз',
-  'через 7 дней · второй раз',
-  'через 15 дней',
-  'через 30 дней',
-] as const
+// Этапы 0–2 общие. Этапы 3–9 — старое расписание (1, 2, 4, 7, 7, 15, 30 дней),
+// их оставляем только для слов, которые уже стоят в очереди. Новое расписание — этапы 10–15.
+export const DONT_KNOW_STAGE_LABELS: Record<number, string> = {
+  0: 'через 15 минут',
+  1: 'через 2 часа',
+  2: 'через 5 часов',
+  3: 'через 1 день',
+  4: 'через 2 дня',
+  5: 'через 4 дня',
+  6: 'через 7 дней · первый раз',
+  7: 'через 7 дней · второй раз',
+  8: 'через 15 дней',
+  9: 'через 30 дней',
+  10: 'через 2 дня',
+  11: 'через 3 дня',
+  12: 'через 5 дней',
+  13: 'через 10 дней',
+  14: 'через 20 дней',
+  15: 'через 30 дней',
+}
 
 export function buildDontKnowSchedule(
   settings: TelegramSettings,
@@ -254,35 +269,21 @@ export function buildDontKnowSchedule(
 
   const today = localDateKey(now, settings.timezone)
   const middle = windowPoint(settings, 0.5)
-  const first = windowPoint(settings, 0.25)
-  const second = windowPoint(settings, 0.75)
 
+  // Дальше по дням: 2, 3, 5, 10, 20 и 30 (середина окна отправки)
   for (const [days, stage] of [
-    [1, 3],
-    [2, 4],
-    [4, 5],
-    [15, 8],
-    [30, 9],
+    [2, 10],
+    [3, 11],
+    [5, 12],
+    [10, 13],
+    [20, 14],
+    [30, 15],
   ] as const) {
     result.push({
       stage,
       dueAt: localTimeToUtc(
         addDaysToDateKey(today, days),
         middle,
-        settings.timezone,
-      ).toISOString(),
-    })
-  }
-
-  for (const [stage, time] of [
-    [6, first],
-    [7, second],
-  ] as const) {
-    result.push({
-      stage,
-      dueAt: localTimeToUtc(
-        addDaysToDateKey(today, 7),
-        time,
         settings.timezone,
       ).toISOString(),
     })

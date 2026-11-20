@@ -5,6 +5,8 @@ import { patchCorrect, patchWrong } from '@/lib/study'
 import {
   followUpDueAt,
   IGNORED_FOLLOW_UP_STAGE,
+  isDontKnowStage,
+  KNOWN_FOLLOW_UP_STAGE,
   nextIgnoredIntervalDays,
   SITE_FOLLOW_UP_STAGE,
 } from './schedule'
@@ -960,14 +962,22 @@ type DueReviewRow = {
   cards: { user_id: string } | { user_id: string }[] | null
 }
 
-export async function listDueReviews(userIds?: string[]): Promise<DueReview[]> {
+// 'dontknow' — повторы после «Не знаю» (stage < 100), 'folder' — плановые повторы из папок
+export type DueKind = 'dontknow' | 'folder'
+
+export async function listDueReviews(
+  userIds?: string[],
+  kind?: DueKind,
+): Promise<DueReview[]> {
   if (userIds && userIds.length === 0) return []
 
-  const base = db()
+  let base = db()
     .from('telegram_reviews')
     .select('id, card_id, stage, due_at, cards!inner(user_id)')
     .is('sent_at', null)
     .lte('due_at', new Date().toISOString())
+  if (kind === 'dontknow') base = base.lt('stage', KNOWN_FOLLOW_UP_STAGE)
+  if (kind === 'folder') base = base.gte('stage', KNOWN_FOLLOW_UP_STAGE)
 
   const { data, error } = await (userIds ? base.in('cards.user_id', userIds) : base)
     .order('due_at', { ascending: true })
@@ -1038,15 +1048,88 @@ export async function countUpcomingReviews(userId: string): Promise<number> {
   return count ?? 0
 }
 
-export async function listDuePending(userIds?: string[]): Promise<PendingRepeat[]> {
+// Когда последний раз бот присылал слово, на которое нажали «Не знаю»
+export async function getLastDontKnowSentAt(chatId: number): Promise<number> {
+  const { data, error } = await db()
+    .from('telegram_deliveries')
+    .select('sent_at')
+    .eq('chat_id', chatId)
+    .eq('kind', 'dontknow')
+    .order('sent_at', { ascending: false })
+    .limit(1)
+  if (error) throw error
+  const last = data?.[0]?.sent_at
+  return last ? new Date(last).getTime() : 0
+}
+
+export type QueueGroup = { count: number; due: number; nextDueAt: string | null }
+export type QueueSummary = { dontKnow: QueueGroup; folder: QueueGroup }
+
+// Очередь повторов, разбитая на «Не знаю» и плановые повторы из папок
+export async function getQueueSummary(userId: string): Promise<QueueSummary> {
+  const summary: QueueSummary = {
+    dontKnow: { count: 0, due: 0, nextDueAt: null },
+    folder: { count: 0, due: 0, nextDueAt: null },
+  }
+  const now = Date.now()
+
+  const add = (stage: number | null | undefined, dueAt: string) => {
+    const group = isDontKnowStage(stage) ? summary.dontKnow : summary.folder
+    group.count += 1
+    if (new Date(dueAt).getTime() <= now) group.due += 1
+    if (!group.nextDueAt || dueAt < group.nextDueAt) group.nextDueAt = dueAt
+  }
+
+  const readPending = async (withStage: boolean) =>
+    db()
+      .from('telegram_pending')
+      .select(withStage ? 'due_at, stage, cards!inner(user_id)' : 'due_at, cards!inner(user_id)')
+      .eq('cards.user_id', userId)
+      .is('sent_at', null)
+      .limit(5000)
+
+  let pending = await readPending(pendingStageSupported !== false)
+  if (pending.error && isMissingBotSchema(pending.error)) pending = await readPending(false)
+  if (pending.error) throw pending.error
+  for (const row of (pending.data ?? []) as unknown as {
+    due_at: string
+    stage?: number | null
+  }[]) {
+    add(row.stage ?? null, row.due_at)
+  }
+
+  const reviews = await db()
+    .from('telegram_reviews')
+    .select('due_at, stage, cards!inner(user_id)')
+    .eq('cards.user_id', userId)
+    .is('sent_at', null)
+    .limit(5000)
+  if (reviews.error && !isMissingBotSchema(reviews.error)) throw reviews.error
+  for (const row of (reviews.data ?? []) as unknown as { due_at: string; stage: number }[]) {
+    add(row.stage, row.due_at)
+  }
+
+  return summary
+}
+
+export async function listDuePending(
+  userIds?: string[],
+  kind?: DueKind,
+): Promise<PendingRepeat[]> {
   if (userIds && userIds.length === 0) return []
 
   const build = (withStage: boolean) => {
-    const base = db()
+    let base = db()
       .from('telegram_pending')
       .select(pendingSelect(withStage))
       .is('sent_at', null)
       .lte('due_at', new Date().toISOString())
+    // Без колонки stage различить виды нельзя: тогда всё считается плановыми повторами
+    if (withStage && kind === 'dontknow') base = base.lt('stage', KNOWN_FOLLOW_UP_STAGE)
+    if (withStage && kind === 'folder') {
+      base = base.or(`stage.gte.${KNOWN_FOLLOW_UP_STAGE},stage.is.null`)
+    }
+    if (!withStage && kind === 'dontknow') base = base.eq('id', -1)
 
     return (userIds ? base.in('cards.user_id', userIds) : base)
       .order('due_at', { ascending: true })

@@ -1,8 +1,13 @@
 import { sendCard } from '@/lib/telegram/bot'
-import { canSendRegular, isWithinWindow } from '@/lib/telegram/schedule'
+import {
+  canSendRegular,
+  DONT_KNOW_MIN_GAP_MS,
+  isWithinWindow,
+} from '@/lib/telegram/schedule'
 import {
   finishDelivery,
   getCard,
+  getLastDontKnowSentAt,
   listDuePending,
   listDueReviews,
   listSettings,
@@ -12,6 +17,7 @@ import {
   pickNextCard,
   updateSettings,
   type BotCard,
+  type DueKind,
   type TelegramSettings,
 } from '@/lib/telegram/store'
 
@@ -31,6 +37,14 @@ function authorized(request: Request): boolean {
   return provided === secret
 }
 
+type DueItem = {
+  source: 'review' | 'pending'
+  id: number
+  user_id: string
+  card_id: string
+  due_at: string
+}
+
 async function runTick(request: Request): Promise<Response> {
   if (!authorized(request)) {
     return new Response('Forbidden', { status: 403 })
@@ -38,6 +52,7 @@ async function runTick(request: Request): Promise<Response> {
 
   const sent: string[] = []
   const failed: string[] = []
+  // Одно сообщение на чат за запуск планировщика
   const sentChats = new Set<number>()
   const sentKeys = new Set<string>()
   const now = new Date()
@@ -50,15 +65,22 @@ async function runTick(request: Request): Promise<Response> {
     sentKeys.add(cardKey(chatId, card.id))
     sentKeys.add(wordKey(chatId, card.word))
   }
-  // Не вываливаем накопившееся после простоя: одна карточка на чат за тик,
-  // а просроченные повторы идут с обычным интервалом между словами.
-  const LATE_MS = 10 * 60 * 1000
-  const throttled = (setting: TelegramSettings, dueAt: string) => {
-    if (sentChats.has(setting.chat_id)) return true
-    if (now.getTime() - new Date(dueAt).getTime() <= LATE_MS) return false
-    const last = setting.last_sent_at ? new Date(setting.last_sent_at).getTime() : 0
-    return last > 0 && now.getTime() - last < setting.interval_minutes * 60 * 1000
+
+  // Слова с «Не знаю»: свой отсчёт, не зависит от интервала и не сдвигает его.
+  const lastDontKnow = new Map<number, number>()
+  const dontKnowReady = async (chatId: number): Promise<boolean> => {
+    if (!lastDontKnow.has(chatId)) {
+      lastDontKnow.set(chatId, await getLastDontKnowSentAt(chatId))
+    }
+    return now.getTime() - (lastDontKnow.get(chatId) ?? 0) >= DONT_KNOW_MIN_GAP_MS
   }
+
+  // Повторы из папок и новые слова: строго по интервалу из настроек.
+  const intervalReady = (setting: TelegramSettings): boolean => {
+    const last = setting.last_sent_at ? new Date(setting.last_sent_at).getTime() : 0
+    return !(last > 0 && now.getTime() - last < setting.interval_minutes * 60 * 1000)
+  }
+
   const markDelivered = async (chatId: number) => {
     try {
       await updateSettings(chatId, { last_sent_at: new Date().toISOString() })
@@ -93,76 +115,74 @@ async function runTick(request: Request): Promise<Response> {
     .filter(setting => !setting.paused)
     .map(setting => setting.user_id)
 
-  try {
-    const due = await listDueReviews(activeUserIds)
+  // kind = 'dontknow': слова, на которые нажали «Не знаю» (не чаще раза в 7 минут,
+  //                     интервал бота не учитывается и не сдвигается);
+  // kind = 'folder':   плановые повторы из папок (строго по интервалу).
+  const deliverDue = async (kind: DueKind) => {
+    const [reviews, pending] = await Promise.all([
+      listDueReviews(activeUserIds, kind),
+      listDuePending(activeUserIds, kind),
+    ])
+    const items: DueItem[] = [
+      ...reviews.map(item => ({ source: 'review' as const, ...item })),
+      ...pending.map(item => ({ source: 'pending' as const, ...item })),
+    ].sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())
 
-    for (const review of due) {
-      const setting = settingsByUser.get(review.user_id)
+    const markSent = (item: DueItem) =>
+      item.source === 'review' ? markReviewSent(item.id) : markPendingSent(item.id)
+
+    for (const item of items) {
+      const setting = settingsByUser.get(item.user_id)
       if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
-      if (throttled(setting, review.due_at)) continue
+      if (sentChats.has(setting.chat_id)) continue
 
-      const card = await getCard(review.card_id)
+      if (kind === 'dontknow') {
+        if (!(await dontKnowReady(setting.chat_id))) continue
+      } else if (!intervalReady(setting)) {
+        continue
+      }
+
+      const card = await getCard(item.card_id)
       if (!card || card.user_id !== setting.user_id) {
-        await markReviewSent(review.id)
+        await markSent(item)
         continue
       }
 
       if (alreadySent(setting.chat_id, card)) {
-        await markReviewSent(review.id)
+        await markSent(item)
         continue
       }
 
       try {
-        await sendCard(setting.chat_id, card, 'review', setting)
+        await sendCard(
+          setting.chat_id,
+          card,
+          kind === 'dontknow' ? 'dontknow' : 'folder',
+          setting,
+        )
         rememberSent(setting.chat_id, card)
         sentChats.add(setting.chat_id)
-        await markReviewSent(review.id)
-        await markDelivered(setting.chat_id)
+        await markSent(item)
+        if (kind === 'dontknow') {
+          lastDontKnow.set(setting.chat_id, Date.now())
+        } else {
+          await markDelivered(setting.chat_id)
+        }
         await scheduleNext(setting, card, false)
-        sent.push(`review:${card.id}`)
+        sent.push(`${kind}:${card.id}`)
       } catch (error) {
-        failed.push(`review:${card.id}`)
-        console.error('telegram tick review:', error)
+        failed.push(`${kind}:${card.id}`)
+        console.error(`telegram tick ${kind}:`, error)
       }
     }
-  } catch (error) {
-    console.error('telegram tick reviews:', error)
   }
 
-  try {
-    const due = await listDuePending(activeUserIds)
-
-    for (const pending of due) {
-      const setting = settingsByUser.get(pending.user_id)
-      if (!setting || setting.paused || !isWithinWindow(setting, now)) continue
-      if (throttled(setting, pending.due_at)) continue
-
-      const card = await getCard(pending.card_id)
-      if (!card || card.user_id !== setting.user_id) {
-        await markPendingSent(pending.id)
-        continue
-      }
-
-      if (alreadySent(setting.chat_id, card)) {
-        await markPendingSent(pending.id)
-        continue
-      }
-
-      try {
-        await sendCard(setting.chat_id, card, 'review', setting)
-        rememberSent(setting.chat_id, card)
-        sentChats.add(setting.chat_id)
-        await markPendingSent(pending.id)
-        await markDelivered(setting.chat_id)
-        await scheduleNext(setting, card, false)
-        sent.push(`review:${card.id}`)
-      } catch (error) {
-        failed.push(`review:${card.id}`)
-        console.error('telegram tick pending:', error)
-      }
+  for (const kind of ['dontknow', 'folder'] as const) {
+    try {
+      await deliverDue(kind)
+    } catch (error) {
+      console.error(`telegram tick ${kind} queue:`, error)
     }
-  } catch (error) {
-    console.error('telegram tick pending:', error)
   }
 
   try {
@@ -170,9 +190,7 @@ async function runTick(request: Request): Promise<Response> {
       if (setting.paused) continue
       if (sentChats.has(setting.chat_id)) continue
       if (!canSendRegular(setting, now)) continue
-
-      const last = setting.last_sent_at ? new Date(setting.last_sent_at).getTime() : 0
-      if (last > 0 && now.getTime() - last < setting.interval_minutes * 60 * 1000) continue
+      if (!intervalReady(setting)) continue
 
       const card = await pickNextCard(setting.user_id)
       if (!card) continue

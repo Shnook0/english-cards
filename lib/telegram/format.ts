@@ -1,6 +1,7 @@
 import type { InlineKeyboard, ReplyKeyboard } from './api'
 import {
   canSendRegular,
+  DONT_KNOW_MIN_GAP_MS,
   DONT_KNOW_STAGE_LABELS,
   formatInterval,
   IGNORED_FOLLOW_UP_STAGE,
@@ -17,6 +18,7 @@ import type {
   BotStats,
   DeliveryRow,
   PendingRow,
+  QueueSummary,
   RevealMode,
   TelegramSettings,
   UpcomingReview,
@@ -110,9 +112,11 @@ function formatDateWords(iso: string, timezone: string): string {
 }
 
 function deliveryLabel(kind: string): string {
-  if (kind === 'scheduled') return 'по расписанию'
-  if (kind === 'repeat') return 'повтор'
-  if (kind === 'review') return 'повтор'
+  if (kind === 'scheduled') return 'новое слово из папки'
+  if (kind === 'folder') return 'повтор из папки'
+  if (kind === 'dontknow') return 'слово, на которое вы нажали «Не знаю»'
+  // Отправки до разделения на «Не знаю» и повторы из папок различить нельзя
+  if (kind === 'repeat' || kind === 'review') return 'повтор (до обновления)'
   if (kind === 'manual') return 'вручную'
   return kind
 }
@@ -148,8 +152,8 @@ function followUpTitle(stage: number | null, word: string): string {
 
 function debugReason(
   settings: TelegramSettings,
-  pending: PendingRow[],
-  reviews: UpcomingReview[],
+  queue: QueueSummary,
+  lastDontKnowAt: number,
   stats: BotStats,
   now: number
 ): string {
@@ -157,39 +161,47 @@ function debugReason(
 
   const nowDate = new Date(now)
   const inWindow = canSendRegular(settings, nowDate)
-  const dueReview = [...pending, ...reviews].some(
-    item => new Date(item.due_at).getTime() <= now
-  )
-  if (dueReview) {
-    if (!inWindow) {
-      return 'есть запланированный повтор, но сейчас вне окна — придёт при открытии окна.'
-    }
-    return 'есть повтор, который уже должен был прийти. Если его нет — cron-job.org не запускается или неверный TELEGRAM_TICK_SECRET.'
+  const dueTotal = queue.dontKnow.due + queue.folder.due
+  if (dueTotal > 0 && !inWindow) {
+    return 'есть запланированные повторы, но сейчас вне окна — придут при открытии окна.'
   }
-
   if (!inWindow) {
     return 'сейчас вне окна отправки — обычные слова и повторы ждут открытия окна.'
   }
 
-  if (stats.hard === 0) return 'нет слов для повторения в твоих папках.'
+  const notes: string[] = []
 
-  if (settings.last_sent_at) {
-    const last = new Date(settings.last_sent_at).getTime()
-    const intervalMs = settings.interval_minutes * 60 * 1000
-    if (now - last < intervalMs) {
-      const left = Math.ceil((intervalMs - (now - last)) / 60000)
-      return `интервал ещё не прошёл: ждать ${left} мин.`
-    }
+  if (queue.dontKnow.due > 0) {
+    const left = Math.ceil((DONT_KNOW_MIN_GAP_MS - (now - lastDontKnowAt)) / 60000)
+    notes.push(
+      left > 0
+        ? `«Не знаю»: ждёт ${queue.dontKnow.due} слов, следующее придёт примерно через ${left} мин (пауза между ними 7 мин).`
+        : `«Не знаю»: ждёт ${queue.dontKnow.due} слов, придёт на ближайшем запуске бота.`
+    )
   }
 
-  return 'всё готово к отправке. Если сообщения нет — cron-job.org не запускается.'
+  const folderWaiting = queue.folder.due > 0 || stats.hard > 0
+  if (folderWaiting) {
+    const last = settings.last_sent_at ? new Date(settings.last_sent_at).getTime() : 0
+    const intervalMs = settings.interval_minutes * 60 * 1000
+    if (last > 0 && now - last < intervalMs) {
+      const left = Math.ceil((intervalMs - (now - last)) / 60000)
+      notes.push(`из папок: интервал ещё не прошёл, ждать ${left} мин.`)
+    } else {
+      notes.push('из папок: готово к отправке на ближайшем запуске бота.')
+    }
+  } else {
+    notes.push('в папках нет слов для повторения.')
+  }
+
+  return notes.join(' ')
 }
 
 export function debugText(
   settings: TelegramSettings,
   deliveries: DeliveryRow[],
-  pending: PendingRow[],
-  reviews: UpcomingReview[],
+  queue: QueueSummary,
+  lastDontKnowAt: number,
   stats: BotStats
 ): string {
   const tz = settings.timezone
@@ -205,25 +217,32 @@ export function debugText(
             tz
           )})`
 
-  const queue = [...pending, ...reviews].sort(
-    (a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime()
-  )
-  const queueCount = stats.pending + stats.reviews
+  const group = (title: string, item: QueueSummary['dontKnow']) =>
+    `${title}: <b>${item.count}</b>${
+      item.nextDueAt ? ` (ближайший ${formatDateTime(item.nextDueAt, tz)})` : ''
+    }`
 
   const lines = [
     '<b>🛠 Диагностика</b>',
     '',
     `Сейчас: <b>${formatTime(new Date().toISOString(), tz)}</b> (${escapeHtml(tz)})`,
     `Окно: <b>${normalizeTime(settings.window_start)}–${normalizeTime(settings.window_end)}</b>`,
-    `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
     `Статус: <b>${statusLabel(settings)}</b>`,
+    '',
+    '<b>Слова и повторы из папок</b>',
+    `Интервал: <b>каждые ${formatInterval(settings.interval_minutes)}</b>`,
     `Последняя отправка: <b>${
       settings.last_sent_at ? formatDateTime(settings.last_sent_at, tz) : 'ещё не было'
     }</b>`,
     `Следующая отправка: <b>${nextText}</b>`,
-    `В очереди повторов: <b>${queueCount}</b>${
-      queue[0] ? ` (ближайший ${formatDateTime(queue[0].due_at, tz)})` : ''
-    }`,
+    group('Повторы из папок в очереди', queue.folder),
+    '',
+    '<b>Слова, на которые вы нажали «Не знаю»</b>',
+    'Не зависят от интервала, приходят не чаще раза в 7 мин',
+    `Последняя отправка: <b>${
+      lastDontKnowAt > 0 ? formatDateTime(new Date(lastDontKnowAt).toISOString(), tz) : 'ещё не было'
+    }</b>`,
+    group('В очереди', queue.dontKnow),
   ]
 
   if (deliveries.length > 0) {
@@ -240,7 +259,7 @@ export function debugText(
 
   lines.push('')
   lines.push(
-    `<b>Причина:</b> ${debugReason(settings, pending, reviews, stats, now)}`
+    `<b>Причина:</b> ${debugReason(settings, queue, lastDontKnowAt, stats, now)}`
   )
 
   return lines.join('\n')
